@@ -159,6 +159,15 @@ class TipoRecoveryStrategy(StrEnum):
     ESCALATE = "escalate"
 
 
+class SkillRef(BaseModel):
+    """Vol.III Cap.11 (`CapabilityDefinition.requiredSkills`) / Vol.IV Cap.17
+    — referencia a uma Skill que uma Capability usa internamente. Colocada
+    aqui pelo mesmo motivo dos demais tipos desta secao: Cap.11 (Runtime) e
+    Cap.17 (Capabilities) se referenciam mutuamente."""
+
+    skill_id: SkillId
+
+
 class RecoveryStrategy(BaseModel):
     """Vol.II Cap.9, secao 9.5 — uniao discriminada por `tipo`, representada
     aqui como um unico modelo com campos opcionais por variante (mais simples
