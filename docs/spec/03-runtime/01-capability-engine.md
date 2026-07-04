@@ -112,7 +112,7 @@ A resolução é **determinística e sem heurística de linguagem natural** — 
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Capability Registry completo; regras de versionamento semântico; ciclo de vida com kill switch governado |
+| Capability Registry completo (register/resolve/find_candidates/deprecate/disable/versao); regras de versionamento semântico (MAJOR exige `depreca` explícito) — `src/batman_os/runtime/capability_engine.py`, testes AT-11.1 a AT-11.3 | — | Kill switch governado integrado ao Governance Engine (Volume VII) — `disable()` já existe, o gatilho automático de governança é trabalho futuro |
 
 ---
 

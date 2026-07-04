@@ -124,7 +124,7 @@ sequenceDiagram
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Event Bus (append-only, replay); Scheduler com Worker Pool, prioridade e aging |
+| Event Bus (append-only, `publish`/`subscribe`/`replay`) — `src/batman_os/kernel/event_bus.py`, teste AT-10.1; Scheduler com fila por prioridade efetiva + aging (anti-starvation), `despachar_proximos()` respeita capacidade — `src/batman_os/kernel/scheduler.py`, testes AT-10.2/10.3 | — | Worker Pool físico real (hoje a "capacidade" é apenas um limite de seleção por chamada; execução concorrente de verdade é do Volume VIII, Infrastructure) |
 
 ---
 

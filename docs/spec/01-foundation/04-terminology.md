@@ -149,7 +149,7 @@ flowchart LR
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| Vocabulário oficial fixado e consistente com Capítulos 1–3 | Nomenclatura em sistemas correlatos já existentes (ex.: Batman Observe, SuperMan) deve ser auditada contra este glossário em um capítulo de migração, a ser incluído no Volume IX | Catálogo real de Capabilities, Skills e Playbooks — a ser construído a partir do Volume IV |
+| Vocabulário oficial fixado e consistente com Capítulos 1–3; IDs/Evidence/KnowledgeAssetRef implementados em `src/batman_os/foundation/types.py` | Nomenclatura em sistemas correlatos já existentes (ex.: Batman Observe, SuperMan) deve ser auditada contra este glossário em um capítulo de migração, a ser incluído no Volume IX | Catálogo real de Capabilities/Skills/Playbooks *povoado* (o framework para catalogá-los existe desde o Volume IV; migrar as 270 regras do Batman atual é trabalho futuro, fora desta construção) |
 
 ---
 

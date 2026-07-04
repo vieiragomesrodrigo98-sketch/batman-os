@@ -123,7 +123,7 @@ Para evitar que o Decision Engine se torne, na prática, dependente contínuo do
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Decision Engine completo; Validador de Contrato para saídas de LLM; circuit breaker de taxa de escalonamento (integra com Volume VII) |
+| Decision Engine completo (hierarquia Knowledge→Human→LLM); Validador de Contrato para saídas de LLM; `taxa_llm()` como dado bruto monitorável — `src/batman_os/kernel/decision_engine.py`, testes AT-8.1 a AT-8.4 | — | Circuit breaker/alarme automático de taxa de escalonamento integrado ao Governance Engine (Volume VII) — `taxa_llm()` já existe, a integração de alarme é trabalho futuro |
 
 ---
 

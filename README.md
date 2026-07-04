@@ -17,9 +17,18 @@ aprove formalmente a mudança.
 
 ## Estado
 
-Construção em andamento dos Volumes I–IV (Foundation, Kernel Architecture, Runtime,
-Capabilities). Ver `docs/spec/SUMMARY.md` para o índice completo da especificação
-(Volumes I–VI já escritos; VII–X em progresso pelo autor, em paralelo).
+**Volumes I–IV completos** (Foundation, Kernel Architecture, Runtime, Capabilities)
+— 16 capítulos de código (Cap.4/6-19), 142 testes cobrindo todos os `AT-X.Y` da
+própria especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o
+índice completo (Volumes I–VII já escritos; VIII–X em progresso pelo autor, em
+paralelo). Volumes V (Workflow Engine/Playbooks), VI (Learning Engine) e VII
+(Governance) já têm especificação pronta mas ainda não foram implementados nesta
+árvore — próximos pacotes naturais (`workflow/`, `learning/`, `governance/`).
+
+Migração das 270 regras do Batman atual (`radar-preditivo/Batman/`) para
+Capabilities/Operadores reais é trabalho futuro, deliberadamente fora desta
+primeira rodada — ver `docs/governanca/BATMAN_BACKLOG.md` no repositório
+`radar-preditivo` para o backlog de pendências dessa migração.
 
 ## Estrutura
 

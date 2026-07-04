@@ -126,7 +126,7 @@ stateDiagram-v2
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Contrato `Operator`; ciclo de vida com quarentena; enforcement de `PermissionSet` e `SandboxPolicy` |
+| Contrato `Operator` completo; ciclo de vida com máquina de estados (Registered→Certified→Active↔Quarantined→Retired); enforcement de `PermissionSet` (whitelist vazia por padrão) e rejeição de `SandboxPolicy` ausente — `src/batman_os/capabilities/operator.py`, testes AT-15.1 a AT-15.3 | — | Integração com Resource Limiter real por classe de missão (hoje declarativo via `ResourceLimits`, enforcement de fato é do Execution Engine, Cap.12) |
 
 ---
 

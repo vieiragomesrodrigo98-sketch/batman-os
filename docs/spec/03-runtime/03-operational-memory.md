@@ -121,7 +121,7 @@ Esta distinção é formalizada em [ADR-0004 — Operational Memory não é font
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Operational Memory completa; job periódico de detecção de candidatos a promoção; estratégia de retenção/arquivamento |
+| Operational Memory completa (append-only, `OperationalRecord` imutável); `find_promotion_candidates()`; `calcular_confidence_combinada()` com degradação graciosa — `src/batman_os/runtime/operational_memory.py`, testes AT-13.1 a AT-13.3 | Reconciliação automática a partir do Event Bus (hoje alimentada via `registrar()` explícito — Decision/Workflow Engine ainda não publicam eventos ricos o bastante) | Job periódico agendado de detecção de candidatos; estratégia de retenção/arquivamento (Volume VIII, Infrastructure) |
 
 ---
 

@@ -144,7 +144,7 @@ sequenceDiagram
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Máquina de estados completa; estrutura de dados `Mission`; persistência de estado; integração com Event Bus (Cap. 10) |
+| Máquina de estados completa; `Mission`; integração com Event Bus (Cap.10); `cognitive_debt_flag` derivado do histórico de eventos — `src/batman_os/kernel/mission_runtime.py`, testes AT-6.1/6.2/6.4 em `tests/kernel/test_mission_runtime.py` | Persistência duradoura de estado (hoje em memória; Volume VIII, Infrastructure) | — |
 
 ---
 

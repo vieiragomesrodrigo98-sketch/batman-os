@@ -100,7 +100,7 @@ flowchart TD
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Execution Engine completo; Resource Limiter (bulkhead); validação em duas camadas para Operadores não determinísticos |
+| Execution Engine completo (`invoke`, timeout via `ThreadPoolExecutor`, validação obrigatória de `outputSchema`); `LimitadorDeRecursoPorOperador` (bulkhead); validação em duas camadas para Capabilities não determinísticas — `src/batman_os/runtime/execution_engine.py`, testes AT-12.1 a AT-12.3 | — | — |
 
 ---
 

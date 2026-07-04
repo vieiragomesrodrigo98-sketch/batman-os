@@ -98,7 +98,7 @@ Isso garante que a sub-missão tenha sua própria auditoria completa, seu própr
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Suporte a fan-out/fan-in no Workflow Engine; criação governada de sub-missões; auditoria de ausência de referência direta entre Operadores |
+| Fan-out/fan-in já suportado estruturalmente pelo grafo de dependências do Workflow Engine (Cap.9), testado explicitamente aqui; `criar_submissao()` força herança de `tenant_id` da missão pai; `auditar_ausencia_de_referencia_direta()` — `src/batman_os/capabilities/cooperation.py`, testes AT-19.1 a AT-19.3 | — | — |
 
 ---
 

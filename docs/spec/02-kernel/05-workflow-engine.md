@@ -122,7 +122,7 @@ sequenceDiagram
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Workflow Engine completo; sistema de checkpoints; estratégias de recuperação; mecanismo de cancelamento cooperativo |
+| Workflow Engine completo; checkpoints após cada sucesso; recovery (retry/compensate/skip-if-optional/escalate); cancelamento cooperativo — `src/batman_os/kernel/workflow_engine.py`, testes AT-9.1 a AT-9.3 | — | — |
 
 ---
 

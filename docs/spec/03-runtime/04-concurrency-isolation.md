@@ -93,7 +93,7 @@ Cada `WorkflowRun` (Volume II, Cap. 9) opera sobre seu próprio conjunto de chec
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Propagação obrigatória de `tenantId`; fairness por `weightedRoundRobin`; testes de isolamento de dados e falha |
+| Propagação obrigatória de `tenant_id` (Mission/ExecutionPlan/WorkflowRun/OperationalRecord/KernelEvent, sem default); `SchedulerComFairnessPorTenant` (smooth weighted round-robin); isolamento de dados na Operational Memory; isolamento de falha entre `WorkflowRun`s — `src/batman_os/runtime/concurrency.py`, testes AT-14.1 a AT-14.3 | — | Isolamento físico de instância por tenant (exceção configurável mencionada na ADR-0005) — não aplicável nesta fase |
 
 ---
 

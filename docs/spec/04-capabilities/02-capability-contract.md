@@ -105,7 +105,7 @@ Quando idempotência verdadeira não é tecnicamente possível (ex.: envio de no
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Pipeline de certificação completo; verificação automatizada de idempotência; enforcement de revisão humana obrigatória para `sideEffects: irreversible` |
+| Pipeline de certificação completo (`certificar()`: checklist→testes de aceitação→idempotência→revisão humana); verificação automatizada de idempotência via dupla invocação; `sideEffects: irreversible` nunca certificado sem `revisao_humana_obtida` explícito — `src/batman_os/capabilities/capability_contract.py`, testes AT-16.1 a AT-16.3 | — | Ambiente de execução verdadeiramente isolado para rodar `acceptance_tests` (Volume VIII, Infrastructure) |
 
 ---
 

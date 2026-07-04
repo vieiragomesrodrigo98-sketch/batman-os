@@ -75,7 +75,7 @@ Skills podem depender de outras Skills (ex.: uma Skill de alto nível "kubectl" 
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Catálogo de Skills; varredura automatizada de impacto para mudanças MAJOR; verificação de ciclos no grafo de dependência |
+| `SkillRegistry` completo; verificação de ciclos no grafo de dependência (DFS 3-cores); `propor_mudanca_major_de_skill()` — varredura de impacto que só promove globalmente se todas as Capabilities dependentes continuam passando — `src/batman_os/capabilities/skills.py` + `capability_contract.py`, testes AT-17.1 a AT-17.3 | — | — |
 
 ---
 

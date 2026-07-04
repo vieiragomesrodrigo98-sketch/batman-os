@@ -118,7 +118,7 @@ flowchart TD
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Estrutura `ExecutionPlan`; algoritmo de composição via grafo; repositório de Playbooks (formalizado em detalhe no Volume V) |
+| `ExecutionPlan`/`PlanStep`/`DecisionPoint`; composição via grafo de Capabilities (heurística sequencial mínima); validação de ciclo/dependência órfã; `planHash` determinístico — `src/batman_os/kernel/planning_engine.py`, testes AT-7.1/7.2/7.3 | Composição via grafo mais sofisticada (paralelismo/agrupamento) quando o Capability Engine real estiver mais maduro | Repositório de Playbooks real (formalizado em detalhe no Volume V) — hoje aceito via Protocol, sempre vazio nesta construção |
 
 ---
 

@@ -103,7 +103,7 @@ stateDiagram-v2
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Tool Registry; circuit breaker por Tool; integração com cofre de segredos externo |
+| `ToolRegistry.resolve_tool()` (exige exatamente 1 candidato); scanner heurístico contra credencial literal em `credentials_ref`; `CircuitBreakerPorTool` (Closed→Open→HalfOpen) — `src/batman_os/capabilities/tools.py`, testes AT-18.1 a AT-18.3 | — | Integração real com cofre de segredos externo (Vault/AWS Secrets Manager) — `CredentialRef` já modela a referência opaca, a integração de fato é do Volume VIII, Infrastructure |
 
 ---
 
