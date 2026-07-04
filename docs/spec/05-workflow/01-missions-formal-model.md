@@ -102,7 +102,7 @@ interface SLAContract {
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Registro de `MissionTypeDefinition`; enforcement de criticidade no Decision Engine e Scheduler; contrato de SLA com escalonamento de prioridade |
+| `MissionTypeRegistry` (nenhuma Missão sem tipo registrado, AT-20.1); `criticidade` retrofitada no `DecisionEngine.resolve()` — `critical` nunca tenta LLM (AT-20.2); `escalar_prioridade_por_sla()` prova que `auto-escalate-priority` nunca altera o plano (AT-20.3); `prioridade_base_por_criticidade()`; `validar_recovery_obrigatoria_para_criticas()` (regra da seção 20.3, não formalizada como AT numerado) — `src/batman_os/workflow/missions.py` + retrofit em `kernel/mission_runtime.py`/`kernel/decision_engine.py` | — | Enforcement de criticidade no Scheduler como prioridade *efetiva* de despacho (hoje só o mapeamento `criticidade→prioridade base` existe; o Scheduler em si permanece agnóstico de `Mission`, por design do Cap.10) |
 
 ---
 

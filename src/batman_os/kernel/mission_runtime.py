@@ -10,7 +10,7 @@ Fonte da verdade: docs/spec/02-kernel/02-mission-runtime.md
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -128,6 +128,19 @@ class Mission(BaseModel):
     cognitive_debt_flag: CognitiveDebtFlag | None = None
 
 
+class RegistroTiposDeMissao(Protocol):
+    """Vol.V Cap.20, secao 20.2 (AT-20.1) — implementado de verdade pelo
+    `MissionTypeRegistry` (Volume V, Cap.20, `workflow/missions.py`).
+    Definido aqui como Protocol para o Mission Runtime nao depender do
+    pacote `workflow/` (que depende de `kernel/`, nunca o contrario —
+    Vol.VIII Cap.32, secao 32.3)."""
+
+    def validar(self, tipo: MissionTypeId) -> None:
+        """Levanta excecao se `tipo` nao estiver registrado — 'nao existe
+        missao de tipo generico' (secao 20.2)."""
+        ...
+
+
 class TransicaoInvalida(Exception):
     """Vol.II Cap.6, secao 6.3.1, invariante 1 — nenhuma transicao pula
     estados; um evento incompativel com o estado atual e sempre um erro,
@@ -181,8 +194,9 @@ _TIPO_EVENTO_ESCALACAO_LLM = f"Mission{MissionState.AWAITING_LLM.value}"
 class MissionRuntime:
     """Vol.II Cap.6, secao 6.4 — interface do Mission Runtime."""
 
-    def __init__(self, event_bus: EventBus) -> None:
+    def __init__(self, event_bus: EventBus, tipos: RegistroTiposDeMissao) -> None:
         self._event_bus = event_bus
+        self._tipos = tipos
         self._missions: dict[MissionId, Mission] = {}
 
     def create(
@@ -199,7 +213,11 @@ class MissionRuntime:
         da ADR-0002.
 
         `tenant_id` obrigatorio (Vol.III Cap.14, ADR-0005) — propagado a
-        toda missao filha e a todo evento publicado a partir daqui."""
+        toda missao filha e a todo evento publicado a partir daqui.
+
+        `tipo` deve estar registrado em `RegistroTiposDeMissao` (Vol.V
+        Cap.20, AT-20.1) — nao existe missao de tipo generico."""
+        self._tipos.validar(tipo)
         mission = Mission(
             tenant_id=tenant_id, tipo=tipo, intent=intent, parent_mission_id=parent_mission_id
         )

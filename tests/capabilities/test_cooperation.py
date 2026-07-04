@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -25,15 +26,42 @@ from batman_os.capabilities.operator import (
 from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
+    Criticidade,
+    EscalationPolicy,
     MissionId,
     MissionTypeId,
     OperatorId,
+    Reversibilidade,
     TenantId,
 )
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionIntent, MissionRuntime
 from batman_os.kernel.planning_engine import PlanStep
 from batman_os.kernel.workflow_engine import ResultadoInvocacao, WorkflowEngine
+from batman_os.workflow.missions import MissionTypeDefinition, MissionTypeRegistry
+
+TIPO_PREPARAR_DEPLOY = MissionTypeId("preparar-deploy")
+TIPO_RODAR_TESTES = MissionTypeId("rodar-testes")
+
+
+def _registro_tipos() -> MissionTypeRegistry:
+    registro = MissionTypeRegistry()
+    politica = EscalationPolicy(
+        confidence_threshold=0.7,
+        preferred_escalation="human",
+        max_llm_retries=1,
+        reversibility=Reversibilidade.REVERSIVEL,
+    )
+    for tipo in (TIPO_PREPARAR_DEPLOY, TIPO_RODAR_TESTES):
+        registro.register(
+            MissionTypeDefinition(
+                id=tipo,
+                criticality=Criticidade.MEDIUM,
+                default_sla=timedelta(hours=1),
+                escalation_defaults=politica,
+            )
+        )
+    return registro
 
 
 class ExecutorSimples:
@@ -151,10 +179,10 @@ class _InvocadorSempreSucesso:
 
 class TestAT193SubmissaoHerdaTenantDaMissaoPai:
     def test_submissao_herda_tenant_id_do_pai(self) -> None:
-        runtime = MissionRuntime(EventBus())
+        runtime = MissionRuntime(EventBus(), tipos=_registro_tipos())
         pai = runtime.create(
             MissionIntent(dados={}),
-            MissionTypeId("preparar-deploy"),
+            TIPO_PREPARAR_DEPLOY,
             tenant_id=TenantId("tenant-x"),
         )
 
@@ -162,7 +190,7 @@ class TestAT193SubmissaoHerdaTenantDaMissaoPai:
             runtime,
             pai,
             MissionIntent(dados={"etapa": "rodar-testes"}),
-            MissionTypeId("rodar-testes"),
+            TIPO_RODAR_TESTES,
         )
 
         assert filha.tenant_id == pai.tenant_id
@@ -170,15 +198,13 @@ class TestAT193SubmissaoHerdaTenantDaMissaoPai:
 
     def test_submissao_e_auditavel_independentemente_via_replay(self) -> None:
         event_bus = EventBus()
-        runtime = MissionRuntime(event_bus)
+        runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
         pai = runtime.create(
             MissionIntent(dados={}),
-            MissionTypeId("preparar-deploy"),
+            TIPO_PREPARAR_DEPLOY,
             tenant_id=TenantId("tenant-x"),
         )
-        filha = criar_submissao(
-            runtime, pai, MissionIntent(dados={}), MissionTypeId("rodar-testes")
-        )
+        filha = criar_submissao(runtime, pai, MissionIntent(dados={}), TIPO_RODAR_TESTES)
 
         historia_pai = event_bus.replay(pai.id)
         historia_filha = event_bus.replay(filha.id)

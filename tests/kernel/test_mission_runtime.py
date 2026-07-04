@@ -7,9 +7,17 @@ Runtime nao gera planos, apenas os referencia por `plan_id`. Testado la.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
-from batman_os.foundation.types import MissionTypeId, TenantId
+from batman_os.foundation.types import (
+    Criticidade,
+    EscalationPolicy,
+    MissionTypeId,
+    Reversibilidade,
+    TenantId,
+)
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import (
     CognitiveDebtFlag,
@@ -20,6 +28,27 @@ from batman_os.kernel.mission_runtime import (
     MissionState,
     TransicaoInvalida,
 )
+from batman_os.workflow.missions import MissionTypeDefinition, MissionTypeRegistry
+
+TIPO_INVESTIGAR_INCIDENTE = MissionTypeId("investigate-incident")
+
+
+def _registro_tipos() -> MissionTypeRegistry:
+    registro = MissionTypeRegistry()
+    registro.register(
+        MissionTypeDefinition(
+            id=TIPO_INVESTIGAR_INCIDENTE,
+            criticality=Criticidade.MEDIUM,
+            default_sla=timedelta(hours=1),
+            escalation_defaults=EscalationPolicy(
+                confidence_threshold=0.7,
+                preferred_escalation="human",
+                max_llm_retries=1,
+                reversibility=Reversibilidade.REVERSIVEL,
+            ),
+        )
+    )
+    return registro
 
 
 @pytest.fixture
@@ -29,13 +58,14 @@ def event_bus() -> EventBus:
 
 @pytest.fixture
 def runtime(event_bus: EventBus) -> MissionRuntime:
-    return MissionRuntime(event_bus)
+    return MissionRuntime(event_bus, tipos=_registro_tipos())
 
 
 def _cria(runtime: MissionRuntime) -> Mission:
-    tipo = MissionTypeId("investigate-incident")
     return runtime.create(
-        MissionIntent(dados={"exemplo": True}), tipo, tenant_id=TenantId("tenant-1")
+        MissionIntent(dados={"exemplo": True}),
+        TIPO_INVESTIGAR_INCIDENTE,
+        tenant_id=TenantId("tenant-1"),
     )
 
 
@@ -169,7 +199,7 @@ class TestAT64CancelamentoEmTempoFinito:
 
 def test_transicao_nunca_pula_estados() -> None:
     """Invariante 1 (secao 6.3.1): Created nao pode ir direto para Executing."""
-    runtime = MissionRuntime(EventBus())
+    runtime = MissionRuntime(EventBus(), tipos=_registro_tipos())
     mission = _cria(runtime)
 
     with pytest.raises(TransicaoInvalida):
@@ -178,7 +208,7 @@ def test_transicao_nunca_pula_estados() -> None:
 
 def test_awaiting_human_e_awaiting_llm_sempre_retornam_a_deciding() -> None:
     """Invariante 2 (secao 6.3.1)."""
-    runtime = MissionRuntime(EventBus())
+    runtime = MissionRuntime(EventBus(), tipos=_registro_tipos())
     mission = _cria(runtime)
     runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
     runtime.transition(mission.id, MissionEventType.PLAN_READY)

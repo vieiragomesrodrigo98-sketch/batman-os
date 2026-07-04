@@ -101,6 +101,21 @@ class Evidence(BaseModel):
     historico: list[str] = Field(default_factory=list)
 
 
+class Criticidade(StrEnum):
+    """Vol.V Cap.20, secao 20.2/20.3 — `MissionTypeDefinition.criticality`.
+    Referenciada de forma cruzada pelo Decision Engine (Vol.II Cap.8, secao
+    20.3: `critical` nunca escala a LLM sem humano intermediario) e pelo
+    Scheduler (Vol.II Cap.10: prioridade base) antes do Volume V ter seu
+    proprio modulo — colocada aqui pelo mesmo motivo dos demais tipos desta
+    secao (evitar import circular kernel <-> workflow, Vol.VIII Cap.32
+    secao 32.3: `workflow` depende de `kernel`, nunca o contrario)."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 class Reversibilidade(StrEnum):
     """Vol.II Cap.8, secao 8.3 — `EscalationPolicy.reversibility`. Decisoes
     irreversiveis nunca vao direto a LLM sem escalonamento humano intermediario

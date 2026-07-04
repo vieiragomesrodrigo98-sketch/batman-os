@@ -17,13 +17,16 @@ aprove formalmente a mudança.
 
 ## Estado
 
-**Volumes I–IV completos** (Foundation, Kernel Architecture, Runtime, Capabilities)
-— 16 capítulos de código (Cap.4/6-19), 142 testes cobrindo todos os `AT-X.Y` da
-própria especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o
-índice completo (Volumes I–VII já escritos; VIII–X em progresso pelo autor, em
-paralelo). Volumes V (Workflow Engine/Playbooks), VI (Learning Engine) e VII
-(Governance) já têm especificação pronta mas ainda não foram implementados nesta
-árvore — próximos pacotes naturais (`workflow/`, `learning/`, `governance/`).
+**Especificação completa: 39 capítulos, 10 volumes, 17 ADRs, 6 Anexos** (Volumes
+I–X). **Código: Volumes I–IV completos** (Foundation, Kernel Architecture, Runtime,
+Capabilities) — 16 capítulos (Cap.4/6-19), 142 testes cobrindo todos os `AT-X.Y`
+da própria especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o
+índice completo. Volumes V (Workflow Engine), VI (Learning Engine) e VII
+(Governance) têm especificação pronta e são os próximos pacotes a construir
+(`workflow/`, `learning/`, `governance/`). Volumes VIII (Infrastructure), IX
+(Reference Implementation) e X (Appendices) são volumes de topologia física,
+roteiro de bootstrap e consolidação — não introduzem componentes de código novos
+a implementar (ver nota sobre o Cap.32 abaixo).
 
 Migração das 270 regras do Batman atual (`radar-preditivo/Batman/`) para
 Capabilities/Operadores reais é trabalho futuro, deliberadamente fora desta
@@ -41,6 +44,17 @@ src/batman_os/
   capabilities/      # Vol. IV — Operator, certificação de Capability, Skills, Tools, Cooperação
 tests/               # 1 arquivo de teste por capítulo, nomeado pelos próprios AT-X.Y da spec
 ```
+
+**Nota sobre o Volume VIII, Cap.32 (Estrutura de Diretórios):** aquele capítulo
+propõe pastas de topo kebab-case (`kernel/`, `runtime/`, `workflow/`, `learning/`,
+`governance/`, `shared/`, uma subpasta por capítulo). Decisão do autor (2026-07-04):
+manter a estrutura acima como a **tradução Python** desse mapeamento — mesmo
+componente lógico → mesmo local, adaptado ao empacotamento idiomático da linguagem
+(`src/<pacote>/`, arquivos `snake_case.py`, já que nomes kebab-case não são
+identificadores Python válidos), o mesmo raciocínio já aplicado ao pseudocódigo
+TypeScript-like da spec. `foundation/` cumpre o papel que o Cap.32 chama de
+`shared/`. Isso não é dívida a resolver — é a mesma "regra de ouro" (spec vence)
+aplicada com bom senso de tradução de convenção, não de estrutura.
 
 ## Convenção de nomenclatura
 

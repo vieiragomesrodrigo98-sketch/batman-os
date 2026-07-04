@@ -15,6 +15,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import (
+    Criticidade,
     DecisionId,
     DecisionOption,
     DecisionPointId,
@@ -129,11 +130,20 @@ class DecisionEngine:
         self._total_decisoes = 0
         self._decisoes_via_llm = 0
 
-    def resolve(self, ponto: DecisionPoint, mission_id: MissionId) -> ResultadoResolucao:
+    def resolve(
+        self,
+        ponto: DecisionPoint,
+        mission_id: MissionId,
+        criticidade: Criticidade | None = None,
+    ) -> ResultadoResolucao:
         """Vol.II Cap.8, secao 8.2 — tenta resolver via conhecimento
         estruturado primeiro (Knowledge First); se a confianca for
         insuficiente, escala conforme `escalation_policy.preferred_escalation`.
-        """
+
+        `criticidade` (Vol.V Cap.20, secao 20.3, AT-20.2) — missao `critical`
+        nunca escala para LLM, independente de `preferred_escalation`; vai
+        sempre para humano. Parametro opcional (`None` preserva o
+        comportamento anterior ao Volume V, sem retrofitting invasivo)."""
         resolucao = self._base_conhecimento.consultar(ponto)
         if (
             resolucao is not None
@@ -149,14 +159,15 @@ class DecisionEngine:
             )
             return ResultadoResolucao(decision=decision)
 
-        if ponto.escalation_policy.preferred_escalation == "llm":
+        missao_e_critica = criticidade == Criticidade.CRITICAL
+        if ponto.escalation_policy.preferred_escalation == "llm" and not missao_e_critica:
             decisao_llm = self._tentar_llm(ponto, mission_id)
             if decisao_llm is not None:
                 return ResultadoResolucao(decision=decisao_llm)
 
-        # LLM esgotado/indisponivel/reprovado, ou politica preferia humano
-        # desde o inicio — Human Last continua sendo o fundo do poco, nunca
-        # "sem resolucao" (secao 8.7).
+        # LLM esgotado/indisponivel/reprovado, politica preferia humano desde
+        # o inicio, ou missao critical (nunca tenta LLM) — Human Last continua
+        # sendo o fundo do poco, nunca "sem resolucao" (secao 8.7).
         return ResultadoResolucao(escalonado_para="human")
 
     def resolver_com_resposta_humana(
