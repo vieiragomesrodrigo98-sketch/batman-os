@@ -9,6 +9,7 @@ import pytest
 from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
+    DateRange,
     HumanReviewRef,
     MissionTypeId,
     PlaybookId,
@@ -20,7 +21,6 @@ from batman_os.foundation.types import (
 from batman_os.kernel.planning_engine import PlanStepTemplate
 from batman_os.learning.workflow_evolution import (
     CoberturaDeRecoveryReduzida,
-    DateRange,
     EvolutionEvidence,
     PropostaNaoAprovada,
     RevisaoHumanaObrigatoriaParaProposta,

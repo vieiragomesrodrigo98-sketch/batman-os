@@ -100,7 +100,7 @@ Esse relatório é o mecanismo formal pelo qual a Governança verifica, periodic
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| Toda a lógica individual de escalonamento (Vol. II, Cap. 8) | Extrair os parâmetros hoje implícitos no Decision Engine para uma `LLMEscalationPolicy` externa e versionada | `LLMUsageAudit` consolidado; processo de revisão de mudanças de política |
+Toda a lógica individual de escalonamento (Vol. II, Cap. 8); `LLMEscalationPolicy`/`ativar_politica()` — nenhuma política ativa sem `approvedBy` (AT-29.1); `relaxa_controle()`/`validar_mudanca_de_politica()` — relaxamento de `requiresHumanCoApproval` exige rationale COM evidência quantitativa, nunca só texto (AT-29.2); `calcular_llm_usage_audit()` — função pura sobre `Decision`s, mesma entrada sempre produz o mesmo relatório (AT-29.3) — `src/batman_os/governance/llm_escalation.py` | Extrair os parâmetros hoje implícitos no Decision Engine para consumir esta `LLMEscalationPolicy` de fato em runtime | Contadores de `rejectedByValidation`/`circuitBreakerTrips` expostos pelo próprio Decision Engine (hoje fornecidos externamente por quem chama `calcular_llm_usage_audit`, já que `DecisionEngine` só expõe `taxa_llm()`) |
 
 ---
 

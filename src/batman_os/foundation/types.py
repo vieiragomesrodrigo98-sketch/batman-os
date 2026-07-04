@@ -226,3 +226,13 @@ class DegradationRecord(BaseModel):
     step_id: StepId
     exhausted_chain: list[RecoveryStrategy] = Field(default_factory=list)
     impact: ImpactoDegradacao
+
+
+class DateRange(BaseModel):
+    """Vol.VI Cap.25 (`EvolutionEvidence.observationWindow`) / Vol.VII
+    Cap.29 (`LLMUsageAudit.period`) — usada por mais de um capitulo,
+    movida para a Foundation para evitar duplicacao (mesmo motivo dos
+    demais tipos desta secao)."""
+
+    inicio: Timestamp
+    fim: Timestamp

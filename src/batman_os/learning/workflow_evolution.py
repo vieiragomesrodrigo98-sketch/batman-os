@@ -19,10 +19,10 @@ from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import (
     CapabilityId,
+    DateRange,
     HumanReviewRef,
     PlaybookId,
     ProposalId,
-    Timestamp,
 )
 from batman_os.workflow.playbooks import (
     GapDeCertificacaoDoPlaybook,
@@ -47,13 +47,6 @@ class StatusProposta(StrEnum):
     APPROVED = "approved"
     REJECTED = "rejected"
     APPLIED = "applied"
-
-
-class DateRange(BaseModel):
-    """Vol.VI Cap.25, secao 25.3 — `EvolutionEvidence.observationWindow`."""
-
-    inicio: Timestamp
-    fim: Timestamp
 
 
 class EvolutionEvidence(BaseModel):
