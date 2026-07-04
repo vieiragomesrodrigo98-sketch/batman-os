@@ -121,7 +121,7 @@ sequenceDiagram
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Rule Registry; pipeline de shadow mode; detecção de drift de regras ativas |
+| `RuleDefinition`/`RulePromotion` (`reviewed_by` obrigatório estruturalmente — Pydantic recusa construir sem ele, AT-24.2); `promover_a_active()` — shadow mode com volume mínimo E taxa de concordância, nunca só Human Review isolada (AT-24.1, ADR-0011); `resolve_rule()` — especificidade da condição como critério de desempate, empate real vira `RuleResolutionAmbiguity` (AT-24.3) — `src/batman_os/learning/rule_evolution.py` | — | Rule Registry persistente; detecção de drift de regras ativas em produção (Volume VII, Observability Engine) |
 
 ---
 
