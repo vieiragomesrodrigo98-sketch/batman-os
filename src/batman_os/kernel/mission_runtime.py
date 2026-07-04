@@ -50,9 +50,7 @@ class MissionState(StrEnum):
     CANCELLED = "Cancelled"
 
 
-ESTADOS_TERMINAIS = frozenset(
-    {MissionState.COMPLETED, MissionState.FAILED, MissionState.CANCELLED}
-)
+ESTADOS_TERMINAIS = frozenset({MissionState.COMPLETED, MissionState.FAILED, MissionState.CANCELLED})
 
 
 class MissionEventType(StrEnum):
