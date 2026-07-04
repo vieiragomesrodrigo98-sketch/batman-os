@@ -97,7 +97,7 @@ Assim como o World Model (ADD-0002) carrega `confidence` e `lastObservedAt` expl
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| Todas as métricas individuais, já especificadas capítulo a capítulo | — | Observability Engine como serviço consolidado; os quatro dashboards nomeados; motor de `AlertRule` |
+Todas as métricas individuais, já especificadas capítulo a capítulo; `ObservabilityEngine` completo — `TimeSeries` sempre com metadado de janela/reconciliação (secao 30.6, AT-30.1); `get_dashboard()` — os quatro paineis nomeados via `PAINEL_DAS_METRICAS`; `avaliar_regras()`/`AlertRule` — `trend-worsening` dispara por piora sustentada sem nunca consultar `threshold` absoluto (AT-30.2); auditoria estática confirma que o módulo nunca importa `batman_os.kernel` (AT-30.3) — `src/batman_os/governance/observability_engine.py` | — | Catálogo completo de >20 métricas mapeadas (hoje uma amostra representativa de 8); `replay` de verdade a partir do Event Bus alimentando `construir_serie()` (hoje recebe pontos já reconciliados de quem chama) |
 
 ---
 
