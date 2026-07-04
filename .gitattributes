@@ -1,0 +1,6 @@
+# Scripts de shell precisam de LF sempre, independente de plataforma —
+# CRLF quebra o shebang (#!/bin/sh) ao rodar em Linux/macOS (CI, outros
+# desenvolvedores). Sem isso, core.autocrlf=true (comum no Windows)
+# converteria estes arquivos para CRLF no proximo checkout.
+*.sh text eol=lf
+scripts/git-hooks/* text eol=lf
