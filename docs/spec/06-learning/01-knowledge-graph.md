@@ -100,7 +100,7 @@ Consistente com a ADR-0003 (Volume II — event sourcing) e a ADR-0004 (Volume I
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | Consolidar as varreduras de impacto já mencionadas nos Volumes IV e V para consumir esta interface unificada | Knowledge Graph completo; pipeline de reconciliação; `impactAnalysis` e `provenanceTrail` |
+| `KnowledgeGraph` completo (`adicionar_no`/`adicionar_aresta`/`get_node`/`get_neighbors`); `impact_analysis()` — travessia reversa transitiva, equivalência provada com a varredura manual do Vol.IV Cap.17 (AT-23.2); `provenance_trail()` — cadeia `promoted-from`/`justified-by`, tolerante a ciclo; `verificar_integridade()` — todo nó `rule` exige `justified-by` (AT-23.3); `detectar_drift()` — reconciliação contra SLA (AT-23.1) — `src/batman_os/learning/knowledge_graph.py` | Consolidar as varreduras de impacto dos Volumes IV/V para *de fato* chamar `impact_analysis()` em vez de suas implementações próprias (a equivalência está provada por teste, mas a substituição real ainda não foi feita) | — |
 
 ---
 
