@@ -55,14 +55,16 @@
     - [ADR-0010 — Knowledge Graph como projeção derivada, nunca fonte primária](./06-learning/ADR/ADR-0010-knowledge-graph-derived-projection.md)
     - [ADR-0011 — Shadow mode obrigatório antes da ativação de qualquer regra](./06-learning/ADR/ADR-0011-shadow-mode-mandatory.md)
 
-## Volume VII — Governance ⚪ (próximo)
+## Volume VII — Governance ✅ (este commit)
 
-27. Governance Engine
-28. Human Review
-29. LLM Escalation
-30. Observability Engine
+27. [Governance Engine](./07-governance/01-governance-engine.md)
+28. [Human Review](./07-governance/02-human-review.md)
+29. [LLM Escalation](./07-governance/03-llm-escalation.md)
+30. [Observability Engine](./07-governance/04-observability-engine.md)
+    - [ADR-0012 — Governance Engine sem autoridade executiva direta](./07-governance/ADR/ADR-0012-governance-no-direct-authority.md)
+    - [ADR-0013 — Política de LLM Escalation como artefato único e revisável](./07-governance/ADR/ADR-0013-llm-policy-single-artifact.md)
 
-## Volume VIII — Infrastructure ⚪
+## Volume VIII — Infrastructure ⚪ (próximo)
 
 31. Arquitetura física
 32. Estrutura de diretórios
