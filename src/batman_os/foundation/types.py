@@ -67,6 +67,7 @@ EvidenceId = NewType("EvidenceId", str)
 RecordId = NewType("RecordId", str)  # OperationalRecord (Vol.III Cap.13)
 HumanReviewRef = NewType("HumanReviewRef", str)  # Vol.VII Cap.28, referenciado desde Vol.V Cap.21
 ProposalId = NewType("ProposalId", str)  # Vol.VI Cap.25 (WorkflowEvolutionProposal)
+AlertId = NewType("AlertId", str)  # Vol.VII Cap.27 (GovernanceAlert)
 
 
 class KnowledgeAssetKind(StrEnum):

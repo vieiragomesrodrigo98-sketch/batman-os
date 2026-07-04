@@ -122,7 +122,7 @@ stateDiagram-v2
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| Todos os pontos de origem de alerta já especificados individualmente em volumes anteriores | Consolidar essas origens dispersas para publicar formalmente através da interface `GovernanceEngine.raiseAlert` | O componente `GovernanceEngine` como serviço único; processo formal de aceite de Anexos |
+`GovernanceEngine` completo (`raise_alert`/`get_open_alerts`/`acknowledge`/`resolve`) — nenhum alerta sem `evidence` (AT-27.1); `aceitar_anexo()` — nenhum Anexo vira `Accepted` sem `HumanReviewRef` (AT-27.2); auditoria estática via `ast` confirma que o módulo nunca importa `batman_os.kernel` (AT-27.3, ADR-0012) — `src/batman_os/governance/governance_engine.py` | Consolidar as origens de alerta já especificadas em volumes anteriores (SLA breach Cap.20, circuit breaker de LLM Cap.8, isolamento de tenant Cap.14) para de fato *publicarem* via `raise_alert()` em produção | — |
 
 ---
 
