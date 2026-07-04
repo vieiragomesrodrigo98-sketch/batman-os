@@ -88,7 +88,7 @@ Para evitar ambiguidade com sistemas de aprendizado de máquina tradicionais, fi
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| Todos os componentes individuais já especificados (Cap. 23–25 e Vol. III Cap. 13) | — | Dashboard consolidado de Cognitive Debt por `MissionTypeId`; alertas de saturação de backlog de Human Review |
+| Todos os componentes individuais já especificados (Cap. 23–25 e Vol. III Cap. 13); `cognitive_debt_por_tipo()`/`trajetoria_cognitive_debt()` — isolado por `MissionTypeId`, nunca só agregado global (AT-26.1); `rastrear_origem_da_regra()` — garantia estrutural via `RulePromotion.reviewed_by` obrigatório (AT-26.2), provado por teste de ciclo completo (`OperationalRecord`→`PromotionCandidate`→`RuleDefinition`→`resolve_rule`); `ItemDeBacklog`/`idade_do_backlog_pendente()`/`tempo_de_resolucao_dos_concluidos()` (AT-26.3) — `src/batman_os/learning/operational_learning.py` | — | Dashboard consolidado *de fato* renderizado (Volume VII, Observability Engine); alertas de saturação de backlog acionados automaticamente |
 
 ---
 
