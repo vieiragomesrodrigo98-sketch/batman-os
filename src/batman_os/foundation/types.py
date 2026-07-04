@@ -65,6 +65,7 @@ RuleId = NewType("RuleId", str)
 AdrId = NewType("AdrId", str)
 EvidenceId = NewType("EvidenceId", str)
 RecordId = NewType("RecordId", str)  # OperationalRecord (Vol.III Cap.13)
+HumanReviewRef = NewType("HumanReviewRef", str)  # Vol.VII Cap.28, referenciado desde Vol.V Cap.21
 
 
 class KnowledgeAssetKind(StrEnum):

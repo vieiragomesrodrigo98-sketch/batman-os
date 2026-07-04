@@ -119,7 +119,7 @@ Análogo ao processo de certificação de Capability (Volume IV, Cap. 16), mas f
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Playbook Registry completo; algoritmo de resolução de conflito; pipeline de certificação com simulação de plano |
+| `resolve_playbook()` — algoritmo completo de resolução determinística (prioridade→especificidade→SemVer para ordenação; ambiguidade real nunca resolvida por versão, AT-21.1); `certificar_playbook()` — `approved_by` obrigatório mesmo para `promoted-from-learning-engine` (AT-21.2), `recoveryDefaults` cobrindo todo step com efeito colateral (AT-21.3), `requiredCapabilities` ativas, IntentMatcher inequívoco frente a Playbooks já ativos do mesmo tipo — `src/batman_os/workflow/playbooks.py` | — | Teste de simulação de plano na certificação (item 4, secao 21.6) — exigiria integração completa com Capability Registry + Planning Engine juntos; não é AT numerado, deixado para quando essa integração amadurecer |
 
 ---
 
