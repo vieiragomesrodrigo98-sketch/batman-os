@@ -134,7 +134,7 @@ Este único cenário, do início ao fim, exercita: Volume II inteiro (Cap. 6–1
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| Todos os componentes individuais, especificados nos Volumes II–VIII | — | O cenário completo como suíte de teste de integração de ponta a ponta na implementação de referência |
+Todos os componentes individuais, especificados nos Volumes II–VIII; **o cenário completo como suíte de teste de integração** (`tests/reference/test_gunicorn_timeout_e2e.py`, 2026-07-04) — Execução 1 (Mission Runtime real → Planning Engine compõe via grafo → Decision Engine escala para humano → Workflow Engine executa com checkpoint → `cognitiveDebtFlag=human`) e ciclo de aprendizado + Execução N (`find_promotion_candidates` → `RuleDefinition` via shadow mode → `CatalogoDeRegrasComoBaseConhecimento` resolve por conhecimento, sem escalonamento → Cognitive Debt cai), usando componentes reais de 5 volumes diferentes (II, III, V, VI), nenhum mock além dos Protocols de borda que a própria arquitetura já define (AT-35.1/35.2) | — | `replay` via Event Bus confirmando a trilha causal completa em ambiente de staging real (AT-35.1 na íntegra — o teste atual prova composição funcional, não substitui verificação em ambiente real) |
 
 ---
 
