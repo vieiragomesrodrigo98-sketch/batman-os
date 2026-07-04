@@ -23,9 +23,11 @@ from batman_os.foundation.types import (
     MissionTypeId,
     PlaybookId,
     RecoveryStrategy,
+    StepId,
 )
 from batman_os.kernel.mission_runtime import MissionIntent
 from batman_os.kernel.planning_engine import PlanStepTemplate
+from batman_os.workflow.recovery import FallbackChain, GapDeFallbackChain, validar_fallback_chains
 
 
 class StatusPlaybook(StrEnum):
@@ -110,6 +112,7 @@ class PlaybookDefinition(BaseModel):
     steps_template: list[PlanStepTemplate] = Field(default_factory=list)
     required_capabilities: list[CapabilityRef] = Field(default_factory=list)
     recovery_defaults: dict[int, RecoveryStrategy] = Field(default_factory=dict)
+    fallback_chains: list[FallbackChain] = Field(default_factory=list)
     status: StatusPlaybook = StatusPlaybook.DRAFT
     provenance: PlaybookProvenance
 
@@ -171,12 +174,22 @@ def certificar_playbook(
     outros_ativos: list[PlaybookDefinition],
     capability_esta_ativa: Callable[[CapabilityRef], bool],
     tem_efeito_colateral: Callable[[CapabilityRef], bool],
+    steps_criticos: set[StepId] | None = None,
+    schema_compativel_para_fallback: Callable[[CapabilityRef, StepId], bool] | None = None,
 ) -> PlaybookDefinition:
     """Vol.V Cap.21, secao 21.6 — checklist de certificação. `capability_
     esta_ativa`/`tem_efeito_colateral` fornecidos pelo chamador (consulta ao
     Capability Registry, Vol.III Cap.11), para não acoplar este módulo ao
     Runtime diretamente (mesmo raciocínio de `RegistroCapacidades` no
-    Planning Engine)."""
+    Planning Engine).
+
+    `steps_criticos`/`schema_compativel_para_fallback` (Vol.V Cap.22,
+    AT-22.1/AT-22.2) — repassados para `validar_fallback_chains()` quando o
+    Playbook declara `fallback_chains`. Sem isso, uma `FallbackChain` com
+    `partial-success` em step crítico ou `fallback-capability` com schema
+    incompatível certificaria sem ser detectada (achado de revisão — a
+    certificação e a validação de fallback existiam mas nunca eram
+    conectadas)."""
     gaps: list[str] = []
 
     mesmo_tipo_ativos = [
@@ -213,6 +226,16 @@ def certificar_playbook(
             "provenance.approved_by ausente — nenhum Playbook atinge Active sem aprovacao "
             "humana registrada, independente da origem"
         )
+
+    if playbook.fallback_chains:
+        try:
+            validar_fallback_chains(
+                playbook.fallback_chains,
+                steps_criticos=steps_criticos or set(),
+                schema_compativel=schema_compativel_para_fallback or (lambda _c, _s: True),
+            )
+        except GapDeFallbackChain as erro:
+            gaps.append(str(erro))
 
     if gaps:
         raise GapDeCertificacaoDoPlaybook(f"Playbook '{playbook.id}' reprovado: {gaps}")

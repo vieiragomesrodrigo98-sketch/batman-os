@@ -8,11 +8,16 @@ from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
     HumanReviewRef,
+    MissionId,
     MissionTypeId,
     PlaybookId,
+    RecoveryStrategy,
+    StepId,
+    TenantId,
+    TipoRecoveryStrategy,
 )
 from batman_os.kernel.mission_runtime import MissionIntent
-from batman_os.kernel.planning_engine import PlanStepTemplate
+from batman_os.kernel.planning_engine import PlanStepTemplate, plan
 from batman_os.workflow.playbooks import (
     FieldCondition,
     GapDeCertificacaoDoPlaybook,
@@ -24,6 +29,7 @@ from batman_os.workflow.playbooks import (
     certificar_playbook,
     resolve_playbook,
 )
+from batman_os.workflow.recovery import FallbackChain
 
 TIPO = MissionTypeId("investigate-incident")
 _APPROVED_BY_PADRAO = HumanReviewRef("review-1")
@@ -43,6 +49,7 @@ def _playbook(
     steps_template: list[PlanStepTemplate] | None = None,
     recovery_defaults: dict[int, object] | None = None,
     required_capabilities: list[CapabilityRef] | None = None,
+    fallback_chains: list[FallbackChain] | None = None,
 ) -> PlaybookDefinition:
     return PlaybookDefinition(
         id=PlaybookId(id_),
@@ -53,6 +60,7 @@ def _playbook(
         steps_template=steps_template or [],
         required_capabilities=required_capabilities or [],
         recovery_defaults=recovery_defaults or {},
+        fallback_chains=fallback_chains or [],
         status=status,
         provenance=PlaybookProvenance(origin="hand-authored", approved_by=approved_by),
     )
@@ -175,8 +183,6 @@ class TestAT213RecoveryDefaultsObrigatorioParaEfeitoColateral:
             )
 
     def test_step_com_efeito_colateral_com_recovery_certifica(self) -> None:
-        from batman_os.foundation.types import RecoveryStrategy, TipoRecoveryStrategy
-
         template = PlanStepTemplate(
             capability=CapabilityRef(capability_id=CapabilityId("efeito"), versao="1.0.0")
         )
@@ -244,3 +250,152 @@ class TestCertificacaoRequiredCapabilitiesEIntentMatcher:
                 capability_esta_ativa=lambda _c: True,
                 tem_efeito_colateral=lambda _c: False,
             )
+
+
+class TestFallbackChainConectadaNaCertificacao:
+    """Achado de revisão: `validar_fallback_chains()` (Cap.22) existia mas
+    nunca era chamada por `certificar_playbook()` (Cap.21) — um Playbook com
+    FallbackChain invalida certificava normalmente. Corrigido: `fallback_
+    chains` agora e campo de `PlaybookDefinition` e e verificado aqui."""
+
+    def _estrategia_fallback(self, capability_id: str | None) -> RecoveryStrategy:
+        return RecoveryStrategy(
+            tipo=TipoRecoveryStrategy.FALLBACK_CAPABILITY,
+            alternative_capability=(
+                CapabilityRef(capability_id=CapabilityId(capability_id), versao="1.0.0")
+                if capability_id is not None
+                else None
+            ),
+        )
+
+    def test_fallback_chain_partial_success_em_step_critico_reprova(self) -> None:
+
+        chain = FallbackChain(
+            step_id=StepId("s-1"),
+            chain=[self._estrategia_fallback("alt")],
+            on_chain_exhausted="partial-success",
+        )
+        playbook = _playbook("p-1", priority=1, matcher=_matcher(), fallback_chains=[chain])
+
+        with pytest.raises(GapDeCertificacaoDoPlaybook):
+            certificar_playbook(
+                playbook,
+                outros_ativos=[],
+                capability_esta_ativa=lambda _c: True,
+                tem_efeito_colateral=lambda _c: False,
+                steps_criticos={StepId("s-1")},
+                schema_compativel_para_fallback=lambda _c, _s: True,
+            )
+
+    def test_fallback_chain_schema_incompativel_reprova(self) -> None:
+
+        chain = FallbackChain(
+            step_id=StepId("s-1"),
+            chain=[self._estrategia_fallback("alt")],
+            on_chain_exhausted="fail",
+        )
+        playbook = _playbook("p-1", priority=1, matcher=_matcher(), fallback_chains=[chain])
+
+        with pytest.raises(GapDeCertificacaoDoPlaybook):
+            certificar_playbook(
+                playbook,
+                outros_ativos=[],
+                capability_esta_ativa=lambda _c: True,
+                tem_efeito_colateral=lambda _c: False,
+                schema_compativel_para_fallback=lambda _c, _s: False,
+            )
+
+    def test_fallback_chain_valida_certifica_normalmente(self) -> None:
+
+        chain = FallbackChain(
+            step_id=StepId("s-1"),
+            chain=[self._estrategia_fallback("alt")],
+            on_chain_exhausted="fail",
+        )
+        playbook = _playbook("p-1", priority=1, matcher=_matcher(), fallback_chains=[chain])
+
+        certificado = certificar_playbook(
+            playbook,
+            outros_ativos=[],
+            capability_esta_ativa=lambda _c: True,
+            tem_efeito_colateral=lambda _c: False,
+            schema_compativel_para_fallback=lambda _c, _s: True,
+        )
+        assert certificado.status == StatusPlaybook.ACTIVE
+
+    def test_sem_fallback_chains_nao_exige_os_novos_parametros(self) -> None:
+        """Retrocompatibilidade: Playbook sem fallback_chains certifica sem
+        precisar de steps_criticos/schema_compativel_para_fallback."""
+        playbook = _playbook("p-1", priority=1, matcher=_matcher())
+
+        certificado = certificar_playbook(
+            playbook,
+            outros_ativos=[],
+            capability_esta_ativa=lambda _c: True,
+            tem_efeito_colateral=lambda _c: False,
+        )
+        assert certificado.status == StatusPlaybook.ACTIVE
+
+
+class TestRecoveryDefaultsPropagamParaPlanStepReal:
+    """Achado de revisão: `_instanciar_de_playbook()` (Cap.7) ignorava
+    `PlaybookDefinition.recovery_defaults` — um Playbook certificado com
+    cobertura completa de recovery (AT-21.3) gerava PlanSteps reais sem
+    nenhuma RecoveryStrategy. Corrigido em `kernel/planning_engine.py`."""
+
+    class _RegistroCapacidadesFake:
+        def buscar_candidatos(self, intent: MissionIntent) -> list[CapabilityRef]:
+            del intent
+            return []
+
+        def versao(self) -> str:
+            return "v1"
+
+    class _RepositorioPlaybooksFake:
+        def __init__(self, playbook: PlaybookDefinition) -> None:
+            self._playbook = playbook
+
+        def encontrar_correspondente(self, intent: MissionIntent) -> PlaybookDefinition | None:
+            del intent
+            return self._playbook
+
+    def test_recovery_strategy_chega_ao_plan_step_real(self) -> None:
+        recovery = RecoveryStrategy(tipo=TipoRecoveryStrategy.RETRY, max_tentativas=3)
+        template = PlanStepTemplate(
+            capability=CapabilityRef(capability_id=CapabilityId("efeito"), versao="1.0.0")
+        )
+        playbook = _playbook(
+            "p-1",
+            priority=1,
+            matcher=_matcher(),
+            steps_template=[template],
+            recovery_defaults={0: recovery},
+        )
+
+        resultado = plan(
+            mission_id=MissionId("m-1"),
+            tenant_id=TenantId("t-1"),
+            intent=MissionIntent(dados={}),
+            registro=self._RegistroCapacidadesFake(),
+            repositorio_playbooks=self._RepositorioPlaybooksFake(playbook),
+        )
+
+        assert len(resultado.steps) == 1
+        assert resultado.steps[0].recovery_strategy == recovery
+        assert resultado.source_playbook == playbook.id
+
+    def test_step_sem_recovery_default_fica_none(self) -> None:
+        template = PlanStepTemplate(
+            capability=CapabilityRef(capability_id=CapabilityId("sem-efeito"), versao="1.0.0")
+        )
+        playbook = _playbook("p-1", priority=1, matcher=_matcher(), steps_template=[template])
+
+        resultado = plan(
+            mission_id=MissionId("m-1"),
+            tenant_id=TenantId("t-1"),
+            intent=MissionIntent(dados={}),
+            registro=self._RegistroCapacidadesFake(),
+            repositorio_playbooks=self._RepositorioPlaybooksFake(playbook),
+        )
+
+        assert resultado.steps[0].recovery_strategy is None

@@ -12,6 +12,16 @@ from __future__ import annotations
 
 from batman_os.capabilities.operator import Operator
 from batman_os.foundation.types import MissionTypeId
+
+# Excecao deliberada ao grafo de dependencias do Vol.VIII Cap.32, secao 32.3
+# (capabilities -> shared/runtime, nunca -> kernel). Cooperacao por
+# sub-missao (secao 19.3.3 deste capitulo) e, por definicao, um Operador
+# (capabilities) criando uma Missao (kernel/Mission Runtime, Cap.6) — a
+# propria natureza do padrao exige essa dependencia. O diagrama do Cap.32
+# nao desenha a aresta capabilities->kernel; entendido como uma lacuna no
+# diagrama daquele capitulo (escrito depois deste), nao um erro de codigo
+# aqui (achado de revisao, decisao do autor: manter e documentar, nao
+# ofuscar com um Protocol local que nao reduziria o acoplamento real).
 from batman_os.kernel.mission_runtime import Mission, MissionIntent, MissionRuntime
 
 

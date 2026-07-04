@@ -80,16 +80,20 @@ class PlanningFailure(Exception):
 
 class PlaybookCandidato(Protocol):
     """Forma minima que a Planning Engine precisa de um Playbook (Vol.V
-    Cap.21, fora do escopo desta construcao — Volumes I-IV) para instanciar
-    steps. Definido como Protocol para nao criar dependencia do pacote de
-    Workflow (Volume V): quando `PlaybookDefinition` existir, basta que
-    satisfaca esta forma estruturalmente, sem import direto daqui."""
+    Cap.21, `workflow/playbooks.py`) para instanciar steps. Definido como
+    Protocol para nao criar dependencia do pacote de Workflow: basta que
+    `PlaybookDefinition` satisfaca esta forma estruturalmente, sem import
+    direto daqui (Vol.VIII Cap.32, secao 32.3 — kernel nunca depende de
+    workflow)."""
 
     @property
     def id(self) -> PlaybookId: ...
 
     @property
     def steps_template(self) -> list[PlanStepTemplate]: ...
+
+    @property
+    def recovery_defaults(self) -> dict[int, RecoveryStrategy]: ...
 
 
 class PlanStepTemplate(BaseModel):
@@ -102,9 +106,10 @@ class PlanStepTemplate(BaseModel):
 
 
 class RepositorioPlaybooks(Protocol):
-    """Vol.II Cap.7, secao 7.4, passo 1. Ausente/vazio neste build (Volume V
-    ainda fora de escopo) — `plan()` aceita `None` e cai direto para
-    composicao via grafo (secao 7.4, passo 3)."""
+    """Vol.II Cap.7, secao 7.4, passo 1. Satisfeito de verdade por
+    `PlaybookRegistry`/consultas equivalentes (Vol.V Cap.21) — `plan()`
+    tambem aceita `None` e cai direto para composicao via grafo (secao 7.4,
+    passo 3), para quem ainda nao tem um repositorio de Playbooks."""
 
     def encontrar_correspondente(self, intent: MissionIntent) -> PlaybookCandidato | None: ...
 
@@ -162,12 +167,18 @@ def plan(
 
 
 def _instanciar_de_playbook(playbook: PlaybookCandidato) -> list[PlanStep]:
+    """Vol.V Cap.21, secao 21.6 (AT-21.3) — `recovery_defaults` (chaveado por
+    indice em `steps_template`, mesma convencao de `depende_de_indices`)
+    precisa chegar ao `PlanStep` real gerado aqui; sem isso, a certificacao
+    do Playbook garantiria cobertura de recovery que a instanciacao real
+    descartaria silenciosamente."""
     passos: list[PlanStep] = []
     for indice, template in enumerate(playbook.steps_template):
         passos.append(
             PlanStep(
                 capability=template.capability,
                 depende_de=[passos[i].id for i in template.depende_de_indices if i < indice],
+                recovery_strategy=playbook.recovery_defaults.get(indice),
             )
         )
     return passos
