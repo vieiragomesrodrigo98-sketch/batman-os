@@ -1,0 +1,27 @@
+#!/bin/sh
+# Hook pre-push — roda pytest + mypy + ruff antes de qualquer push.
+# Bloqueia o push se algum verificador falhar (mesmo padrao do pre-push
+# do radar-preditivo: portao automatico, nao manual).
+#
+# Instalar: copiar este arquivo para .git/hooks/pre-push (nao versionado
+# pelo git) e torna-lo executavel:
+#   cp scripts/git-hooks/pre-push .git/hooks/pre-push
+#   chmod +x .git/hooks/pre-push
+set -e
+
+PY=".venv/Scripts/python.exe"
+
+echo "[pre-push] pytest..."
+"$PY" -m pytest -q
+
+echo "[pre-push] mypy..."
+"$PY" -m mypy src/ tests/
+
+echo "[pre-push] ruff check..."
+"$PY" -m ruff check src/ tests/
+
+echo "[pre-push] ruff format --check..."
+"$PY" -m ruff format --check src/ tests/
+
+echo "[pre-push] Gate aprovado."
+exit 0

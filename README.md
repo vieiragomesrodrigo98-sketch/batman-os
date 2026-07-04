@@ -20,12 +20,13 @@ aprove formalmente a mudança.
 **Especificação completa: 39 capítulos, 10 volumes, 17 ADRs, 6 Anexos** (Volumes
 I–X). **Código: núcleo funcional completo (Volumes I–VII)** — Foundation, Kernel
 Architecture, Runtime, Capabilities, Workflow Engine, Learning Engine, Governance —
-30 capítulos (Cap.4/6-30), 283 testes cobrindo todos os `AT-X.Y` da própria
+30 capítulos (Cap.4/6-30), 291 testes cobrindo todos os `AT-X.Y` da própria
 especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o índice
-completo. Volumes VIII (Infrastructure), IX (Reference Implementation) e X
-(Appendices) são volumes de topologia física, roteiro de bootstrap e consolidação —
-não introduzem componentes de código novos a implementar (ver nota sobre o Cap.32
-abaixo).
+completo. Inclui também o cenário de referência ponta a ponta do Vol.IX Cap.35
+(`tests/reference/`), provando que o sistema se compõe através de 5 volumes
+diferentes, não só capítulo a capítulo. Volumes VIII (Infrastructure) e X
+(Appendices) são volumes de topologia física e consolidação — não introduzem
+componentes de código novos a implementar (ver nota sobre o Cap.32 abaixo).
 
 Migração das 270 regras do Batman atual (`radar-preditivo/Batman/`) para
 Capabilities/Operadores reais é trabalho futuro, deliberadamente fora desta
@@ -97,3 +98,19 @@ pytest                             # todos os testes de aceitação (AT-X.Y)
 mypy src/
 ruff check src/ tests/
 ```
+
+## Portão automático (CI)
+
+Dois mecanismos rodam `pytest` + `mypy` + `ruff check` + `ruff format --check`
+automaticamente, não só manualmente (mesmo padrão já usado no `radar-preditivo`):
+
+- **`.github/workflows/ci.yml`** — roda em todo push/PR para `main` assim que o
+  repositório tiver um remoto no GitHub (não precisa de remoto para o arquivo
+  existir, só para o workflow disparar).
+- **Hook `pre-push` local** — bloqueia o `git push` se qualquer verificador falhar.
+  Não é versionado pelo git (`.git/hooks/` fica de fora do repositório) — instalar
+  em cada clone novo:
+  ```bash
+  cp scripts/git-hooks/pre-push .git/hooks/pre-push
+  chmod +x .git/hooks/pre-push
+  ```
