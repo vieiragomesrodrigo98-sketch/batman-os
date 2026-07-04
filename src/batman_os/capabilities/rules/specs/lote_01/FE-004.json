@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FE-004",
+    "agente": "frontend-engineer",
+    "severidade": "low",
+    "categoria": "quality",
+    "titulo": "console.log em arquivo de componente (vazamento de informação em produção)",
+    "causa": "console.log expõe dados internos, tokens e estado da aplicação no DevTools do navegador — acessível a qualquer usuário com F12.",
+    "remediacao": "Remover todos os console.log de componentes de produção. Usar logging estruturado se necessário. DoD: nenhum console.log em arquivos frontend (exceto arquivos de teste).",
+    "modo": "presenca",
+    "pattern": "console\\.log\\s*\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_caminho_contem": [".test.", ".spec."]
+  }
+}

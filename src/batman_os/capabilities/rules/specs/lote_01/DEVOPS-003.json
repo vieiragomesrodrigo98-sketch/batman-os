@@ -1,0 +1,25 @@
+{
+  "regra": {
+    "codigo": "DEVOPS-003",
+    "agente": "devops-engineer",
+    "severidade": "critical",
+    "categoria": "segredos",
+    "titulo": ".env presente no repositório (não está no .gitignore)",
+    "causa": ".env com segredos no repositório expõe credenciais a qualquer clone — o vazamento é permanente mesmo após remover o arquivo (histórico git).",
+    "remediacao": "Adicionar .env ao .gitignore imediatamente. DoD: .env em .gitignore e verificado com git-secrets ou equivalente.",
+    "modo": "arquivo-presente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env",
+    "condicoes_adicionais": [
+      {
+        "tipo": "arquivo_fixo",
+        "caminho": ".gitignore",
+        "checar": "ausencia",
+        "pattern": "\\.env",
+        "vazio_se_ausente": true
+      }
+    ]
+  }
+}

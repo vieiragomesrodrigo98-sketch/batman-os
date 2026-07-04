@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "RED-007",
+    "agente": "red-team",
+    "severidade": "critical",
+    "categoria": "crypto",
+    "titulo": "Chave criptográfica hardcoded com valor literal",
+    "causa": "Chaves hardcoded são extraídas trivialmente de qualquer clone do repositório, comprometendo toda a criptografia retroativamente.",
+    "remediacao": "Mover para variável de ambiente obrigatória. DoD: sem AES_KEY/SECRET_KEY/ENCRYPTION_KEY com valor literal no código.",
+    "modo": "presenca",
+    "pattern": "(AES_KEY|SECRET_KEY|ENCRYPTION_KEY|CRYPTO_KEY|PRIVATE_KEY)\\s*=\\s*['\"]"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_prefixo": ["tests/"],
+    "excluir_nome_prefixo": ["test_"]
+  }
+}

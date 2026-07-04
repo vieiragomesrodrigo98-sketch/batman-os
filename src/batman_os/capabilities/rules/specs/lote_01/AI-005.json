@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "AI-005",
+    "agente": "ai-engineer",
+    "severidade": "low",
+    "categoria": "manutencao-llm",
+    "titulo": "Nome do modelo LLM hardcoded no código (deve estar em config)",
+    "causa": "Nome do modelo hardcoded exige modificação de código para trocar de modelo — deve ser config.",
+    "remediacao": "Mover nome do modelo para variável de ambiente ou config. DoD: sem 'gpt-4', 'claude-3', 'gemini-' hardcoded fora de arquivos de configuração.",
+    "modo": "presenca",
+    "pattern": "['\"](gpt-4|claude-3|gemini-|llama)['\"a-z0-9.\\-]*['\"]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_nome_contem_lower": ["config"],
+    "excluir_caminho_contem_lower": ["test"]
+  }
+}

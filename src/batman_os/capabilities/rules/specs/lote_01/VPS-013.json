@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "VPS-013",
+    "agente": "vps-infra",
+    "severidade": "high",
+    "categoria": "segurança",
+    "titulo": "Porta administrativa sem restrição de IP nos scripts de firewall",
+    "causa": "pgAdmin (5050), Adminer (8080), Flower (5555) expostos publicamente são alvos frequentes de ataques automatizados.",
+    "remediacao": "Restringir acesso a portas administrativas por IP fixo no firewall. DoD: portas 5050, 8080, 5555, 15672 restritas a IP interno.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "\\b(5050|5555|15672)\\b",
+    "pattern_mitigacao": "from\\s+[\\d.]+|restrict"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": ["scripts/*.sh", "scripts/*.conf", "nginx/*.sh", "nginx/*.conf"]
+  }
+}

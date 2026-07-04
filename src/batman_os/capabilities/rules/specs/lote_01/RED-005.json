@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-005",
+    "agente": "red-team",
+    "severidade": "critical",
+    "categoria": "auth",
+    "titulo": "Verificação de assinatura JWT desligada",
+    "causa": "Desativar a verificação de assinatura do JWT permite ao atacante forjar tokens à vontade — bypass total de autenticação.",
+    "remediacao": "Nunca desativar verify_signature; validar assinatura, exp e claims. DoD: assinatura JWT sempre verificada.",
+    "modo": "presenca",
+    "pattern": "verify_signature[\"']?\\s*[:=]\\s*False|jwt\\.decode\\([^)]*verify\\s*=\\s*False"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

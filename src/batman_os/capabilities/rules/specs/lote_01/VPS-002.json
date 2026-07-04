@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-002",
+    "agente": "vps-infra",
+    "severidade": "high",
+    "categoria": "segurança",
+    "titulo": "ENABLE_REAL_TRADING=false ausente em .env.production.example",
+    "causa": "O sistema possui um bloqueio de negociação real (ENABLE_REAL_TRADING). Se esta variável não estiver explicitamente definida como false no template de produção, um operador pode acidentalmente habilitar ordens reais.",
+    "remediacao": "Garantir que ENABLE_REAL_TRADING=false esteja presente no .env.production.example. DoD: grep ENABLE_REAL_TRADING=false .env.production.example retorna resultado.",
+    "modo": "ausencia",
+    "pattern": "ENABLE_REAL_TRADING=false"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.production.example"
+  }
+}

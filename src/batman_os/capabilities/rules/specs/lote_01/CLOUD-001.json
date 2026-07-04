@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "CLOUD-001",
+    "agente": "cloud-engineer",
+    "severidade": "critical",
+    "categoria": "secrets",
+    "titulo": "Credencial de nuvem hardcoded no código-fonte",
+    "causa": "Access keys, tokens ou senhas de serviços de nuvem escritos diretamente no código-fonte são comprometidos assim que o repositório é clonado ou vaza em logs, e o dano persiste no histórico git mesmo após remoção.",
+    "remediacao": "Mover credenciais para variáveis de ambiente (.env) ou gerenciador de segredos. Revogar imediatamente qualquer chave exposta. Rodar `git filter-repo` para expurgar do histórico. DoD: nenhuma chave literal no código.",
+    "modo": "presenca",
+    "pattern": "(AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{32,}|ghp_[a-zA-Z0-9]{36}|xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+|AIza[0-9A-Za-z\\-_]{35})"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

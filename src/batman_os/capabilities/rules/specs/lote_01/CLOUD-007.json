@@ -1,0 +1,24 @@
+{
+  "regra": {
+    "codigo": "CLOUD-007",
+    "agente": "cloud-engineer",
+    "severidade": "medium",
+    "categoria": "containers",
+    "titulo": ".dockerignore ausente em projeto com Dockerfile",
+    "causa": "Sem .dockerignore, o contexto Docker inclui node_modules, .env, .git e outros arquivos sensíveis — build mais lento e potencial vazamento de segredos.",
+    "remediacao": "Criar .dockerignore com pelo menos .env, .git, node_modules, __pycache__. DoD: .dockerignore presente quando há Dockerfile.",
+    "modo": "arquivo-ausente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".dockerignore",
+    "condicoes_adicionais": [
+      {
+        "tipo": "glob_existe",
+        "padrao_recursivo": "Dockerfile*",
+        "excluir_caminho_contem": [".venv", "node_modules"],
+        "checar": "arquivo-presente"
+      }
+    ]
+  }
+}

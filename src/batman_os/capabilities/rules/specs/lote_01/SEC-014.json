@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-014",
+    "agente": "security-engineer",
+    "severidade": "high",
+    "categoria": "ssrf",
+    "titulo": "Chamada HTTP a URL controlada pelo usuário sem validação de domínio (SSRF)",
+    "causa": "Passar URL derivada de entrada do usuário diretamente a requests.get/httpx.get permite SSRF: o atacante pode fazer o servidor acessar recursos internos (metadata de nuvem, bancos, serviços internos).",
+    "remediacao": "Validar domínio da URL contra allowlist antes de fazer chamadas externas. DoD: sem requests.get(url) onde url vem de parâmetro de request sem validação de domínio.",
+    "modo": "presenca",
+    "pattern": "(requests|httpx)\\.(get|post|put|patch|delete)\\s*\\(\\s*(request\\.|params\\.|body\\.|data\\.)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

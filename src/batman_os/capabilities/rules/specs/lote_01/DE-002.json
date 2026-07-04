@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "DE-002",
+    "agente": "data-engineer",
+    "severidade": "medium",
+    "categoria": "versionamento-schema",
+    "titulo": "Sem migrations versionadas (Alembic)",
+    "causa": "Sem Alembic (ou equivalente), mudanças de schema são aplicadas manualmente e não são rastreáveis — impossível saber o estado exato do banco em produção.",
+    "remediacao": "Inicializar Alembic (alembic init alembic) e criar uma migration para o schema atual. DoD: diretório alembic/ ou migrations/ existe na raiz.",
+    "modo": "arquivo-ausente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "alembic",
+    "caminho_relatorio": ".",
+    "condicoes_adicionais": [
+      {"tipo": "arquivo_fixo", "caminho": "migrations", "checar": "arquivo-ausente"},
+      {"tipo": "arquivo_fixo", "caminho": "alembic.ini", "checar": "arquivo-ausente"}
+    ]
+  }
+}

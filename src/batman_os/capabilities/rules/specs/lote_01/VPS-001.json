@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "VPS-001",
+    "agente": "vps-infra",
+    "severidade": "high",
+    "categoria": "configuracao",
+    "titulo": ".env.production.example ausente — sem template de configuração de produção",
+    "causa": "Sem o arquivo .env.production.example no repositório, o operador não tem referência das variáveis obrigatórias ao configurar um novo servidor. Variáveis esquecidas causam falhas silenciosas em produção.",
+    "remediacao": "Criar .env.production.example com todas as variáveis obrigatórias (com valores placeholder). NUNCA incluir segredos reais. DoD: arquivo presente na raiz do repositório.",
+    "modo": "arquivo-ausente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.production.example"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "CLOUD-002",
+    "agente": "cloud-engineer",
+    "severidade": "medium",
+    "categoria": "containers",
+    "titulo": "Dockerfile sem instrução HEALTHCHECK",
+    "causa": "Sem HEALTHCHECK, o orquestrador (Docker Compose, Kubernetes, etc.) não consegue distinguir um container travado de um saudável, atrasando detecção de falha e impedindo reinício automático.",
+    "remediacao": "Adicionar HEALTHCHECK ao Dockerfile (ex.: HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1). DoD: todo Dockerfile tem HEALTHCHECK.",
+    "modo": "ausencia",
+    "pattern": "HEALTHCHECK",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "Dockerfile*",
+    "excluir_caminho_contem": [".venv", "node_modules"]
+  }
+}

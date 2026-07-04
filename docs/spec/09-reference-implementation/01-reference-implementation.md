@@ -91,7 +91,7 @@ Nenhuma fase acima pressupõe qualquer Anexo aceito. Se, ao longo da implementa�
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Todas as quatro fases; critérios de saída formais por fase |
+| **Fase 0 — Walking Skeleton: implementada de verdade** (2026-07-04, `src/batman_os/cli/`) — primeiro lote real de 14 Capabilities migradas do Batman atual (`radar-preditivo/Batman/scan/rules/`), CLI `batman scan` executando Mission→Planning→Decision→Workflow→Execution contra um repositório real, validado por comparação de fingerprint byte-a-byte com o motor legado (`scripts/compare_migracao.py`, 14/14 códigos convergentes contra `radar-preditivo`) | Composição via grafo de Capabilities em vez de "um único Playbook certificado manualmente" (seção 34.3) — divergência aceita, não é um Playbook real ainda | Fases 1-3 completas; critérios de saída formais por fase (AT-34.1/34.2 não verificados como suíte automatizada)
 
 ---
 

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "NS-002",
+    "agente": "network-security",
+    "severidade": "high",
+    "categoria": "network",
+    "titulo": "HSTS (Strict-Transport-Security) ausente na configuração HTTPS do servidor",
+    "causa": "Sem HSTS, navegadores não sabem que o site deve ser acessado apenas via HTTPS — abre brecha para downgrade attacks e interceptação de cookies via HTTP.",
+    "remediacao": "Adicionar 'add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;' em todos os blocos server com SSL. DoD: todo bloco server com ssl_certificate tem HSTS.",
+    "modo": "ausencia",
+    "pattern": "Strict-Transport-Security",
+    "pattern_escopo": "ssl_certificate"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": ["nginx.conf", "nginx/*.conf", "deploy/nginx/*.conf", "deploy/nginx.conf"]
+  }
+}

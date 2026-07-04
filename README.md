@@ -20,7 +20,7 @@ aprove formalmente a mudança.
 **Especificação completa: 39 capítulos, 10 volumes, 17 ADRs, 6 Anexos** (Volumes
 I–X). **Código: núcleo funcional completo (Volumes I–VII)** — Foundation, Kernel
 Architecture, Runtime, Capabilities, Workflow Engine, Learning Engine, Governance —
-30 capítulos (Cap.4/6-30), 291 testes cobrindo todos os `AT-X.Y` da própria
+30 capítulos (Cap.4/6-30), 363 testes cobrindo todos os `AT-X.Y` da própria
 especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o índice
 completo. Inclui também o cenário de referência ponta a ponta do Vol.IX Cap.35
 (`tests/reference/`), provando que o sistema se compõe através de 5 volumes
@@ -28,10 +28,19 @@ diferentes, não só capítulo a capítulo. Volumes VIII (Infrastructure) e X
 (Appendices) são volumes de topologia física e consolidação — não introduzem
 componentes de código novos a implementar (ver nota sobre o Cap.32 abaixo).
 
-Migração das 270 regras do Batman atual (`radar-preditivo/Batman/`) para
-Capabilities/Operadores reais é trabalho futuro, deliberadamente fora desta
-primeira rodada — ver `docs/governanca/BATMAN_BACKLOG.md` no repositório
-`radar-preditivo` para o backlog de pendências dessa migração.
+**Primeiro lote de migração real (2026-07-04) — `batman scan` funciona de
+verdade.** `src/batman_os/cli/` resolve o entry point `batman` declarado em
+`pyproject.toml` (antes quebrado — apontava para um módulo inexistente).
+`batman scan --root <repo>` roda a Fase 0 "Walking Skeleton" do Vol.IX Cap.34
+(Mission → Planning → Decision → Workflow → Execution → Operator) contra um
+repositório real, usando 14 Capabilities migradas de `radar-preditivo/Batman/
+scan/rules/` — a primeira fatia real das 269 regras do Batman atual. Validado
+por comparação de fingerprint byte-a-byte contra o motor legado
+(`scripts/compare_migracao.py`): **14/14 códigos convergentes** rodando contra
+o `radar-preditivo` de verdade. As ~255 regras restantes (a maioria reutiliza a
+mesma Capability genérica "regex sobre conteúdo de arquivo" — só precisam de
+um spec de dado novo, não código) e o backlog de pendências ficam em
+`docs/governanca/BATMAN_BACKLOG.md` no repositório `radar-preditivo`.
 
 ## Estrutura
 
@@ -42,10 +51,15 @@ src/batman_os/
   kernel/            # Vol. II — Mission Runtime, Planning/Decision/Workflow Engine, Event Bus, Scheduler
   runtime/           # Vol. III — Capability Engine, Execution Engine, Operational Memory, Concorrência
   capabilities/      # Vol. IV — Operator, certificação de Capability, Skills, Tools, Cooperação
+    rules/           # Capabilities migradas do Batman atual (não é um Volume da spec)
   workflow/          # Vol. V — Missões formais, Playbooks, Recuperação/Fallback
   learning/          # Vol. VI — Knowledge Graph, Rule/Workflow Evolution, Operational Learning
   governance/        # Vol. VII — Governance Engine, Human Review, LLM Escalation, Observability Engine
+  orchestration/     # canalização Kernel+Runtime+Capabilities -> fluxo executável (não é um Volume)
+  cli/               # entry point `batman` (Vol. IX Cap.34, Fase 0 — Walking Skeleton)
 tests/               # 1 arquivo de teste por capítulo, nomeado pelos próprios AT-X.Y da spec
+scripts/
+  compare_migracao.py  # compara fingerprints do batman-os com o motor legado, no mesmo alvo real
 ```
 
 **Nota sobre o Volume VIII, Cap.32 (Estrutura de Diretórios):** aquele capítulo
@@ -97,6 +111,9 @@ pip install -e ".[dev]"
 pytest                             # todos os testes de aceitação (AT-X.Y)
 mypy src/
 ruff check src/ tests/
+
+batman scan --root <repo>          # roda o primeiro lote de Capabilities migradas contra um repo real
+batman scan --root <repo> --fail-on high   # saida 1 se houver achado high/critical
 ```
 
 ## Portão automático (CI)
