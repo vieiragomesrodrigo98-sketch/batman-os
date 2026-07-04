@@ -104,6 +104,18 @@ class Evidence(BaseModel):
     historico: list[str] = Field(default_factory=list)
 
 
+class CognitiveDebtFlag(StrEnum):
+    """Vol.I Cap.4, secao 4.9.1 — dado bruto do KPI de Cognitive Debt. So e
+    atribuido pelo Mission Runtime (Vol.II Cap.6, secao 6.2, nota de design),
+    mas consumido tambem pelo Learning Engine (Vol.VI Cap.26) — colocado
+    aqui pelo mesmo motivo dos demais tipos desta secao (evitar import
+    circular learning <-> kernel, Vol.VIII Cap.32 secao 32.3)."""
+
+    AUTONOMOUS = "autonomous"
+    HUMAN = "human"
+    LLM = "llm"
+
+
 class Criticidade(StrEnum):
     """Vol.V Cap.20, secao 20.2/20.3 — `MissionTypeDefinition.criticality`.
     Referenciada de forma cruzada pelo Decision Engine (Vol.II Cap.8, secao

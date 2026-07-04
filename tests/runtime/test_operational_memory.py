@@ -5,8 +5,14 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from batman_os.foundation.types import DecisionPointId, MissionId, MissionTypeId, TenantId
-from batman_os.kernel.mission_runtime import CognitiveDebtFlag, MissionState
+from batman_os.foundation.types import (
+    CognitiveDebtFlag,
+    DecisionPointId,
+    MissionId,
+    MissionTypeId,
+    TenantId,
+)
+from batman_os.kernel.mission_runtime import MissionState
 from batman_os.runtime.operational_memory import (
     DecisionSummary,
     OperationalMemory,

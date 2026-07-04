@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from batman_os.foundation.types import (
+    CognitiveDebtFlag,
     DecisionOption,
     HumanReviewRef,
     MissionId,
@@ -14,7 +15,7 @@ from batman_os.foundation.types import (
     Timestamp,
     agora,
 )
-from batman_os.kernel.mission_runtime import CognitiveDebtFlag, MissionState
+from batman_os.kernel.mission_runtime import MissionState
 from batman_os.learning.operational_learning import (
     ItemDeBacklog,
     cognitive_debt_por_tipo,

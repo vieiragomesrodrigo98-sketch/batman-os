@@ -15,6 +15,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import (
+    CognitiveDebtFlag,
     DecisionId,
     DegradationRecord,
     KnowledgeAssetRef,
@@ -91,16 +92,6 @@ class MissionEventType(StrEnum):
     RECOVERY_APPLIED = "RecoveryApplied"
     RECOVERY_EXHAUSTED = "RecoveryExhausted"
     CANCELLATION_REQUESTED = "CancellationRequested"
-
-
-class CognitiveDebtFlag(StrEnum):
-    """Vol.I Cap.4, secao 4.9.1 — dado bruto do KPI de Cognitive Debt. So e
-    atribuido pelo Mission Runtime, no encerramento da missao (Vol.II Cap.6,
-    secao 6.2, nota de design)."""
-
-    AUTONOMOUS = "autonomous"
-    HUMAN = "human"
-    LLM = "llm"
 
 
 class MissionIntent(BaseModel):

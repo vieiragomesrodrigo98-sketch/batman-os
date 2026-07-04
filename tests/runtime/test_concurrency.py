@@ -7,6 +7,7 @@ from collections import Counter
 from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
+    CognitiveDebtFlag,
     DecisionPointId,
     MissionId,
     MissionTypeId,
@@ -14,7 +15,7 @@ from batman_os.foundation.types import (
     TenantId,
     WorkflowRunId,
 )
-from batman_os.kernel.mission_runtime import CognitiveDebtFlag, MissionState
+from batman_os.kernel.mission_runtime import MissionState
 from batman_os.kernel.planning_engine import ExecutionPlan, PlanStep
 from batman_os.kernel.workflow_engine import ResultadoInvocacao, WorkflowEngine
 from batman_os.runtime.concurrency import SchedulerComFairnessPorTenant, TenantQuotas

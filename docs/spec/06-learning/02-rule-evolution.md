@@ -121,7 +121,7 @@ sequenceDiagram
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| `RuleDefinition`/`RulePromotion` (`reviewed_by` obrigatório estruturalmente — Pydantic recusa construir sem ele, AT-24.2); `promover_a_active()` — shadow mode com volume mínimo E taxa de concordância, nunca só Human Review isolada (AT-24.1, ADR-0011); `resolve_rule()` — especificidade da condição como critério de desempate, empate real vira `RuleResolutionAmbiguity` (AT-24.3) — `src/batman_os/learning/rule_evolution.py` | — | Rule Registry persistente; detecção de drift de regras ativas em produção (Volume VII, Observability Engine) |
+`RuleDefinition`/`RulePromotion` (`reviewed_by` obrigatório estruturalmente — Pydantic recusa construir sem ele, AT-24.2); `promover_a_active()` — shadow mode com volume mínimo E taxa de concordância, nunca só Human Review isolada (AT-24.1, ADR-0011); `resolve_rule()` — especificidade da condição como critério de desempate, empate real vira `RuleResolutionAmbiguity` (AT-24.3) — `src/batman_os/learning/rule_evolution.py`; **`CatalogoDeRegrasComoBaseConhecimento`** (`learning/rule_evolution_adapter.py`, achado de revisão 2026-07-04) — conecta `resolve_rule()` de verdade ao `BaseConhecimento` do Decision Engine (Vol.II Cap.8): uma regra `active` agora é de fato consultada, não só testada isoladamente. Limitação documentada no próprio adaptador: só casa regras com `condition` vazio, já que `DecisionPoint` (Cap.7) não carrega payload genérico de dados ainda | — | Rule Registry persistente; detecção de drift de regras ativas em produção (Volume VII, Observability Engine); `DecisionPoint` com payload genérico (`dados: dict`) para o adaptador conseguir avaliar `RuleCondition`s reais, não só casamento por `pergunta` |
 
 ---
 

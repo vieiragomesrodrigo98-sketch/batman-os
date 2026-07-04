@@ -12,6 +12,7 @@ from datetime import timedelta
 import pytest
 
 from batman_os.foundation.types import (
+    CognitiveDebtFlag,
     Criticidade,
     EscalationPolicy,
     MissionTypeId,
@@ -20,7 +21,6 @@ from batman_os.foundation.types import (
 )
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import (
-    CognitiveDebtFlag,
     Mission,
     MissionEventType,
     MissionIntent,

@@ -17,8 +17,7 @@ from datetime import timedelta
 
 from pydantic import BaseModel
 
-from batman_os.foundation.types import HumanReviewRef, MissionTypeId, Timestamp
-from batman_os.kernel.mission_runtime import CognitiveDebtFlag
+from batman_os.foundation.types import CognitiveDebtFlag, HumanReviewRef, MissionTypeId, Timestamp
 from batman_os.learning.rule_evolution import RuleDefinition
 from batman_os.runtime.operational_memory import OperationalRecord
 

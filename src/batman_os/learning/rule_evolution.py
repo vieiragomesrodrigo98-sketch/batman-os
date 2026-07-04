@@ -14,7 +14,7 @@ Fonte da verdade: docs/spec/06-learning/02-rule-evolution.md
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -26,7 +26,18 @@ from batman_os.foundation.types import (
     Timestamp,
     agora,
 )
-from batman_os.kernel.planning_engine import DecisionPoint
+
+
+class DecisionPointComoAssinatura(Protocol):
+    """Forma mínima que Rule Evolution precisa de um `DecisionPoint`
+    (Vol.II Cap.7/8) para casar uma `RuleDefinition`. Definido como
+    Protocol (não importa `DecisionPoint` de `kernel/planning_engine.py`
+    diretamente) para não violar Vol.VIII Cap.32, secao 32.3: `learning`
+    depende de `shared`/`runtime`/`workflow`, nunca de `kernel` — mesmo
+    raciocínio de `PlaybookCandidato` no Planning Engine."""
+
+    @property
+    def pergunta(self) -> str: ...
 
 
 class StatusRegra(StrEnum):
@@ -46,7 +57,7 @@ class DecisionPointSignature(BaseModel):
 
     pergunta_padrao: str
 
-    def casa_com(self, ponto: DecisionPoint) -> bool:
+    def casa_com(self, ponto: DecisionPointComoAssinatura) -> bool:
         return self.pergunta_padrao == ponto.pergunta
 
 
@@ -104,7 +115,7 @@ class RuleDefinition(BaseModel):
         especificidade()` (Vol.V Cap.21, secao 21.4)."""
         return len(self.condition)
 
-    def casa_com(self, ponto: DecisionPoint, dados: dict[str, Any]) -> bool:
+    def casa_com(self, ponto: DecisionPointComoAssinatura, dados: dict[str, Any]) -> bool:
         if not self.applies_to.casa_com(ponto):
             return False
         return all(c.satisfeita_por(dados) for c in self.condition)
@@ -143,7 +154,7 @@ def _partes_versao(versao: str) -> tuple[int, int, int]:
 
 
 def resolve_rule(
-    ponto: DecisionPoint, dados: dict[str, Any], candidatos: list[RuleDefinition]
+    ponto: DecisionPointComoAssinatura, dados: dict[str, Any], candidatos: list[RuleDefinition]
 ) -> RuleDefinition | None:
     """Vol.VI Cap.24, secao 24.7 (AT-24.3) — análogo a `resolve_playbook`
     (Vol.V Cap.21, secao 21.4), mas sem `priority` explícita (a

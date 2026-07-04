@@ -14,6 +14,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import (
+    CognitiveDebtFlag,
     DecisionPointId,
     MissionId,
     MissionTypeId,
@@ -25,7 +26,7 @@ from batman_os.foundation.types import (
     novo_uuid7,
 )
 from batman_os.kernel.decision_engine import ResolvedBy
-from batman_os.kernel.mission_runtime import CognitiveDebtFlag, MissionIntent, MissionState
+from batman_os.kernel.mission_runtime import MissionIntent, MissionState
 from batman_os.kernel.workflow_engine import StatusStepResult
 
 FinalState = MissionState  # restrito na pratica a Completed/Failed/Cancelled (secao 13.3)
