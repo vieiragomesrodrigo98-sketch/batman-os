@@ -95,7 +95,7 @@ Playbooks sem nenhum casamento de `intent` em uma janela de observação configu
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Monitoramento contínuo de sinais de evolução; pipeline de `WorkflowEvolutionProposal`; verificação automatizada de cobertura de recuperação em fusões |
+| `aplicar_proposta()` — nunca aplica sem Human Review nem sem certificação completa do Playbook (Cap.21), falha de certificação reverte para `rejected` com motivo anexado, nunca aplicação parcial (AT-25.1); `verificar_cobertura_de_merge()` — identidade por `CapabilityId` (estável entre Playbooks), nunca por índice de `steps_template` (AT-25.2); `depreciar_por_desuso()` — nunca remove fisicamente (AT-25.3); `deveria_propor_inversao_de_fallback()`/`deveria_propor_depreciacao_por_desuso()` (secao 25.2/25.6) — `src/batman_os/learning/workflow_evolution.py` | — | Monitoramento contínuo de verdade (rodar os sinais em produção); análise estrutural via Knowledge Graph para detectar candidatos a fusão (Cap.23 `impact_analysis` já existe, a heurística de "stepsTemplate majoritariamente idênticos" ainda não) |
 
 ---
 
