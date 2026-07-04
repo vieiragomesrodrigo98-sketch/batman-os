@@ -39,7 +39,12 @@ class SideEffects(StrEnum):
 
 
 class CapabilityDefinition(BaseModel):
-    """Vol.III Cap.11, secao 11.3."""
+    """Vol.III Cap.11, secao 11.3.
+
+    `idempotent` (Vol.IV Cap.16, secao 16.5) — default `True` (toda Capability
+    com `side_effects != none` deve, sempre que tecnicamente viavel, ser
+    desenhada como idempotente); `False` e uma declaracao explicita de
+    excecao, nunca implicita."""
 
     id: CapabilityId
     name: str
@@ -49,6 +54,7 @@ class CapabilityDefinition(BaseModel):
     required_skills: list[SkillRef] = Field(default_factory=list)
     deterministic: bool
     side_effects: SideEffects
+    idempotent: bool = True
     deprecated_by: CapabilityId | None = None
     status: StatusCapability = StatusCapability.ACTIVE
 
