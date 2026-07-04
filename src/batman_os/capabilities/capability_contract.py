@@ -16,7 +16,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from batman_os.capabilities.operator import ExecutionContext
-from batman_os.foundation.types import SkillRef
+from batman_os.capabilities.skills import SkillDefinition, SkillRegistry
+from batman_os.foundation.types import CapabilityId, SkillRef
 from batman_os.runtime.capability_engine import CapabilityDefinition, SideEffects, StatusCapability
 
 
@@ -66,10 +67,16 @@ class FalhaDeIdempotencia(Exception):
     `idempotent: true` reprovada no teste de dupla invocação."""
 
 
-def verificar_checklist(implementacao: CapabilityImplementation) -> list[str]:
+def verificar_checklist(
+    implementacao: CapabilityImplementation, skill_registry: SkillRegistry | None = None
+) -> list[str]:
     """Vol.IV Cap.16, secao 16.2 (AT-16.1) — retorna a lista de gaps (vazia
     se ok). Não levanta exceção: quem decide o que fazer com os gaps é
-    `certificar()`."""
+    `certificar()`.
+
+    `skill_registry`, quando fornecido, valida o item 6 do checklist (Vol.IV
+    Cap.17, AT-17.1): nenhuma Capability pode ser certificada referenciando
+    uma Skill inexistente ou `disabled`."""
     gaps: list[str] = []
     definicao = implementacao.definition
 
@@ -89,10 +96,15 @@ def verificar_checklist(implementacao: CapabilityImplementation) -> list[str]:
         if ResultadoEsperado.TIMEOUT not in cobertos:
             gaps.append("nenhum teste cobre timeout/falha de dependencia externa")
 
+    if skill_registry is not None:
+        for skill_ref in implementacao.skills_used:
+            if skill_registry.esta_desativada(skill_ref.skill_id):
+                gaps.append(f"Skill '{skill_ref.skill_id}' inexistente ou desativada (AT-17.1)")
+
     return gaps
 
 
-def _rodar_testes_de_aceitacao(implementacao: CapabilityImplementation) -> list[str]:
+def rodar_testes_de_aceitacao(implementacao: CapabilityImplementation) -> list[str]:
     """Executa `acceptance_tests` em processo isolado (nesta implementação de
     referência: chamada direta ao handler — isolamento real de ambiente é
     responsabilidade do Volume VIII, Infrastructure, fora de escopo). Retorna
@@ -148,17 +160,18 @@ def certificar(
     revisao_humana_obtida: bool = False,
     entrada_para_teste_idempotencia: Any = None,
     contexto_para_teste_idempotencia: ExecutionContext | None = None,
+    skill_registry: SkillRegistry | None = None,
 ) -> CapabilityDefinition:
     """Vol.IV Cap.16, secao 16.4 — fluxo completo de certificação.
 
     Retorna a `CapabilityDefinition` com `status=Active` se aprovada; levanta
     exceção específica se rejeitada em qualquer etapa (nunca aceita
     parcialmente — secao 16.6)."""
-    gaps = verificar_checklist(implementacao)
+    gaps = verificar_checklist(implementacao, skill_registry=skill_registry)
     if gaps:
         raise GapDeChecklist(f"Checklist (secao 16.2) nao satisfeito: {gaps}")
 
-    reprovados = _rodar_testes_de_aceitacao(implementacao)
+    reprovados = rodar_testes_de_aceitacao(implementacao)
     if reprovados:
         raise GapDeChecklist(f"Testes de aceitacao reprovados: {reprovados}")
 
@@ -187,3 +200,45 @@ def certificar(
         )
 
     return implementacao.definition.model_copy(update={"status": StatusCapability.ACTIVE})
+
+
+class VarreduraDeImpacto(BaseModel):
+    """Vol.IV Cap.17, secao 17.4 (AT-17.2) — resultado da varredura de
+    impacto de uma mudança MAJOR de Skill."""
+
+    skill_promovida: bool
+    capabilities_afetadas: list[CapabilityId]
+    capabilities_que_quebraram: list[CapabilityId]
+
+
+def propor_mudanca_major_de_skill(
+    nova_versao: SkillDefinition,
+    capabilities_dependentes: list[CapabilityImplementation],
+    registry: SkillRegistry,
+) -> VarreduraDeImpacto:
+    """Vol.IV Cap.17, secao 17.4 (AT-17.2) — uma mudança MAJOR de Skill só é
+    promovida (registrada) globalmente se TODAS as Capabilities que a
+    declaram como dependência (`skills_used`) ainda passam em seus próprios
+    testes de aceitação com a nova versão. Nunca promovida parcialmente."""
+    afetadas = [
+        impl.definition.id
+        for impl in capabilities_dependentes
+        if any(s.skill_id == nova_versao.id for s in impl.skills_used)
+    ]
+    quebraram = [
+        impl.definition.id
+        for impl in capabilities_dependentes
+        if impl.definition.id in afetadas and rodar_testes_de_aceitacao(impl)
+    ]
+
+    if quebraram:
+        return VarreduraDeImpacto(
+            skill_promovida=False,
+            capabilities_afetadas=afetadas,
+            capabilities_que_quebraram=quebraram,
+        )
+
+    registry.register(nova_versao)
+    return VarreduraDeImpacto(
+        skill_promovida=True, capabilities_afetadas=afetadas, capabilities_que_quebraram=[]
+    )
