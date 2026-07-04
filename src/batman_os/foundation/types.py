@@ -166,13 +166,22 @@ class EscalationPolicy(BaseModel):
 
 
 class TipoRecoveryStrategy(StrEnum):
-    """Vol.II Cap.9, secao 9.5. `fallback-capability` (Vol.V Cap.22) e
-    extensao futura, fora do escopo desta construcao (Volumes I-IV)."""
+    """Vol.II Cap.9, secao 9.5; `FALLBACK_CAPABILITY` adicionado no Vol.V
+    Cap.22, secao 22.2 (estende, nunca substitui, o conjunto original)."""
 
     RETRY = "retry"
     COMPENSATE = "compensate"
     SKIP_IF_OPTIONAL = "skip-if-optional"
     ESCALATE = "escalate"
+    FALLBACK_CAPABILITY = "fallback-capability"
+
+
+class ImpactoDegradacao(StrEnum):
+    """Vol.V Cap.22, secao 22.4 — `DegradationRecord.impact`."""
+
+    COSMETIC = "cosmetic"
+    REDUCED_FUNCTIONALITY = "reduced-functionality"
+    REQUIRES_FOLLOW_UP = "requires-follow-up"
 
 
 class OperatorRef(BaseModel):
@@ -203,4 +212,15 @@ class RecoveryStrategy(BaseModel):
     max_tentativas: int | None = None  # retry
     backoff: Literal["fixed", "exponential"] | None = None  # retry
     compensation_step_id: StepId | None = None  # compensate
+    alternative_capability: CapabilityRef | None = None  # fallback-capability (Vol.V Cap.22)
     escalation_policy: EscalationPolicy | None = None  # escalate
+
+
+class DegradationRecord(BaseModel):
+    """Vol.V Cap.22, secao 22.4 — referenciada por `Mission` (Vol.II Cap.6)
+    antes do Volume V ter modulo proprio; mesmo motivo de `Criticidade`
+    (evitar import circular kernel <-> workflow, Vol.VIII Cap.32 secao 32.3)."""
+
+    step_id: StepId
+    exhausted_chain: list[RecoveryStrategy] = Field(default_factory=list)
+    impact: ImpactoDegradacao

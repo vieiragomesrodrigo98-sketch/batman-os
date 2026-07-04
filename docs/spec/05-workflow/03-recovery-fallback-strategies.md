@@ -113,7 +113,7 @@ Toda `DegradationRecord` com `impact: "requires-follow-up"` gera automaticamente
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | Extensão da máquina de estados do Mission Runtime (Vol. II, Cap. 6) para incluir `PartiallyCompleted` | `FallbackChain`; `fallback-capability`; geração automática de candidatos de gap de conhecimento a partir de degradações recorrentes |
+| `MissionState.PARTIALLY_COMPLETED` (retrofit em `kernel/mission_runtime.py`, exatamente como antecipado — nova entrada em `_TRANSICOES`, sem redesenho); `DegradationRecord` exigida antes de `PartiallyCompleted` (AT-22.3); `FallbackChain` + `TipoRecoveryStrategy.FALLBACK_CAPABILITY`; `validar_fallback_chains()` — `partial-success` nunca em step crítico (AT-22.1), `fallback-capability` exige schema compatível (AT-22.2); `deveria_gerar_candidato_de_gap()` (secao 22.5) — `src/batman_os/workflow/recovery.py` | — | Geração automática *de fato* do candidato na Operational Memory a partir do sinal de `deveria_gerar_candidato_de_gap()` (hoje só o predicado existe; a integração de pipeline pertence ao Volume VI, Learning Engine) |
 
 ---
 

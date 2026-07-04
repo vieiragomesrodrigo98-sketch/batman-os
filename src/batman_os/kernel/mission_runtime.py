@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import (
     DecisionId,
+    DegradationRecord,
     KnowledgeAssetRef,
     MissionId,
     MissionTypeId,
@@ -32,10 +33,11 @@ from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 class MissionState(StrEnum):
     """Vol.II Cap.6, secao 6.3 — maquina de estados.
 
-    `PartiallyCompleted` (Volume V, Cap.22, ADR-0009) e uma extensao futura
-    desta maquina de estados — fora do escopo desta construcao (Volumes I-IV);
-    adiciona-la depois nao exige redesenho, apenas novas entradas em
-    `_TRANSICOES`.
+    `PartiallyCompleted` (Volume V, Cap.22, ADR-0009) — estado terminal de
+    sucesso parcial, distinto de `PartiallyFailed` (transitorio, Cap.9: uma
+    recuperacao em andamento). Adicionado sem redesenho, apenas novas
+    entradas em `_TRANSICOES`, exatamente como antecipado quando o Volume V
+    ainda nao existia.
     """
 
     CREATED = "Created"
@@ -46,12 +48,20 @@ class MissionState(StrEnum):
     AWAITING_LLM = "AwaitingLLM"
     EXECUTING = "Executing"
     PARTIALLY_FAILED = "PartiallyFailed"
+    PARTIALLY_COMPLETED = "PartiallyCompleted"
     COMPLETED = "Completed"
     FAILED = "Failed"
     CANCELLED = "Cancelled"
 
 
-ESTADOS_TERMINAIS = frozenset({MissionState.COMPLETED, MissionState.FAILED, MissionState.CANCELLED})
+ESTADOS_TERMINAIS = frozenset(
+    {
+        MissionState.COMPLETED,
+        MissionState.FAILED,
+        MissionState.CANCELLED,
+        MissionState.PARTIALLY_COMPLETED,
+    }
+)
 
 
 class MissionEventType(StrEnum):
@@ -76,6 +86,7 @@ class MissionEventType(StrEnum):
     ESCALATION_RESOLVED = "EscalationResolved"
     WORKFLOW_COMPLETED = "WorkflowCompleted"
     WORKFLOW_PARTIALLY_FAILED = "WorkflowPartiallyFailed"
+    WORKFLOW_PARTIALLY_COMPLETED = "WorkflowPartiallyCompleted"  # Vol.V Cap.22, ADR-0009
     WORKFLOW_FAILED = "WorkflowFailed"
     RECOVERY_APPLIED = "RecoveryApplied"
     RECOVERY_EXHAUSTED = "RecoveryExhausted"
@@ -126,6 +137,13 @@ class Mission(BaseModel):
     parent_mission_id: MissionId | None = None
     knowledge_assets_produzidos: list[KnowledgeAssetRef] = Field(default_factory=list)
     cognitive_debt_flag: CognitiveDebtFlag | None = None
+    degradations: list[DegradationRecord] = Field(default_factory=list)
+
+
+class DegradacaoSemEvidencia(Exception):
+    """Vol.V Cap.22, secao 22.4 (AT-22.3) — `PartiallyCompleted` exige ao
+    menos uma `DegradationRecord`; nunca um estado de degradacao sem
+    evidencia (Evidence First)."""
 
 
 class RegistroTiposDeMissao(Protocol):
@@ -179,6 +197,10 @@ _TRANSICOES: dict[tuple[MissionState, MissionEventType], MissionState] = {
     (MissionState.EXECUTING, MissionEventType.CANCELLATION_REQUESTED): MissionState.CANCELLED,
     (MissionState.PARTIALLY_FAILED, MissionEventType.RECOVERY_APPLIED): MissionState.EXECUTING,
     (MissionState.PARTIALLY_FAILED, MissionEventType.RECOVERY_EXHAUSTED): MissionState.FAILED,
+    (
+        MissionState.EXECUTING,
+        MissionEventType.WORKFLOW_PARTIALLY_COMPLETED,
+    ): MissionState.PARTIALLY_COMPLETED,  # Vol.V Cap.22, secao 22.4.1
 }
 
 # Eventos de escalonamento cuja ocorrencia na historia de uma Missao decide o
@@ -230,10 +252,15 @@ class MissionRuntime:
         mission_id: MissionId,
         evento: MissionEventType,
         payload_extra: dict[str, Any] | None = None,
+        degradations: list[DegradationRecord] | None = None,
     ) -> Mission:
         """Vol.II Cap.6, secao 6.4. Toda transicao publica automaticamente um
         evento no Event Bus (AT-6.2) — nao ha caminho de mutacao de estado que
-        nao passe por aqui."""
+        nao passe por aqui.
+
+        `degradations` (Vol.V Cap.22, secao 22.4, AT-22.3) — obrigatorio e
+        nao-vazio quando a transicao leva a `PartiallyCompleted`; nunca um
+        estado de degradacao sem evidencia (Evidence First)."""
         mission = self.get_mission(mission_id)
         chave = (mission.estado, evento)
         se_desconhecida = chave not in _TRANSICOES
@@ -244,8 +271,17 @@ class MissionRuntime:
             )
 
         novo_estado = _TRANSICOES[chave]
+
+        if novo_estado == MissionState.PARTIALLY_COMPLETED and not degradations:
+            raise DegradacaoSemEvidencia(
+                f"Missao {mission_id} nao pode transicionar para PartiallyCompleted "
+                "sem ao menos uma DegradationRecord (AT-22.3)"
+            )
+
         mission.estado = novo_estado
         mission.atualizado_em = agora()
+        if degradations:
+            mission.degradations.extend(degradations)
 
         if novo_estado in ESTADOS_TERMINAIS and mission.cognitive_debt_flag is None:
             mission.cognitive_debt_flag = self._calcular_cognitive_debt_flag(mission.id)
