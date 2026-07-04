@@ -15,7 +15,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import NewType
+from typing import Any, Literal, NewType
 
 from pydantic import BaseModel, Field
 
@@ -108,3 +108,65 @@ class Reversibilidade(StrEnum):
 
     REVERSIVEL = "reversible"
     IRREVERSIVEL = "irreversible"
+
+
+# Os tipos abaixo (CapabilityRef, DecisionOption, EscalationPolicy,
+# RecoveryStrategy) sao definidos formalmente em capitulos posteriores
+# (Vol.III Cap.11, Vol.II Cap.8, Vol.II Cap.9) mas sao referenciados de forma
+# cruzada por Cap.7 (Planning Engine) e Cap.8/9 antes de cada um ter seu
+# proprio modulo. Colocados aqui, na Foundation, especificamente para evitar
+# import circular entre kernel/planning_engine.py, kernel/decision_engine.py
+# e kernel/workflow_engine.py — nao e uma reinterpretacao do glossario do
+# Cap.4, e sim uma escolha de organizacao de modulos.
+
+
+class CapabilityRef(BaseModel):
+    """Vol.II Cap.7 (`PlanStep.capability`) / Vol.III Cap.11, secao 11.3.1 —
+    um `ExecutionPlan` ja gerado referencia uma versao especifica de
+    Capability, nunca "a mais recente" implicitamente (regra de ouro do
+    capitulo, o que garante `planHash` estavel mesmo se o catalogo evoluir)."""
+
+    capability_id: CapabilityId
+    versao: str
+
+
+class DecisionOption(BaseModel):
+    """Vol.II Cap.7 (`DecisionPoint.options`) / Cap.8 (`Decision.chosenOption`)
+    — uma alternativa concreta que um DecisionPoint pode resolver."""
+
+    id: str
+    descricao: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class EscalationPolicy(BaseModel):
+    """Vol.II Cap.8, secao 8.3 — configuravel por tipo de missao/decisao,
+    nunca hardcoded no Kernel."""
+
+    confidence_threshold: float
+    preferred_escalation: Literal["human", "llm"]
+    max_llm_retries: int
+    reversibility: Reversibilidade
+
+
+class TipoRecoveryStrategy(StrEnum):
+    """Vol.II Cap.9, secao 9.5. `fallback-capability` (Vol.V Cap.22) e
+    extensao futura, fora do escopo desta construcao (Volumes I-IV)."""
+
+    RETRY = "retry"
+    COMPENSATE = "compensate"
+    SKIP_IF_OPTIONAL = "skip-if-optional"
+    ESCALATE = "escalate"
+
+
+class RecoveryStrategy(BaseModel):
+    """Vol.II Cap.9, secao 9.5 — uniao discriminada por `tipo`, representada
+    aqui como um unico modelo com campos opcionais por variante (mais simples
+    de validar em Pydantic que uma uniao discriminada completa). Campos
+    irrelevantes ao `tipo` corrente ficam `None`."""
+
+    tipo: TipoRecoveryStrategy
+    max_tentativas: int | None = None  # retry
+    backoff: Literal["fixed", "exponential"] | None = None  # retry
+    compensation_step_id: StepId | None = None  # compensate
+    escalation_policy: EscalationPolicy | None = None  # escalate
