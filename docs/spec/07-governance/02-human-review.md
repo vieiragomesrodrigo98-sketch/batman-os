@@ -107,7 +107,7 @@ interface HumanReviewRef {
 
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| O conceito de `HumanReviewRef` já é consumido por múltiplos capítulos anteriores | Consolidar essas referências para apontar a esta especificação única | Fila de revisão; enforcement de `ReviewerRole`; registro estruturado de `rationale` obrigatório |
+`HumanReviewDecision` valida `rationale` no construtor (`model_post_init`) — string vazia ou só espaços é tratada como ausente, mesmo em `approved` (AT-28.1); `decidir()` — só decide quem tem o `ReviewerRole` exigido (AT-28.2, tabela de autoridade da secao 28.3 completa via `papeis_autorizados()`); `emitir_referencia()` — só decisões `approved` geram `HumanReviewRef` (AT-28.3); `reabrir_como_nova_solicitacao()` — `changes-requested` reabre o ciclo, nunca rejeição definitiva (secao 28.4) — `src/batman_os/governance/human_review.py` | — | Fila de revisão real com SLA acionável (hoje `sla_deadline` é só um campo, sem o alarme automático de backlog — Cap.27 `GovernanceEngine` já tem o mecanismo, falta a integração de fato) |
 
 ---
 
