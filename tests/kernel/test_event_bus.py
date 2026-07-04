@@ -3,13 +3,14 @@ publish/subscribe/replay da secao 10.2-10.5 da especificacao."""
 
 from __future__ import annotations
 
-from batman_os.foundation.types import EventId, MissionId
+from batman_os.foundation.types import EventId, MissionId, TenantId
 from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 
 
 def _evento(mission_id: str, tipo: str, causado_por: str | None = None) -> KernelEvent:
     return KernelEvent(
         mission_id=MissionId(mission_id),
+        tenant_id=TenantId("tenant-1"),
         tipo=tipo,
         emitido_por=EmissorKernel.MISSION_RUNTIME,
         causado_por=EventId(causado_por) if causado_por else None,

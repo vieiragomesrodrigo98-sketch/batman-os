@@ -9,6 +9,7 @@ from batman_os.foundation.types import (
     CapabilityRef,
     MissionId,
     PlanId,
+    TenantId,
     Timestamp,
     WorkflowRunId,
     agora,
@@ -18,6 +19,7 @@ from batman_os.kernel.scheduler import Scheduler
 from batman_os.kernel.workflow_engine import ResultadoInvocacao, WorkflowEngine
 
 MISSAO = MissionId("m-1")
+TENANT = TenantId("tenant-1")
 
 
 def _ref(nome: str) -> CapabilityRef:
@@ -51,6 +53,7 @@ class TestAT102NuncaDespachaAntesDeDependenciasSatisfeitas:
         plano = ExecutionPlan(
             id=PlanId("p-1"),
             mission_id=MISSAO,
+            tenant_id=TENANT,
             steps=[step_a, step_b],
             decision_points=[],
             plan_hash="h",

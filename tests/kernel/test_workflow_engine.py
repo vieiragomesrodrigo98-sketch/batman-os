@@ -8,6 +8,7 @@ from batman_os.foundation.types import (
     MissionId,
     PlanId,
     RecoveryStrategy,
+    TenantId,
     TipoRecoveryStrategy,
 )
 from batman_os.kernel.planning_engine import ExecutionPlan, PlanStep
@@ -18,6 +19,7 @@ from batman_os.kernel.workflow_engine import (
 )
 
 MISSAO = MissionId("m-1")
+TENANT = TenantId("tenant-1")
 
 
 def _ref(nome: str) -> CapabilityRef:
@@ -26,7 +28,12 @@ def _ref(nome: str) -> CapabilityRef:
 
 def _plano(steps: list[PlanStep]) -> ExecutionPlan:
     return ExecutionPlan(
-        id=PlanId("p-1"), mission_id=MISSAO, steps=steps, decision_points=[], plan_hash="hash-x"
+        id=PlanId("p-1"),
+        mission_id=MISSAO,
+        tenant_id=TENANT,
+        steps=steps,
+        decision_points=[],
+        plan_hash="hash-x",
     )
 
 

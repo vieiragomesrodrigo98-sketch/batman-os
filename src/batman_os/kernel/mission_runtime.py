@@ -20,6 +20,7 @@ from batman_os.foundation.types import (
     MissionId,
     MissionTypeId,
     PlanId,
+    TenantId,
     Timestamp,
     WorkflowRunId,
     agora,
@@ -107,9 +108,13 @@ class Mission(BaseModel):
     `decision_ids`, `workflow_run_id`) em vez de objetos completos embutidos —
     consistente com Event Sourcing (ADR-0003): cada tipo tem uma unica fonte de
     verdade (seu proprio engine/registro), a Missao apenas correlaciona por ID.
+
+    `tenant_id` obrigatorio desde Vol.III Cap.14 (ADR-0005) — propagado
+    estruturalmente por toda a cadeia de dados do Kernel e Runtime.
     """
 
     id: MissionId = Field(default_factory=lambda: MissionId(novo_uuid7()))
+    tenant_id: TenantId
     tipo: MissionTypeId
     intent: MissionIntent
     estado: MissionState = MissionState.CREATED
@@ -184,14 +189,20 @@ class MissionRuntime:
         self,
         intent: MissionIntent,
         tipo: MissionTypeId,
+        tenant_id: TenantId,
         parent_mission_id: MissionId | None = None,
     ) -> Mission:
         """Vol.II Cap.6, secao 6.5 — cria a Missao em `Created` e publica
         `MissionCreated`. Nao inicia planejamento sozinha: quem orquestra a
         chamada seguinte a `transition(id, PLANNING_STARTED)` e o Kernel
         (Cap.5), nao o Mission Runtime — preserva a separacao de camadas
-        da ADR-0002."""
-        mission = Mission(tipo=tipo, intent=intent, parent_mission_id=parent_mission_id)
+        da ADR-0002.
+
+        `tenant_id` obrigatorio (Vol.III Cap.14, ADR-0005) — propagado a
+        toda missao filha e a todo evento publicado a partir daqui."""
+        mission = Mission(
+            tenant_id=tenant_id, tipo=tipo, intent=intent, parent_mission_id=parent_mission_id
+        )
         self._missions[mission.id] = mission
         self._publicar(mission, "MissionCreated")
         return mission
@@ -258,6 +269,7 @@ class MissionRuntime:
         self._event_bus.publish(
             KernelEvent(
                 mission_id=mission.id,
+                tenant_id=mission.tenant_id,
                 tipo=tipo_evento,
                 emitido_por=EmissorKernel.MISSION_RUNTIME,
                 payload={"estado": mission.estado.value, **(payload_extra or {})},

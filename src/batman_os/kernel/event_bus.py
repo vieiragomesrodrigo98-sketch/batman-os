@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from batman_os.foundation.types import (
     EventId,
     MissionId,
+    TenantId,
     Timestamp,
     agora,
     novo_ulid_like,
@@ -42,12 +43,16 @@ class KernelEvent(BaseModel):
     de evento nascem em capitulos/volumes futuros (ex.: Vol.V introduz
     `PartiallyCompleted`) sem exigir mudanca neste modulo — Evolution Never
     Stops (Principio 10) aplicado ao proprio Event Bus.
+
+    `tenant_id` obrigatorio desde Vol.III Cap.14 (ADR-0005) — propagado
+    estruturalmente por toda a cadeia, nenhuma entidade e processada sem ele.
     """
 
     model_config = {"frozen": True}
 
     id: EventId = Field(default_factory=lambda: EventId(novo_ulid_like()))
     mission_id: MissionId
+    tenant_id: TenantId
     tipo: str
     payload: dict[str, Any] = Field(default_factory=dict)
     emitido_por: EmissorKernel

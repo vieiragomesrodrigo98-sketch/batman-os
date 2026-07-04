@@ -25,6 +25,7 @@ from batman_os.foundation.types import (
     PlaybookId,
     RecoveryStrategy,
     StepId,
+    TenantId,
     Timestamp,
     agora,
     novo_uuid7,
@@ -52,10 +53,13 @@ class PlanStep(BaseModel):
 
 
 class ExecutionPlan(BaseModel):
-    """Vol.II Cap.7, secao 7.3."""
+    """Vol.II Cap.7, secao 7.3.
+
+    `tenant_id` obrigatorio desde Vol.III Cap.14 (ADR-0005)."""
 
     id: PlanId = Field(default_factory=lambda: PlanId(novo_uuid7()))
     mission_id: MissionId
+    tenant_id: TenantId
     steps: list[PlanStep]
     decision_points: list[DecisionPoint]
     source_playbook: PlaybookId | None = None
@@ -117,6 +121,7 @@ class RegistroCapacidades(Protocol):
 
 def plan(
     mission_id: MissionId,
+    tenant_id: TenantId,
     intent: MissionIntent,
     registro: RegistroCapacidades,
     repositorio_playbooks: RepositorioPlaybooks | None = None,
@@ -124,9 +129,10 @@ def plan(
     """Vol.II Cap.7, secao 7.4.
 
     Nota de implementacao: a assinatura da especificacao (`plan(intent,
-    registry)`) nao recebe `mission_id` explicitamente, mas `ExecutionPlan`
-    exige o campo `missionId` — adicionado aqui como parametro obrigatorio
-    (gap mecanico, nao decisao arquitetural nova).
+    registry)`) nao recebe `mission_id`/`tenant_id` explicitamente, mas
+    `ExecutionPlan` exige ambos os campos — adicionados aqui como parametros
+    obrigatorios (gap mecanico, nao decisao arquitetural nova; `tenant_id`
+    e exigido estruturalmente desde Vol.III Cap.14, ADR-0005).
     """
     playbook = (
         repositorio_playbooks.encontrar_correspondente(intent) if repositorio_playbooks else None
@@ -147,6 +153,7 @@ def plan(
 
     return ExecutionPlan(
         mission_id=mission_id,
+        tenant_id=tenant_id,
         steps=steps,
         decision_points=decision_points,
         source_playbook=origem,

@@ -19,6 +19,7 @@ from batman_os.foundation.types import (
     PlanId,
     RecoveryStrategy,
     StepId,
+    TenantId,
     Timestamp,
     TipoRecoveryStrategy,
     WorkflowRunId,
@@ -62,10 +63,13 @@ class Checkpoint(BaseModel):
 
 
 class WorkflowRun(BaseModel):
-    """Vol.II Cap.9, secao 9.2."""
+    """Vol.II Cap.9, secao 9.2.
+
+    `tenant_id` obrigatorio desde Vol.III Cap.14 (ADR-0005)."""
 
     id: WorkflowRunId = Field(default_factory=lambda: WorkflowRunId(novo_uuid7()))
     mission_id: MissionId
+    tenant_id: TenantId
     plan_id: PlanId
     current_step_id: StepId | None = None
     completed_steps: list[StepResult] = Field(default_factory=list)
@@ -108,7 +112,10 @@ class WorkflowEngine:
         self._tentativas: dict[tuple[WorkflowRunId, StepId], int] = {}
 
     def iniciar(self, mission_id: MissionId, plano: ExecutionPlan) -> WorkflowRun:
-        run = WorkflowRun(mission_id=mission_id, plan_id=plano.id)
+        """`tenant_id` do `WorkflowRun` é sempre derivado do `ExecutionPlan`
+        (nunca um parâmetro redundante que poderia divergir) — consistente
+        com a propagação estrutural exigida pela ADR-0005 (Vol.III Cap.14)."""
+        run = WorkflowRun(mission_id=mission_id, tenant_id=plano.tenant_id, plan_id=plano.id)
         self._runs[run.id] = run
         self._steps_do_plano[run.id] = list(plano.steps)
         return run

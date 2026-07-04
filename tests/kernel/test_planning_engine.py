@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from batman_os.foundation.types import CapabilityId, CapabilityRef, MissionId, StepId
+from batman_os.foundation.types import CapabilityId, CapabilityRef, MissionId, StepId, TenantId
 from batman_os.kernel.mission_runtime import MissionIntent
 from batman_os.kernel.planning_engine import (
     PlanningFailure,
@@ -15,6 +15,7 @@ from batman_os.kernel.planning_engine import (
 )
 
 MISSAO_EXEMPLO = MissionId("m-1")
+TENANT_EXEMPLO = TenantId("tenant-1")
 
 
 class RegistroFake:
@@ -46,16 +47,16 @@ class TestAT71PlanHashDeterministico:
         registro = _registro_como_protocolo(RegistroFake([_ref("detect-sql-injection")]))
         intent = MissionIntent(dados={"alvo": "servico-x"})
 
-        plano_1 = plan(MISSAO_EXEMPLO, intent, registro)
-        plano_2 = plan(MISSAO_EXEMPLO, intent, registro)
+        plano_1 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, intent, registro)
+        plano_2 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, intent, registro)
 
         assert plano_1.plan_hash == plano_2.plan_hash
 
     def test_intents_diferentes_produzem_hashes_diferentes(self) -> None:
         registro = _registro_como_protocolo(RegistroFake([_ref("detect-sql-injection")]))
 
-        plano_1 = plan(MISSAO_EXEMPLO, MissionIntent(dados={"alvo": "a"}), registro)
-        plano_2 = plan(MISSAO_EXEMPLO, MissionIntent(dados={"alvo": "b"}), registro)
+        plano_1 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={"alvo": "a"}), registro)
+        plano_2 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={"alvo": "b"}), registro)
 
         assert plano_1.plan_hash != plano_2.plan_hash
 
@@ -64,8 +65,8 @@ class TestAT71PlanHashDeterministico:
         registro_v1 = _registro_como_protocolo(RegistroFake([_ref("cap-a")], versao="v1"))
         registro_v2 = _registro_como_protocolo(RegistroFake([_ref("cap-a")], versao="v2"))
 
-        plano_1 = plan(MISSAO_EXEMPLO, intent, registro_v1)
-        plano_2 = plan(MISSAO_EXEMPLO, intent, registro_v2)
+        plano_1 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, intent, registro_v1)
+        plano_2 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, intent, registro_v2)
 
         assert plano_1.plan_hash != plano_2.plan_hash
 
@@ -112,7 +113,7 @@ class TestAT73GapDeConhecimentoRastreavel:
         dependencia orfa); a decisao de tratar isso como gap de conhecimento
         e do chamador (Kernel), nao da Planning Engine."""
         registro = _registro_como_protocolo(RegistroFake([]))
-        plano = plan(MISSAO_EXEMPLO, MissionIntent(dados={}), registro)
+        plano = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={}), registro)
 
         assert plano.steps == []
 
@@ -123,7 +124,7 @@ class TestComposicaoViaGrafo:
             RegistroFake([_ref("passo-1"), _ref("passo-2"), _ref("passo-3")])
         )
 
-        plano = plan(MISSAO_EXEMPLO, MissionIntent(dados={}), registro)
+        plano = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={}), registro)
 
         assert len(plano.steps) == 3
         assert plano.steps[0].depende_de == []

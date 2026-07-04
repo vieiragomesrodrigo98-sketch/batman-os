@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from batman_os.foundation.types import MissionTypeId
+from batman_os.foundation.types import MissionTypeId, TenantId
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import (
     CognitiveDebtFlag,
@@ -34,7 +34,9 @@ def runtime(event_bus: EventBus) -> MissionRuntime:
 
 def _cria(runtime: MissionRuntime) -> Mission:
     tipo = MissionTypeId("investigate-incident")
-    return runtime.create(MissionIntent(dados={"exemplo": True}), tipo)
+    return runtime.create(
+        MissionIntent(dados={"exemplo": True}), tipo, tenant_id=TenantId("tenant-1")
+    )
 
 
 def _ate_executando(runtime: MissionRuntime, mission: Mission) -> Mission:

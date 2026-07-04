@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from batman_os.foundation.types import DecisionPointId, MissionId, MissionTypeId
+from batman_os.foundation.types import DecisionPointId, MissionId, MissionTypeId, TenantId
 from batman_os.kernel.mission_runtime import CognitiveDebtFlag, MissionState
 from batman_os.runtime.operational_memory import (
     DecisionSummary,
@@ -17,6 +17,7 @@ from batman_os.runtime.operational_memory import (
 )
 
 MISSAO = MissionId("m-1")
+TENANT = TenantId("tenant-1")
 TIPO = MissionTypeId("investigate-incident")
 
 
@@ -24,9 +25,11 @@ def _record(
     resumos: list[DecisionSummary] | None = None,
     final_state: MissionState = MissionState.COMPLETED,
     cognitive_debt_flag: CognitiveDebtFlag = CognitiveDebtFlag.AUTONOMOUS,
+    tenant_id: TenantId = TENANT,
 ) -> OperationalRecord:
     return OperationalRecord(
         mission_id=MISSAO,
+        tenant_id=tenant_id,
         mission_type=TIPO,
         decision_points_resolved=tuple(resumos or []),
         final_state=final_state,
@@ -138,20 +141,22 @@ class TestAT132NuncaAlteraComportamentoSozinha:
 
 class TestAT133IndisponibilidadeDegradaGraciosamente:
     def test_memory_none_degrada_para_confidence_base(self) -> None:
-        resultado = calcular_confidence_combinada(0.7, None, "dp-1")
+        resultado = calcular_confidence_combinada(0.7, None, TENANT, "dp-1")
         assert resultado == 0.7
 
     def test_consulta_que_lanca_excecao_degrada_para_confidence_base(self) -> None:
         class MemoriaQuebrada(OperationalMemory):
-            def get_decision_history(self, decision_point_signature: str) -> list[DecisionSummary]:
+            def get_decision_history(
+                self, tenant_id: TenantId, decision_point_signature: str
+            ) -> list[DecisionSummary]:
                 raise RuntimeError("indisponivel")
 
-        resultado = calcular_confidence_combinada(0.7, MemoriaQuebrada(), "dp-1")
+        resultado = calcular_confidence_combinada(0.7, MemoriaQuebrada(), TENANT, "dp-1")
         assert resultado == 0.7
 
     def test_sem_historico_degrada_para_confidence_base(self) -> None:
         memory = OperationalMemory()
-        resultado = calcular_confidence_combinada(0.7, memory, "dp-inexistente")
+        resultado = calcular_confidence_combinada(0.7, memory, TENANT, "dp-inexistente")
         assert resultado == 0.7
 
     def test_com_historico_combina_confiancas(self) -> None:
@@ -169,7 +174,7 @@ class TestAT133IndisponibilidadeDegradaGraciosamente:
             )
         )
 
-        resultado = calcular_confidence_combinada(0.5, memory, "dp-1")
+        resultado = calcular_confidence_combinada(0.5, memory, TENANT, "dp-1")
         assert resultado == pytest.approx(0.75)
 
 

@@ -19,6 +19,7 @@ from batman_os.foundation.types import (
     MissionTypeId,
     RecordId,
     StepId,
+    TenantId,
     Timestamp,
     agora,
     novo_uuid7,
@@ -49,12 +50,16 @@ class StepResultSummary(BaseModel):
 class OperationalRecord(BaseModel):
     """Vol.III Cap.13, secao 13.3 — projeção derivada dos eventos do Event
     Bus (nunca fonte de verdade paralela, consistente com ADR-0003). Imutável
-    após criado (AT-13.1: append-only, nunca editada)."""
+    após criado (AT-13.1: append-only, nunca editada).
+
+    `tenant_id` obrigatório desde Vol.III Cap.14 (ADR-0005) — toda consulta
+    de leitura abaixo é escopada por ele (AT-14.1)."""
 
     model_config = {"frozen": True}
 
     id: RecordId = Field(default_factory=lambda: RecordId(novo_uuid7()))
     mission_id: MissionId
+    tenant_id: TenantId
     mission_type: MissionTypeId
     decision_points_resolved: tuple[DecisionSummary, ...] = ()
     step_results: tuple[StepResultSummary, ...] = ()
@@ -102,19 +107,31 @@ class OperationalMemory:
     def all_records(self) -> list[OperationalRecord]:
         return list(self._records)
 
-    def find_similar_missions(self, intent: MissionIntent, limit: int) -> list[OperationalRecord]:
+    def find_similar_missions(
+        self, tenant_id: TenantId, intent: MissionIntent, limit: int
+    ) -> list[OperationalRecord]:
         """Vol.III Cap.13, secao 13.4 — similaridade léxica simples (chaves
         de `intent.dados` em comum), zero LLM/rede, consistente com o motor
-        de Recall já precedente no Batman atual."""
-        pontuados = [(self._similaridade(intent, r), r) for r in self._records]
+        de Recall já precedente no Batman atual.
+
+        `tenant_id` obrigatório (Vol.III Cap.14, AT-14.1) — nunca retorna
+        registro de tenant diferente do solicitado."""
+        do_tenant = [r for r in self._records if r.tenant_id == tenant_id]
+        pontuados = [(self._similaridade(intent, r), r) for r in do_tenant]
         pontuados.sort(key=lambda par: par[0], reverse=True)
         return [registro for pontuacao, registro in pontuados[:limit] if pontuacao > 0]
 
-    def get_decision_history(self, decision_point_signature: str) -> list[DecisionSummary]:
-        """Vol.III Cap.13, secao 13.4."""
+    def get_decision_history(
+        self, tenant_id: TenantId, decision_point_signature: str
+    ) -> list[DecisionSummary]:
+        """Vol.III Cap.13, secao 13.4.
+
+        `tenant_id` obrigatório (Vol.III Cap.14, AT-14.1) — nunca retorna
+        histórico de decisão de um tenant diferente do solicitado."""
         return [
             resumo
             for record in self._records
+            if record.tenant_id == tenant_id
             for resumo in record.decision_points_resolved
             if resumo.decision_point_id == decision_point_signature
         ]
@@ -177,13 +194,17 @@ def find_promotion_candidates(
 
 
 def calcular_confidence_combinada(
-    confidence_base: float, memory: OperationalMemory | None, decision_point_signature: str
+    confidence_base: float,
+    memory: OperationalMemory | None,
+    tenant_id: TenantId,
+    decision_point_signature: str,
 ) -> float:
     """Vol.III Cap.13, secao 13.5 — combina confiança de regra + histórico da
     Operational Memory no cálculo de confiança do Decision Engine (Vol.II
     Cap.8). AT-13.3: indisponibilidade da Operational Memory (`None`, ou
     exceção ao consultar) degrada graciosamente para a confiança base —
-    nunca propaga falha para o Decision Engine.
+    nunca propaga falha para o Decision Engine. `tenant_id` obrigatório
+    (Vol.III Cap.14, AT-14.1) — nunca combina com histórico de outro tenant.
 
     Nota de integração: o `DecisionEngine` (Cap.8) já construído nesta
     sessão ainda não chama esta função internamente — é o padrão de uso
@@ -193,7 +214,7 @@ def calcular_confidence_combinada(
     if memory is None:
         return confidence_base
     try:
-        historico = memory.get_decision_history(decision_point_signature)
+        historico = memory.get_decision_history(tenant_id, decision_point_signature)
     except Exception:
         return confidence_base
     if not historico:
