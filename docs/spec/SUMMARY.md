@@ -64,24 +64,30 @@
     - [ADR-0012 — Governance Engine sem autoridade executiva direta](./07-governance/ADR/ADR-0012-governance-no-direct-authority.md)
     - [ADR-0013 — Política de LLM Escalation como artefato único e revisável](./07-governance/ADR/ADR-0013-llm-policy-single-artifact.md)
 
-## Volume VIII — Infrastructure ⚪ (próximo)
+## Volume VIII — Infrastructure ✅ (este commit)
 
-31. Arquitetura física
-32. Estrutura de diretórios
-33. Segurança e isolamento
+31. [Arquitetura física](./08-infrastructure/01-physical-architecture.md)
+32. [Estrutura de diretórios](./08-infrastructure/02-directory-structure.md)
+33. [Segurança e isolamento](./08-infrastructure/03-security-isolation.md)
+    - [ADR-0014 — Defesa em profundidade para isolamento de tenant](./08-infrastructure/ADR/ADR-0014-defense-in-depth-tenant-isolation.md)
+    - [ADR-0015 — Verificação de integridade de artefato como bloqueio obrigatório](./08-infrastructure/ADR/ADR-0015-artifact-integrity-verification.md)
 
-## Volume IX — Reference Implementation ⚪
+## Volume IX — Reference Implementation ✅ (este commit)
 
-34. Implementação de referência do Batman OS
-35. Casos de uso ponta a ponta
+34. [Implementação de referência do Batman OS](./09-reference-implementation/01-reference-implementation.md)
+35. [Casos de uso ponta a ponta](./09-reference-implementation/02-end-to-end-use-cases.md)
+    - [ADR-0016 — Faseamento reduz escopo, nunca disciplina](./09-reference-implementation/ADR/ADR-0016-phasing-scope-not-discipline.md)
+    - [ADR-0017 — Implementação de referência constrói apenas a especificação aceita](./09-reference-implementation/ADR/ADR-0017-reference-implementation-excludes-unaccepted-addenda.md)
 
-## Volume X — Appendices ⚪
+## Volume X — Appendices ✅ (este commit)
 
-36. Glossário consolidado
-37. Índice de ADRs
-38. Métricas e KPIs consolidados (Cognitive Debt, Patrimônio Cognitivo)
-39. Roadmap de evolução
+36. [Glossário consolidado](./10-appendices/01-consolidated-glossary.md)
+37. [Índice de ADRs e Anexos](./10-appendices/02-adr-addenda-index.md)
+38. [Métricas e KPIs consolidados (Cognitive Debt, Patrimônio Cognitivo)](./10-appendices/03-consolidated-metrics.md)
+39. [Roadmap de evolução](./10-appendices/04-evolution-roadmap.md)
 
 ---
 
 **Legenda:** ✅ completo · 🟡 em progresso · ⚪ não iniciado
+
+**Obra completa: 39 capítulos, 10 volumes, 17 ADRs e 6 Anexos.**

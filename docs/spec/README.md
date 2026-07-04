@@ -18,7 +18,7 @@ Este repositório é a **especificação oficial de arquitetura** do Batman OS �
 
 - **Autor:** Rodrigo Vieira
 - **Coautor Técnico:** Claude (Anthropic)
-- **Versão atual:** v0.1 (Draft) — Volume I
+- **Versão atual:** v0.1 (Draft) — Obra completa (Volumes I–X)
 
 ## Estrutura da obra
 
@@ -32,10 +32,10 @@ O livro é dividido em 10 volumes. Cada volume é um diretório neste repositór
 | IV | Capabilities | ✅ Completo (este commit) |
 | V | Workflow Engine | ✅ Completo (este commit) |
 | VI | Learning Engine | ✅ Completo (este commit) |
-| VII | Governance | ⚪ Não iniciado |
-| VIII | Infrastructure | ⚪ Não iniciado |
-| IX | Reference Implementation | ⚪ Não iniciado |
-| X | Appendices | ⚪ Não iniciado |
+| VII | Governance | ✅ Completo (este commit) |
+| VIII | Infrastructure | ✅ Completo (este commit) |
+| IX | Reference Implementation | ✅ Completo (este commit) |
+| X | Appendices | ✅ Completo (este commit) |
 
 Ver [`SUMMARY.md`](./SUMMARY.md) para o índice detalhado de capítulos, e [`ADDENDA.md`](./ADDENDA.md) para propostas de extensão arquitetural que ainda não foram incorporadas aos capítulos (World Model, Goal Engine, Continuous Mission, entre outras).
 
