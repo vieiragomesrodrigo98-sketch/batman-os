@@ -18,15 +18,14 @@ aprove formalmente a mudança.
 ## Estado
 
 **Especificação completa: 39 capítulos, 10 volumes, 17 ADRs, 6 Anexos** (Volumes
-I–X). **Código: Volumes I–IV completos** (Foundation, Kernel Architecture, Runtime,
-Capabilities) — 16 capítulos (Cap.4/6-19), 142 testes cobrindo todos os `AT-X.Y`
-da própria especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o
-índice completo. Volumes V (Workflow Engine), VI (Learning Engine) e VII
-(Governance) têm especificação pronta e são os próximos pacotes a construir
-(`workflow/`, `learning/`, `governance/`). Volumes VIII (Infrastructure), IX
-(Reference Implementation) e X (Appendices) são volumes de topologia física,
-roteiro de bootstrap e consolidação — não introduzem componentes de código novos
-a implementar (ver nota sobre o Cap.32 abaixo).
+I–X). **Código: núcleo funcional completo (Volumes I–VII)** — Foundation, Kernel
+Architecture, Runtime, Capabilities, Workflow Engine, Learning Engine, Governance —
+30 capítulos (Cap.4/6-30), 283 testes cobrindo todos os `AT-X.Y` da própria
+especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o índice
+completo. Volumes VIII (Infrastructure), IX (Reference Implementation) e X
+(Appendices) são volumes de topologia física, roteiro de bootstrap e consolidação —
+não introduzem componentes de código novos a implementar (ver nota sobre o Cap.32
+abaixo).
 
 Migração das 270 regras do Batman atual (`radar-preditivo/Batman/`) para
 Capabilities/Operadores reais é trabalho futuro, deliberadamente fora desta
@@ -42,6 +41,9 @@ src/batman_os/
   kernel/            # Vol. II — Mission Runtime, Planning/Decision/Workflow Engine, Event Bus, Scheduler
   runtime/           # Vol. III — Capability Engine, Execution Engine, Operational Memory, Concorrência
   capabilities/      # Vol. IV — Operator, certificação de Capability, Skills, Tools, Cooperação
+  workflow/          # Vol. V — Missões formais, Playbooks, Recuperação/Fallback
+  learning/          # Vol. VI — Knowledge Graph, Rule/Workflow Evolution, Operational Learning
+  governance/        # Vol. VII — Governance Engine, Human Review, LLM Escalation, Observability Engine
 tests/               # 1 arquivo de teste por capítulo, nomeado pelos próprios AT-X.Y da spec
 ```
 
