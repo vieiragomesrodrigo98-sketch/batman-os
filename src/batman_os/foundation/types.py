@@ -159,6 +159,15 @@ class TipoRecoveryStrategy(StrEnum):
     ESCALATE = "escalate"
 
 
+class OperatorRef(BaseModel):
+    """Vol.III Cap.12 (`ExecutionEngine.invoke`) / Vol.IV Cap.15 — referencia
+    opaca a um Operador. Colocada aqui pelo mesmo motivo dos demais tipos
+    desta secao: Cap.12 (Runtime) precisa dela antes de Cap.15 (Capabilities)
+    ter seu proprio modulo."""
+
+    operator_id: OperatorId
+
+
 class SkillRef(BaseModel):
     """Vol.III Cap.11 (`CapabilityDefinition.requiredSkills`) / Vol.IV Cap.17
     — referencia a uma Skill que uma Capability usa internamente. Colocada
