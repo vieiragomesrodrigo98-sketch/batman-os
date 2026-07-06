@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "EH-006",
+    "agente": "ethical-hacker",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Schema Pydantic de update expõe campo 'role' — risco de escalada de privilégio",
+    "causa": "Modelo de atualização (*Update, *Patch) que aceita o campo 'role' permite que qualquer usuário autenticado envie {\"role\": \"admin\"} e escale privilégios se o endpoint não filtrar campos explicitamente. Detectado no Bloco E-03 do plano de QA.",
+    "remediacao": "Remover 'role' do schema de update comum; criar endpoint admin-only separado para atualização de role. DoD: schemas *Update/*Patch não contêm campo role.",
+    "seletor_tipo": "classdef",
+    "seletor_include": "(Update|Patch|Modify|Edit)$",
+    "corpo_padrao": "role",
+    "campo_estrutural": "role"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

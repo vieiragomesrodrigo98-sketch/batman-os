@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "EH-004",
+    "agente": "ethical-hacker",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Rota /admin sem verificação explícita de role/permissão",
+    "causa": "Endpoints com prefixo /admin que não verificam explicitamente o papel do usuário dependem apenas da autenticação, sem autorização granular — qualquer usuário autenticado pode acessar funções administrativas.",
+    "remediacao": "Adicionar dependência de verificação de role (ex.: Depends(require_admin)) a toda rota /admin. DoD: toda rota /admin tem check de role explícito.",
+    "seletor_tipo": "call",
+    "seletor_include": "/admin",
+    "metodos_call": ["get", "post", "put", "patch", "delete"],
+    "janela_linhas": 10,
+    "corpo_padrao": "(require_admin|is_admin|role|permission|admin_only)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

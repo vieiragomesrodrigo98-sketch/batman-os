@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "COMP-002",
+    "agente": "compliance",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "CPF exposto em schema de resposta da API",
+    "causa": "Retornar CPF em endpoints da API expõe dado sensível desnecessariamente — viola o princípio da minimização de dados da LGPD (art. 6, III).",
+    "remediacao": "Remover cpf dos schemas de resposta (Response) ou mascará-lo (ex.: ***XXXX-XX). DoD: nenhum schema *Response tem campo cpf exposto.",
+    "seletor_tipo": "classdef",
+    "seletor_include": "Response",
+    "corpo_escopo": "(?i:\\bcpf\\b\\s*:)",
+    "corpo_padrao": "(?is:mask.?cpf|field_validator.*cpf|cpf.*field_validator)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -15,6 +15,7 @@ foco virar performance: uma Capability que aceita lote de arquivos numa
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -30,10 +31,22 @@ from batman_os.capabilities.operator import (
     SandboxPolicy,
     SideEffectScope,
 )
+from batman_os.capabilities.rules.ast_padrao_ausente import (
+    RegraAstSpec,
+)
+from batman_os.capabilities.rules.ast_padrao_ausente import (
+    construir_implementacao as construir_implementacao_ast,
+)
+from batman_os.capabilities.rules.ast_padrao_ausente_loader import (
+    SpecDeRegraAst,
+    carregar_especificacoes_ast,
+)
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
-from batman_os.capabilities.rules.regex_sobre_conteudo import construir_implementacao
-from batman_os.cli.descoberta_arquivos import entradas_para_regra
+from batman_os.capabilities.rules.regex_sobre_conteudo import (
+    construir_implementacao as construir_implementacao_regex,
+)
+from batman_os.cli.descoberta_arquivos import entradas_ast_para_regra, entradas_para_regra
 from batman_os.foundation.types import (
     Criticidade,
     EscalationPolicy,
@@ -62,7 +75,7 @@ from batman_os.orchestration.schema_validators import (
     ValidadorSchemaEstrutural,
 )
 from batman_os.orchestration.step_invoker import InvocadorDeStepPadrao, TabelaDeEntradasPorStep
-from batman_os.runtime.capability_engine import CapabilityRegistry
+from batman_os.runtime.capability_engine import CapabilityDefinition, CapabilityRegistry
 from batman_os.runtime.execution_engine import ExecutionEngine
 from batman_os.workflow.missions import MissionTypeDefinition, MissionTypeRegistry
 
@@ -140,66 +153,111 @@ def _registro_tipos() -> MissionTypeRegistry:
     return registro
 
 
-def _preparar_capability() -> tuple[CapabilityRegistry, CapabilityImplementation, Operator]:
-    """Certifica a Capability genérica de verdade (checklist + testes de
-    aceitação + idempotência, Vol.IV Cap.16) e monta o Operador real que a
-    executa — uma vez por chamada de `executar_scan`, reaproveitado por
-    todas as Missões do lote."""
-    implementacao = construir_implementacao()
+def _certificar_com_idempotencia(
+    implementacao: CapabilityImplementation, entrada_idempotencia: dict[str, object]
+) -> CapabilityDefinition:
     contexto_certificacao = ExecutionContext(
         mission_id=MissionId("mission-certificacao"),
         tenant_id=TenantId("tenant-certificacao"),
         step_id=StepId("step-certificacao"),
         deadline=agora(),
     )
-    entrada_idempotencia = {
-        "caminho": "arquivo-de-certificacao.txt",
-        "conteudo": "x",
-        "regra": {
-            "codigo": "CERT-000",
-            "agente": "sistema",
-            "severidade": "low",
-            "categoria": "certificacao",
-            "titulo": "t",
-            "causa": "c",
-            "remediacao": "r",
-            "modo": "arquivo-presente",
-        },
-    }
-    definicao_ativa = certificar(
+    return certificar(
         implementacao,
         entrada_para_teste_idempotencia=entrada_idempotencia,
         contexto_para_teste_idempotencia=contexto_certificacao,
     )
 
+
+def _preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
+    """Certifica as Capabilities genéricas de verdade (checklist + testes de
+    aceitação + idempotência, Vol.IV Cap.16) e monta o Operador real que as
+    executa — uma vez por chamada de `executar_scan`, reaproveitado por
+    todas as Missões do lote. Registra AMBAS (regex + AST) no mesmo Registry
+    — `CapabilityRegistry.find_candidates` (Vol.III Cap.11) já resolve qual
+    delas serve cada Missão por casamento estrutural de schema (ver
+    docstring de `EntradaAst.tipo`), sem código de roteamento extra aqui."""
+    implementacao_regex = construir_implementacao_regex()
+    definicao_regex = _certificar_com_idempotencia(
+        implementacao_regex,
+        {
+            "caminho": "arquivo-de-certificacao.txt",
+            "conteudo": "x",
+            "regra": {
+                "codigo": "CERT-000",
+                "agente": "sistema",
+                "severidade": "low",
+                "categoria": "certificacao",
+                "titulo": "t",
+                "causa": "c",
+                "remediacao": "r",
+                "modo": "arquivo-presente",
+            },
+        },
+    )
+
+    implementacao_ast = construir_implementacao_ast()
+    definicao_ast = _certificar_com_idempotencia(
+        implementacao_ast,
+        {
+            "caminho": "arquivo-de-certificacao.py",
+            "conteudo": "class X:\n    pass\n",
+            "regra": {
+                "codigo": "CERT-001",
+                "agente": "sistema",
+                "severidade": "low",
+                "categoria": "certificacao",
+                "titulo": "t",
+                "causa": "c",
+                "remediacao": "r",
+                "seletor_tipo": "classdef",
+                "seletor_include": "X",
+                "corpo_padrao": "protegido",
+            },
+        },
+    )
+
     registry = CapabilityRegistry()
-    registry.register(definicao_ativa)
+    registry.register(definicao_regex)
+    registry.register(definicao_ast)
 
     operator = Operator(
         operator_id=OperatorId("op-scan"),
-        capabilities=[definicao_ativa.id],
+        capabilities=[definicao_regex.id, definicao_ast.id],
         permissions=PermissionSet(
-            allowed_actions=[str(definicao_ativa.id)], side_effect_scope=SideEffectScope.READ_ONLY
+            allowed_actions=[str(definicao_regex.id), str(definicao_ast.id)],
+            side_effect_scope=SideEffectScope.READ_ONLY,
         ),
         sandbox=SandboxPolicy(
             resource_limits=ResourceLimits(),
             network_policy=NetworkPolicy.NONE,
             filesystem_access=FilesystemAccess.NONE,
         ),
-        executor=ExecutorViaImplementacoes({definicao_ativa.id: implementacao}),
+        executor=ExecutorViaImplementacoes(
+            {definicao_regex.id: implementacao_regex, definicao_ast.id: implementacao_ast}
+        ),
     )
-    return registry, implementacao, operator
+    return registry, operator
 
 
-def executar_scan(root: Path, especificacoes: list[SpecDeRegra] | None = None) -> ResultadoScan:
+def _todas_especificacoes() -> list[SpecDeRegra | SpecDeRegraAst]:
+    especificacoes: list[SpecDeRegra | SpecDeRegraAst] = []
+    especificacoes.extend(carregar_lote_01())
+    especificacoes.extend(carregar_lote_02())
+    especificacoes.extend(carregar_especificacoes_ast())
+    return especificacoes
+
+
+def executar_scan(
+    root: Path, especificacoes: Sequence[SpecDeRegra | SpecDeRegraAst] | None = None
+) -> ResultadoScan:
     """Vol.IX Cap.34 — roda as Capabilities migradas contra `root`. Sem
-    `especificacoes`, usa todos os lotes já migrados (`carregar_lote_01()` +
-    `carregar_lote_02()`)."""
-    especificacoes = (
-        especificacoes if especificacoes is not None else carregar_lote_01() + carregar_lote_02()
-    )
+    `especificacoes`, usa todos os lotes/Skills já migrados
+    (`carregar_lote_01()` + `carregar_lote_02()` +
+    `carregar_especificacoes_ast()`)."""
+    especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
 
-    registry, _implementacao, operator = _preparar_capability()
+    registry, operator = _preparar_capabilities()
     execution_engine = ExecutionEngine(
         validador_schema=ValidadorSchemaEstrutural(),
         validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
@@ -216,7 +274,12 @@ def executar_scan(root: Path, especificacoes: list[SpecDeRegra] | None = None) -
     resultado = ResultadoScan()
     try:
         for item in especificacoes:
-            for entrada in entradas_para_regra(root, item["regra"], item["descoberta"]):
+            entradas = (
+                entradas_ast_para_regra(root, item["regra"], item["descoberta"])
+                if isinstance(item["regra"], RegraAstSpec)
+                else entradas_para_regra(root, item["regra"], item["descoberta"])
+            )
+            for entrada in entradas:
                 achado = _processar_entrada(
                     entrada.model_dump(),
                     runtime=runtime,

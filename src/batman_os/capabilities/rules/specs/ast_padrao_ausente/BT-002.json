@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "BT-002",
+    "agente": "blue-team",
+    "severidade": "medium",
+    "categoria": "auditoria",
+    "titulo": "Rota admin sem audit trail (log_action)",
+    "causa": "Operações administrativas sem registro de auditoria tornam impossível rastrear alterações em usuários, planos e configurações — risco de compliance e forense.",
+    "remediacao": "Adicionar log_action em todas as rotas que usam require_admin. DoD: todo handler com require_admin chama log_action.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "require_admin|require_super_admin|require_local_admin",
+    "seletor_exclude": "\\.(get|head|options)\\s*\\(",
+    "corpo_padrao": "log_action|audit_log|registro_auditoria",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}

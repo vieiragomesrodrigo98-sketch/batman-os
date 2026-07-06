@@ -17,6 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     CondicaoAdicional,
     EntradaRegexArquivo,
@@ -41,6 +42,18 @@ def entradas_para_regra(
         EntradaRegexArquivo(
             caminho=caminho, conteudo=conteudo, condicoes_adicionais=condicoes, regra=regra
         )
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_ast_para_regra(
+    root: Path, regra: RegraAstSpec, descoberta: dict[str, Any]
+) -> list[EntradaAst]:
+    """Mesmo espírito de `entradas_para_regra`, para a Skill AST — sem
+    `condicoes_adicionais` (nenhuma regra migrada até agora precisa de
+    checagem cruzada entre arquivos nesta Skill)."""
+    return [
+        EntradaAst(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 

@@ -1,0 +1,25 @@
+{
+  "regra": {
+    "codigo": "BT-003",
+    "agente": "blue-team",
+    "severidade": "medium",
+    "categoria": "auditoria",
+    "titulo": "Campo created_at ou id exposto em schema de criação/atualização (usuário pode manipular timestamps)",
+    "causa": "Expor created_at, updated_at ou id em schemas de request body permite que clientes manipulem timestamps e IDs — dados que devem ser controlados pelo servidor.",
+    "remediacao": "Remover created_at, updated_at e id de schemas de request body. Usar schemas separados para request (sem esses campos) e response. DoD: sem esses campos em BaseModel de entrada.",
+    "seletor_tipo": "classdef",
+    "seletor_include": "(?:Create|Update|Upsert|Edit|Input|Payload|Request|Body|Form|In)$",
+    "seletor_exclude": "(?:Response|Out|Read|Detail|Summary|Result|View|List|Schema|Output|Dto)$",
+    "corpo_padrao": "(?m)(?-i:^\\s*(created_at|updated_at)\\s*:|^\\s*id\\s*:)",
+    "inverte_disparo": true,
+    "precondicao_arquivo": "BaseModel",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_prefixo": ["tests/"],
+    "excluir_nome_prefixo": ["test_"]
+  }
+}

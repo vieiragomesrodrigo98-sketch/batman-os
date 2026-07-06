@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "COMP-001",
+    "agente": "compliance",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "Tabela com dados pessoais sem deleted_at (LGPD art. 16)",
+    "causa": "A LGPD exige que dados pessoais possam ser apagados a pedido do titular (art. 18). Tabelas sem deleted_at não suportam soft-delete, tornando o apagamento reversível impossível sem DELETE físico.",
+    "remediacao": "Adicionar deleted_at (datetime nullable) a toda tabela que guarda dados pessoais. DoD: toda Table com cpf/email/nome tem coluna deleted_at.",
+    "seletor_tipo": "classdef",
+    "seletor_include": "Table|Model|Base",
+    "corpo_escopo": "\\b(cpf|email|nome|name|telefone|phone|endereco|address)\\b",
+    "corpo_padrao": "deleted_at|soft.delete|is_deleted",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

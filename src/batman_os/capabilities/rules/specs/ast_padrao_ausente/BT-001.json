@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "BT-001",
+    "agente": "blue-team",
+    "severidade": "high",
+    "categoria": "auditoria",
+    "titulo": "Operação destrutiva sem log_action",
+    "causa": "DELETE, drop e operações destrutivas sem log_action deixam o sistema sem rastreabilidade — impossível saber quem apagou o quê e quando em caso de incidente.",
+    "remediacao": "Adicionar log_action antes de toda operação destrutiva nos routers. DoD: todo endpoint DELETE e toda operação de drop chama log_action.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "\\.delete\\s*\\(",
+    "seletor_so_decorator": true,
+    "corpo_padrao": "log_action|audit_log|registro_auditoria",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}
