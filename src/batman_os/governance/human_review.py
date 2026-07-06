@@ -28,6 +28,12 @@ from typing import Literal, NewType
 from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import Evidence, HumanReviewRef, Timestamp, agora, novo_uuid7
+from batman_os.governance.governance_engine import (
+    FonteAlerta,
+    GovernanceAlert,
+    GovernanceEngine,
+    SeveridadeAlerta,
+)
 
 ReviewRequestId = NewType("ReviewRequestId", str)
 ReviewerId = NewType("ReviewerId", str)
@@ -188,3 +194,49 @@ def emitir_referencia(decisao: HumanReviewDecision) -> HumanReviewRef:
             f"(esta '{decisao.decision}') — nao gera HumanReviewRef"
         )
     return HumanReviewRef(f"{decisao.request_id}:{decisao.reviewer_id}")
+
+
+_STATUS_AGUARDANDO_DECISAO = frozenset({StatusRevisao.PENDING, StatusRevisao.IN_REVIEW})
+
+
+def verificar_sla_e_alarmar(
+    solicitacoes: list[HumanReviewRequest],
+    governance: GovernanceEngine,
+    agora_: Timestamp | None = None,
+) -> list[GovernanceAlert]:
+    """Vol.VII Cap.28 + Cap.27 (achado de revisão, Milestone 4 desta
+    construção) — fila de Human Review sem alarme de SLA real: nada
+    disparava `GovernanceEngine.raise_alert()` quando `sla_deadline` era
+    ultrapassado sem decisão, apesar de `HumanReviewRequest.sla_deadline`
+    existir desde o Cap.28 e `FonteAlerta.HUMAN_REVIEW_BACKLOG` existir
+    desde o Cap.27.
+
+    Só solicitações ainda aguardando decisão (`pending`/`in-review`)
+    alarmam — uma já decidida (`approved`/`rejected`/`changes-requested`)
+    nunca dispara, mesmo que o prazo tenha passado depois: a SLA mede o
+    tempo ATÉ a decisão, não depois dela."""
+    momento = agora_ or agora()
+    disparados: list[GovernanceAlert] = []
+    for solicitacao in solicitacoes:
+        if solicitacao.status not in _STATUS_AGUARDANDO_DECISAO:
+            continue
+        if momento <= solicitacao.sla_deadline:
+            continue
+
+        alerta = GovernanceAlert(
+            source=FonteAlerta.HUMAN_REVIEW_BACKLOG,
+            severity=SeveridadeAlerta.WARNING,
+            evidence=[
+                Evidence(
+                    origem=f"HumanReviewRequest:{solicitacao.id}",
+                    evidencias=[
+                        f"kind={solicitacao.kind.value}",
+                        f"status={solicitacao.status.value}",
+                        f"sla_deadline={solicitacao.sla_deadline.isoformat()}",
+                    ],
+                )
+            ],
+        )
+        governance.raise_alert(alerta)
+        disparados.append(alerta)
+    return disparados

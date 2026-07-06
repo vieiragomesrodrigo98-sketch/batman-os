@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
-from batman_os.foundation.types import Evidence, agora
+from batman_os.foundation.types import Evidence, Timestamp, agora
+from batman_os.governance.governance_engine import FonteAlerta, GovernanceEngine
 from batman_os.governance.human_review import (
     HumanReviewDecision,
     HumanReviewRequest,
@@ -19,19 +22,23 @@ from batman_os.governance.human_review import (
     emitir_referencia,
     papeis_autorizados,
     reabrir_como_nova_solicitacao,
+    verificar_sla_e_alarmar,
 )
 
 
 def _solicitacao(
     kind: TipoRevisao = TipoRevisao.RULE_PROMOTION,
     required_reviewer_role: ReviewerRole = ReviewerRole.DOMAIN_EXPERT,
+    sla_deadline: Timestamp | None = None,
+    status: StatusRevisao = StatusRevisao.PENDING,
 ) -> HumanReviewRequest:
     return HumanReviewRequest(
         kind=kind,
         subject_ref="rule-candidate-1",
         evidence=[Evidence(origem="teste", evidencias=["x"])],
         required_reviewer_role=required_reviewer_role,
-        sla_deadline=agora(),
+        sla_deadline=sla_deadline or agora(),
+        status=status,
     )
 
 
@@ -189,3 +196,69 @@ class TestReaberturaDeSolicitacaoComChangesRequested:
 
         assert len(nova.evidence) == len(original.evidence) + 1
         assert nova_evidencia in nova.evidence
+
+
+class TestMilestone4FilaComAlarmeDeSlaReal:
+    """Achado de revisão fechado na Milestone 4: `sla_deadline` existia
+    desde o Cap.28 mas nada disparava `GovernanceEngine.raise_alert()`
+    quando ultrapassado sem decisão."""
+
+    _MOMENTO = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+
+    def test_solicitacao_pending_com_prazo_ultrapassado_dispara_alerta(self) -> None:
+        solicitacao = _solicitacao(
+            sla_deadline=self._MOMENTO - timedelta(hours=1), status=StatusRevisao.PENDING
+        )
+        governance = GovernanceEngine()
+
+        disparados = verificar_sla_e_alarmar([solicitacao], governance, agora_=self._MOMENTO)
+
+        assert len(disparados) == 1
+        assert disparados[0].source == FonteAlerta.HUMAN_REVIEW_BACKLOG
+        assert governance.get_open_alerts(source=FonteAlerta.HUMAN_REVIEW_BACKLOG)
+
+    def test_solicitacao_in_review_com_prazo_ultrapassado_tambem_dispara(self) -> None:
+        solicitacao = _solicitacao(
+            sla_deadline=self._MOMENTO - timedelta(hours=1), status=StatusRevisao.IN_REVIEW
+        )
+        governance = GovernanceEngine()
+
+        disparados = verificar_sla_e_alarmar([solicitacao], governance, agora_=self._MOMENTO)
+
+        assert len(disparados) == 1
+
+    def test_solicitacao_dentro_do_prazo_nao_dispara(self) -> None:
+        solicitacao = _solicitacao(
+            sla_deadline=self._MOMENTO + timedelta(hours=1), status=StatusRevisao.PENDING
+        )
+        governance = GovernanceEngine()
+
+        disparados = verificar_sla_e_alarmar([solicitacao], governance, agora_=self._MOMENTO)
+
+        assert disparados == []
+        assert governance.get_open_alerts(source=FonteAlerta.HUMAN_REVIEW_BACKLOG) == []
+
+    def test_solicitacao_ja_decidida_nunca_dispara_mesmo_com_prazo_ultrapassado(self) -> None:
+        solicitacao = _solicitacao(
+            sla_deadline=self._MOMENTO - timedelta(hours=1), status=StatusRevisao.APPROVED
+        )
+        governance = GovernanceEngine()
+
+        disparados = verificar_sla_e_alarmar([solicitacao], governance, agora_=self._MOMENTO)
+
+        assert disparados == []
+
+    def test_verifica_varias_solicitacoes_de_uma_vez(self) -> None:
+        vencida = _solicitacao(sla_deadline=self._MOMENTO - timedelta(hours=1))
+        no_prazo = _solicitacao(sla_deadline=self._MOMENTO + timedelta(hours=1))
+        decidida = _solicitacao(
+            sla_deadline=self._MOMENTO - timedelta(hours=1), status=StatusRevisao.REJECTED
+        )
+        governance = GovernanceEngine()
+
+        disparados = verificar_sla_e_alarmar(
+            [vencida, no_prazo, decidida], governance, agora_=self._MOMENTO
+        )
+
+        assert len(disparados) == 1
+        assert disparados[0].evidence[0].origem == f"HumanReviewRequest:{vencida.id}"
