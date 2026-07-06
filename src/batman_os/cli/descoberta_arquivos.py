@@ -4,14 +4,16 @@ então este módulo lê do disco diretamente em vez de inventar uma abstração
 prematura).
 
 Interpreta a seção `descoberta` dos specs em `capabilities/rules/specs/
-lote_01/*.json` — 5 tipos: `arquivo_fixo` (um caminho único), `arvore`
+lote_01/*.json` — 6 tipos: `arquivo_fixo` (um caminho único), `arvore`
 (busca recursiva por extensão sob `scope_dirs`), `glob` (padrões glob
 relativos à raiz, ou um único padrão recursivo com exclusões), `git` (roda
 um comando `git` fixo uma vez, replicando `RepoContext.git()` do legado),
 `subprocess` (roda um módulo Python instalado no venv do repo alvo —
 pytest/ruff — com cache por comando+root dentro da mesma execução de
 `executar_scan`, replicando/corrigindo `_find_python()` + `_ruff_cache`/
-ausência de cache de `oracle.py`/`robin.py`).
+ausência de cache de `oracle.py`/`robin.py`), `toml_dependencias` (empacota
+`pyproject.toml` + `requirements.txt` + arquivos `.py` de `tests/`/`src/`
+como JSON — parsing real via `tomllib` acontece no handler, não aqui).
 
 Handler da Capability (`capabilities/rules/regex_sobre_conteudo.py`, e as
 demais Skills desta migração) permanece puro — este módulo é o único que
@@ -44,6 +46,10 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     EntradaRegexArquivo,
     ModoAvaliacao,
     RegraSpec,
+)
+from batman_os.capabilities.rules.toml_dependencias import (
+    EntradaDependencias,
+    RegraDependenciasSpec,
 )
 
 _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
@@ -114,6 +120,17 @@ def entradas_execucao_comando_para_regra(
     ]
 
 
+def entradas_dependencias_para_regra(
+    root: Path, regra: RegraDependenciasSpec, descoberta: dict[str, Any]
+) -> list[EntradaDependencias]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Skill "parsing
+    TOML real de pyproject.toml"."""
+    return [
+        EntradaDependencias(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
     """Retorna `(caminho_relativo, conteudo_ou_None)` para cada arquivo
     relevante segundo `descoberta["tipo"]`."""
@@ -135,7 +152,34 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_de_comando_git(root, descoberta)
     if tipo == "subprocess":
         return _resultado_de_subprocess(root, descoberta)
+    if tipo == "toml_dependencias":
+        return _resultado_de_dependencias(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
+
+
+def _resultado_de_dependencias(
+    root: Path, descoberta: dict[str, Any]
+) -> list[tuple[str, str | None]]:
+    caminho_relatorio = descoberta.get("caminho_relatorio", "pyproject.toml")
+    pyproject = root / "pyproject.toml"
+    requirements = root / "requirements.txt"
+
+    payload: dict[str, Any] = {
+        "pyproject_texto": _ler_texto(pyproject) if pyproject.exists() else None,
+        "requirements_texto": _ler_texto(requirements) if requirements.exists() else None,
+        "arquivos_tests": _arquivos_py_como_dict(root, root / "tests"),
+        "arquivos_src": _arquivos_py_como_dict(root, root / "src"),
+    }
+    return [(caminho_relatorio, json.dumps(payload))]
+
+
+def _arquivos_py_como_dict(root: Path, base: Path) -> dict[str, str]:
+    if not base.exists():
+        return {}
+    return {
+        str(caminho.relative_to(root)).replace("\\", "/"): _ler_texto(caminho)
+        for caminho in sorted(base.rglob("*.py"))
+    }
 
 
 def _resultado_de_comando_git(

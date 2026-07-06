@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "DEP-001",
+    "agente": "dep-check",
+    "severidade": "high",
+    "categoria": "dependencias",
+    "titulo": "Dependência importada em tests/ não declarada em pyproject.toml",
+    "causa": "Imports em tests/ que dependem de pacotes instalados apenas de forma transitiva funcionam localmente mas quebram o CI em ambientes limpos (Ubuntu, Docker, VPS novo, outro desenvolvedor). Exemplo clássico: pyarrow instalado como transitive dep de yfinance/streamlit — to_parquet() funcionava local mas quebrou 15 runs de CI consecutivos (S97).",
+    "remediacao": "Adicionar o pacote ausente a pyproject.toml: em [project.dependencies] se usado em produção, ou em [project.optional-dependencies.dev] se for exclusivo de testes. DoD: pip install -e '.[dev,api]' em ambiente limpo + pytest green.",
+    "aspecto": "import_nao_declarado"
+  },
+  "descoberta": {
+    "tipo": "toml_dependencias",
+    "caminho_relatorio": "pyproject.toml"
+  }
+}

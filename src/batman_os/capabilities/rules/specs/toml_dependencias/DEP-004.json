@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "DEP-004",
+    "agente": "dep-check",
+    "severidade": "low",
+    "categoria": "dependencias",
+    "titulo": "Mesmo pacote declarado em dependências de produção e dev",
+    "causa": "Pacote em ambos os grupos pode causar conflito de versão e aumenta desnecessariamente o tamanho da imagem de produção.",
+    "remediacao": "Remover o pacote de [project.dependencies] se for usado só em dev. DoD: sem pacote listado em ambos os grupos.",
+    "aspecto": "duplicado_prod_dev"
+  },
+  "descoberta": {
+    "tipo": "toml_dependencias",
+    "caminho_relatorio": "pyproject.toml"
+  }
+}

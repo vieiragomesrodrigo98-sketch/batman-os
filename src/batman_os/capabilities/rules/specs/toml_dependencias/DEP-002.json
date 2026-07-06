@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "DEP-002",
+    "agente": "dep-check",
+    "severidade": "high",
+    "categoria": "dependencias",
+    "titulo": "to_parquet/read_parquet usado sem pyarrow ou fastparquet no pyproject.toml",
+    "causa": "pandas.DataFrame.to_parquet() e pandas.read_parquet() requerem pyarrow ou fastparquet como engine. Sem declaração explícita, eles podem estar presentes no ambiente local via dependência transitiva, mas falham em CI/CD ou em ambientes limpos. Causa raiz do CI_FIX01 (S97): 15 runs falhando por ImportError.",
+    "remediacao": "Adicionar 'pyarrow>=14.0' a [project.dependencies] em pyproject.toml (se parquet é usado em produção) ou a [project.optional-dependencies.dev] (se apenas em testes). DoD: pyarrow OU fastparquet presente em pyproject.toml.",
+    "aspecto": "parquet_sem_engine"
+  },
+  "descoberta": {
+    "tipo": "toml_dependencias",
+    "caminho_relatorio": "pyproject.toml"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "DEP-003",
+    "agente": "dep-check",
+    "severidade": "medium",
+    "categoria": "dependencias",
+    "titulo": "Dependência sem versão fixada (apenas >= sem limite superior)",
+    "causa": "Dependências com apenas >= (sem <=) podem ser atualizadas automaticamente para versões breaking, causando falhas inesperadas em produção.",
+    "remediacao": "Usar versões fixadas: 'fastapi>=0.100,<1.0' ou 'fastapi==0.110.0'. DoD: toda dependência de produção tem limite superior de versão.",
+    "aspecto": "sem_limite_superior"
+  },
+  "descoberta": {
+    "tipo": "toml_dependencias",
+    "caminho_relatorio": "pyproject.toml"
+  }
+}

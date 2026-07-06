@@ -82,8 +82,20 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import EntradaRegexArquiv
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     construir_implementacao as construir_implementacao_regex,
 )
+from batman_os.capabilities.rules.toml_dependencias import (
+    EntradaDependencias,
+    RegraDependenciasSpec,
+)
+from batman_os.capabilities.rules.toml_dependencias import (
+    construir_implementacao as construir_implementacao_dependencias,
+)
+from batman_os.capabilities.rules.toml_dependencias_loader import (
+    SpecDeRegraDependencias,
+    carregar_especificacoes_dependencias,
+)
 from batman_os.cli.descoberta_arquivos import (
     entradas_ast_para_regra,
+    entradas_dependencias_para_regra,
     entradas_execucao_comando_para_regra,
     entradas_git_interpretado_para_regra,
     entradas_kwarg_ausente_para_regra,
@@ -313,6 +325,28 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_dependencias(),
+            {
+                "caminho": "pyproject.toml",
+                "conteudo": json.dumps(
+                    {
+                        "pyproject_texto": '[project]\ndependencies = ["pytest>=8.0"]\n'
+                        '[project.optional-dependencies]\ndev = ["pytest>=8.0"]\n',
+                    }
+                ),
+                "regra": {
+                    "codigo": "CERT-005",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "aspecto": "duplicado_prod_dev",
+                },
+            },
+        ),
     ]
 
 
@@ -359,6 +393,7 @@ _Especificacao = (
     | SpecDeRegraKwargAusente
     | SpecDeRegraGitInterpretado
     | SpecDeRegraExecucaoComando
+    | SpecDeRegraDependencias
 )
 
 
@@ -370,6 +405,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_kwarg_ausente())
     especificacoes.extend(carregar_especificacoes_git_interpretado())
     especificacoes.extend(carregar_especificacoes_execucao_comando())
+    especificacoes.extend(carregar_especificacoes_dependencias())
     return especificacoes
 
 
@@ -381,7 +417,8 @@ def executar_scan(
     (`carregar_lote_01()` + `carregar_lote_02()` + `carregar_especificacoes_ast()`
     + `carregar_especificacoes_kwarg_ausente()` +
     `carregar_especificacoes_git_interpretado()` +
-    `carregar_especificacoes_execucao_comando()`)."""
+    `carregar_especificacoes_execucao_comando()` +
+    `carregar_especificacoes_dependencias()`)."""
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
 
     registry, operator = _preparar_capabilities()
@@ -408,6 +445,7 @@ def executar_scan(
                 | EntradaKwargAusente
                 | EntradaGitInterpretado
                 | EntradaExecucaoComando
+                | EntradaDependencias
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -417,6 +455,8 @@ def executar_scan(
                 entradas = entradas_git_interpretado_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraExecucaoComandoSpec):
                 entradas = entradas_execucao_comando_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraDependenciasSpec):
+                entradas = entradas_dependencias_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:
