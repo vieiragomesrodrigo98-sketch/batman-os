@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "CTO-001",
+    "agente": "cto",
+    "severidade": "high",
+    "categoria": "resiliencia",
+    "titulo": "Chamada HTTP externa sem timeout configurado",
+    "causa": "Chamadas a APIs externas (requests.get, httpx.get, etc.) sem timeout penduram o thread/coroutine indefinidamente se o serviço externo travar, esgotando o pool de workers e derrubando a aplicação inteira.",
+    "remediacao": "Sempre passar timeout= (ex.: timeout=10) em chamadas HTTP. DoD: nenhuma chamada requests/httpx sem timeout explícito.",
+    "metodos_call": ["get", "post", "put", "patch", "delete", "request"],
+    "kwarg_obrigatorio": "timeout",
+    "objeto_attr_permitido": ["client", "session"],
+    "objeto_name_permitido": ["requests", "httpx"]
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

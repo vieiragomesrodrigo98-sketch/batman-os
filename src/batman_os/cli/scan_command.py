@@ -31,7 +31,19 @@ from batman_os.capabilities.operator import (
     SandboxPolicy,
     SideEffectScope,
 )
+from batman_os.capabilities.rules.ast_kwarg_ausente import (
+    EntradaKwargAusente,
+    RegraKwargAusenteSpec,
+)
+from batman_os.capabilities.rules.ast_kwarg_ausente import (
+    construir_implementacao as construir_implementacao_kwarg_ausente,
+)
+from batman_os.capabilities.rules.ast_kwarg_ausente_loader import (
+    SpecDeRegraKwargAusente,
+    carregar_especificacoes_kwarg_ausente,
+)
 from batman_os.capabilities.rules.ast_padrao_ausente import (
+    EntradaAst,
     RegraAstSpec,
 )
 from batman_os.capabilities.rules.ast_padrao_ausente import (
@@ -41,13 +53,31 @@ from batman_os.capabilities.rules.ast_padrao_ausente_loader import (
     SpecDeRegraAst,
     carregar_especificacoes_ast,
 )
+from batman_os.capabilities.rules.git_comando_interpretado import (
+    EntradaGitInterpretado,
+    RegraComparacaoNumericaSpec,
+)
+from batman_os.capabilities.rules.git_comando_interpretado import (
+    construir_implementacao as construir_implementacao_git,
+)
+from batman_os.capabilities.rules.git_comando_interpretado_loader import (
+    SpecDeRegraGitInterpretado,
+    carregar_especificacoes_git_interpretado,
+)
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
+from batman_os.capabilities.rules.regex_sobre_conteudo import EntradaRegexArquivo
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     construir_implementacao as construir_implementacao_regex,
 )
-from batman_os.cli.descoberta_arquivos import entradas_ast_para_regra, entradas_para_regra
+from batman_os.cli.descoberta_arquivos import (
+    entradas_ast_para_regra,
+    entradas_git_interpretado_para_regra,
+    entradas_kwarg_ausente_para_regra,
+    entradas_para_regra,
+)
 from batman_os.foundation.types import (
+    CapabilityId,
     Criticidade,
     EscalationPolicy,
     MissionId,
@@ -169,63 +199,111 @@ def _certificar_com_idempotencia(
     )
 
 
+def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str, object]]]:
+    """Uma entrada por Capability genérica migrada — `(implementação, entrada
+    de teste de idempotência)`. Adicionar aqui é o único passo necessário
+    para uma nova Skill entrar no scan (registro/Operador/Executor são
+    genéricos em `_preparar_capabilities`, não precisam mudar)."""
+    return [
+        (
+            construir_implementacao_regex(),
+            {
+                "caminho": "arquivo-de-certificacao.txt",
+                "conteudo": "x",
+                "regra": {
+                    "codigo": "CERT-000",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "modo": "arquivo-presente",
+                },
+            },
+        ),
+        (
+            construir_implementacao_ast(),
+            {
+                "caminho": "arquivo-de-certificacao.py",
+                "conteudo": "class X:\n    pass\n",
+                "regra": {
+                    "codigo": "CERT-001",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "seletor_tipo": "classdef",
+                    "seletor_include": "X",
+                    "corpo_padrao": "protegido",
+                },
+            },
+        ),
+        (
+            construir_implementacao_kwarg_ausente(),
+            {
+                "caminho": "arquivo-de-certificacao.py",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-002",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "metodos_call": ["get"],
+                    "kwarg_obrigatorio": "timeout",
+                },
+            },
+        ),
+        (
+            construir_implementacao_git(),
+            {
+                "caminho": ".git",
+                "conteudo": "3",
+                "regra": {
+                    "codigo": "CERT-003",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "limiar": 0,
+                },
+            },
+        ),
+    ]
+
+
 def _preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
     """Certifica as Capabilities genéricas de verdade (checklist + testes de
     aceitação + idempotência, Vol.IV Cap.16) e monta o Operador real que as
     executa — uma vez por chamada de `executar_scan`, reaproveitado por
-    todas as Missões do lote. Registra AMBAS (regex + AST) no mesmo Registry
-    — `CapabilityRegistry.find_candidates` (Vol.III Cap.11) já resolve qual
+    todas as Missões do lote. Registra TODAS no mesmo Registry —
+    `CapabilityRegistry.find_candidates` (Vol.III Cap.11) já resolve qual
     delas serve cada Missão por casamento estrutural de schema (ver
-    docstring de `EntradaAst.tipo`), sem código de roteamento extra aqui."""
-    implementacao_regex = construir_implementacao_regex()
-    definicao_regex = _certificar_com_idempotencia(
-        implementacao_regex,
-        {
-            "caminho": "arquivo-de-certificacao.txt",
-            "conteudo": "x",
-            "regra": {
-                "codigo": "CERT-000",
-                "agente": "sistema",
-                "severidade": "low",
-                "categoria": "certificacao",
-                "titulo": "t",
-                "causa": "c",
-                "remediacao": "r",
-                "modo": "arquivo-presente",
-            },
-        },
-    )
-
-    implementacao_ast = construir_implementacao_ast()
-    definicao_ast = _certificar_com_idempotencia(
-        implementacao_ast,
-        {
-            "caminho": "arquivo-de-certificacao.py",
-            "conteudo": "class X:\n    pass\n",
-            "regra": {
-                "codigo": "CERT-001",
-                "agente": "sistema",
-                "severidade": "low",
-                "categoria": "certificacao",
-                "titulo": "t",
-                "causa": "c",
-                "remediacao": "r",
-                "seletor_tipo": "classdef",
-                "seletor_include": "X",
-                "corpo_padrao": "protegido",
-            },
-        },
-    )
+    docstring de `EntradaAst.tipo`/`EntradaKwargAusente.tipo`), sem código de
+    roteamento extra aqui."""
+    definicoes: list[CapabilityDefinition] = []
+    implementacoes: dict[CapabilityId, CapabilityImplementation] = {}
+    for implementacao, entrada_idempotencia in _capabilities_a_registrar():
+        definicao = _certificar_com_idempotencia(implementacao, entrada_idempotencia)
+        definicoes.append(definicao)
+        implementacoes[definicao.id] = implementacao
 
     registry = CapabilityRegistry()
-    registry.register(definicao_regex)
-    registry.register(definicao_ast)
+    for definicao in definicoes:
+        registry.register(definicao)
 
     operator = Operator(
         operator_id=OperatorId("op-scan"),
-        capabilities=[definicao_regex.id, definicao_ast.id],
+        capabilities=[definicao.id for definicao in definicoes],
         permissions=PermissionSet(
-            allowed_actions=[str(definicao_regex.id), str(definicao_ast.id)],
+            allowed_actions=[str(definicao.id) for definicao in definicoes],
             side_effect_scope=SideEffectScope.READ_ONLY,
         ),
         sandbox=SandboxPolicy(
@@ -233,28 +311,32 @@ def _preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
             network_policy=NetworkPolicy.NONE,
             filesystem_access=FilesystemAccess.NONE,
         ),
-        executor=ExecutorViaImplementacoes(
-            {definicao_regex.id: implementacao_regex, definicao_ast.id: implementacao_ast}
-        ),
+        executor=ExecutorViaImplementacoes(implementacoes),
     )
     return registry, operator
 
 
-def _todas_especificacoes() -> list[SpecDeRegra | SpecDeRegraAst]:
-    especificacoes: list[SpecDeRegra | SpecDeRegraAst] = []
+_Especificacao = SpecDeRegra | SpecDeRegraAst | SpecDeRegraKwargAusente | SpecDeRegraGitInterpretado
+
+
+def _todas_especificacoes() -> list[_Especificacao]:
+    especificacoes: list[_Especificacao] = []
     especificacoes.extend(carregar_lote_01())
     especificacoes.extend(carregar_lote_02())
     especificacoes.extend(carregar_especificacoes_ast())
+    especificacoes.extend(carregar_especificacoes_kwarg_ausente())
+    especificacoes.extend(carregar_especificacoes_git_interpretado())
     return especificacoes
 
 
 def executar_scan(
-    root: Path, especificacoes: Sequence[SpecDeRegra | SpecDeRegraAst] | None = None
+    root: Path, especificacoes: Sequence[_Especificacao] | None = None
 ) -> ResultadoScan:
     """Vol.IX Cap.34 — roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa todos os lotes/Skills já migrados
-    (`carregar_lote_01()` + `carregar_lote_02()` +
-    `carregar_especificacoes_ast()`)."""
+    (`carregar_lote_01()` + `carregar_lote_02()` + `carregar_especificacoes_ast()`
+    + `carregar_especificacoes_kwarg_ausente()` +
+    `carregar_especificacoes_git_interpretado()`)."""
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
 
     registry, operator = _preparar_capabilities()
@@ -274,11 +356,18 @@ def executar_scan(
     resultado = ResultadoScan()
     try:
         for item in especificacoes:
-            entradas = (
-                entradas_ast_para_regra(root, item["regra"], item["descoberta"])
-                if isinstance(item["regra"], RegraAstSpec)
-                else entradas_para_regra(root, item["regra"], item["descoberta"])
-            )
+            regra = item["regra"]
+            entradas: Sequence[
+                EntradaRegexArquivo | EntradaAst | EntradaKwargAusente | EntradaGitInterpretado
+            ]
+            if isinstance(regra, RegraAstSpec):
+                entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraKwargAusenteSpec):
+                entradas = entradas_kwarg_ausente_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraComparacaoNumericaSpec):
+                entradas = entradas_git_interpretado_para_regra(root, regra, item["descoberta"])
+            else:
+                entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:
                 achado = _processar_entrada(
                     entrada.model_dump(),

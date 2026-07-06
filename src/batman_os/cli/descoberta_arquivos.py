@@ -4,20 +4,31 @@ então este módulo lê do disco diretamente em vez de inventar uma abstração
 prematura).
 
 Interpreta a seção `descoberta` dos specs em `capabilities/rules/specs/
-lote_01/*.json` — 3 tipos: `arquivo_fixo` (um caminho único), `arvore`
+lote_01/*.json` — 4 tipos: `arquivo_fixo` (um caminho único), `arvore`
 (busca recursiva por extensão sob `scope_dirs`), `glob` (padrões glob
-relativos à raiz, ou um único padrão recursivo com exclusões).
+relativos à raiz, ou um único padrão recursivo com exclusões), `git` (roda
+um comando `git` fixo uma vez, replicando `RepoContext.git()` do legado).
 
-Handler da Capability (`capabilities/rules/regex_sobre_conteudo.py`)
-permanece puro — este módulo é o único que toca disco.
+Handler da Capability (`capabilities/rules/regex_sobre_conteudo.py`, e as
+demais Skills desta migração) permanece puro — este módulo é o único que
+toca disco/processo.
 """
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
+from batman_os.capabilities.rules.ast_kwarg_ausente import (
+    EntradaKwargAusente,
+    RegraKwargAusenteSpec,
+)
 from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
+from batman_os.capabilities.rules.git_comando_interpretado import (
+    EntradaGitInterpretado,
+    RegraComparacaoNumericaSpec,
+)
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     CondicaoAdicional,
     EntradaRegexArquivo,
@@ -58,6 +69,28 @@ def entradas_ast_para_regra(
     ]
 
 
+def entradas_kwarg_ausente_para_regra(
+    root: Path, regra: RegraKwargAusenteSpec, descoberta: dict[str, Any]
+) -> list[EntradaKwargAusente]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Skill "Call com
+    kwarg obrigatório ausente"."""
+    return [
+        EntradaKwargAusente(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_git_interpretado_para_regra(
+    root: Path, regra: RegraComparacaoNumericaSpec, descoberta: dict[str, Any]
+) -> list[EntradaGitInterpretado]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Skill "comando
+    git único interpretado"."""
+    return [
+        EntradaGitInterpretado(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
     """Retorna `(caminho_relativo, conteudo_ou_None)` para cada arquivo
     relevante segundo `descoberta["tipo"]`."""
@@ -75,7 +108,32 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _arquivos_em_arvore(root, descoberta)
     if tipo == "glob":
         return _arquivos_via_glob(root, descoberta)
+    if tipo == "git":
+        return _resultado_de_comando_git(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
+
+
+def _resultado_de_comando_git(
+    root: Path, descoberta: dict[str, Any]
+) -> list[tuple[str, str | None]]:
+    """Replica `Batman/scan/base.py::RepoContext.git()` — nunca propaga
+    falha/timeout como exceção, retorna string vazia (não `None`; `None`
+    aqui significaria "arquivo ausente", semântica que não se aplica a saída
+    de comando)."""
+    args = descoberta["args"]
+    caminho_relatorio = descoberta.get("caminho_relatorio", ".git")
+    try:
+        resultado = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        conteudo = resultado.stdout.strip()
+    except Exception:
+        conteudo = ""
+    return [(caminho_relatorio, conteudo)]
 
 
 def _condicoes_adicionais_para(root: Path, descoberta: dict[str, Any]) -> list[CondicaoAdicional]:

@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "QA-008",
+    "agente": "qa-analyst",
+    "severidade": "medium",
+    "categoria": "tests",
+    "titulo": "Commits locais sem push para o remoto",
+    "causa": "Commits acumulados localmente sem push bloqueiam o deploy e escondem o estado real do projeto de quem audita pelo repositório remoto.",
+    "remediacao": "Fazer push (ou abrir PR) dos commits pendentes. DoD: git rev-list @{u}..HEAD retorna 0.",
+    "limiar": 0
+  },
+  "descoberta": {
+    "tipo": "git",
+    "args": ["rev-list", "--count", "@{u}..HEAD"],
+    "caminho_relatorio": ".git"
+  }
+}
