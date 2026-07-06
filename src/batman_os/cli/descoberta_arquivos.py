@@ -4,10 +4,14 @@ então este módulo lê do disco diretamente em vez de inventar uma abstração
 prematura).
 
 Interpreta a seção `descoberta` dos specs em `capabilities/rules/specs/
-lote_01/*.json` — 4 tipos: `arquivo_fixo` (um caminho único), `arvore`
+lote_01/*.json` — 5 tipos: `arquivo_fixo` (um caminho único), `arvore`
 (busca recursiva por extensão sob `scope_dirs`), `glob` (padrões glob
 relativos à raiz, ou um único padrão recursivo com exclusões), `git` (roda
-um comando `git` fixo uma vez, replicando `RepoContext.git()` do legado).
+um comando `git` fixo uma vez, replicando `RepoContext.git()` do legado),
+`subprocess` (roda um módulo Python instalado no venv do repo alvo —
+pytest/ruff — com cache por comando+root dentro da mesma execução de
+`executar_scan`, replicando/corrigindo `_find_python()` + `_ruff_cache`/
+ausência de cache de `oracle.py`/`robin.py`).
 
 Handler da Capability (`capabilities/rules/regex_sobre_conteudo.py`, e as
 demais Skills desta migração) permanece puro — este módulo é o único que
@@ -16,7 +20,9 @@ toca disco/processo.
 
 from __future__ import annotations
 
+import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +31,10 @@ from batman_os.capabilities.rules.ast_kwarg_ausente import (
     RegraKwargAusenteSpec,
 )
 from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
+from batman_os.capabilities.rules.execucao_comando_interpretada import (
+    EntradaExecucaoComando,
+    RegraExecucaoComandoSpec,
+)
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -35,6 +45,8 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     ModoAvaliacao,
     RegraSpec,
 )
+
+_cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
 
 
 class TipoDescobertaDesconhecido(Exception):
@@ -91,6 +103,17 @@ def entradas_git_interpretado_para_regra(
     ]
 
 
+def entradas_execucao_comando_para_regra(
+    root: Path, regra: RegraExecucaoComandoSpec, descoberta: dict[str, Any]
+) -> list[EntradaExecucaoComando]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Skill "executar
+    comando externo, timeout, venv-aware"."""
+    return [
+        EntradaExecucaoComando(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
     """Retorna `(caminho_relativo, conteudo_ou_None)` para cada arquivo
     relevante segundo `descoberta["tipo"]`."""
@@ -110,6 +133,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _arquivos_via_glob(root, descoberta)
     if tipo == "git":
         return _resultado_de_comando_git(root, descoberta)
+    if tipo == "subprocess":
+        return _resultado_de_subprocess(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -134,6 +159,97 @@ def _resultado_de_comando_git(
     except Exception:
         conteudo = ""
     return [(caminho_relatorio, conteudo)]
+
+
+def _python_do_venv(root: Path) -> str:
+    """Replica `_find_python()` duplicado em `oracle.py`/`robin.py` —
+    prefere o Python do venv do projeto alvo; fallback para o Python que
+    está rodando o Batman OS."""
+    for candidato in (
+        root / ".venv" / "Scripts" / "python.exe",
+        root / ".venv" / "bin" / "python",
+        root / "venv" / "Scripts" / "python.exe",
+        root / "venv" / "bin" / "python",
+    ):
+        if candidato.exists():
+            return str(candidato)
+    return sys.executable
+
+
+def _rodar_subprocess_cacheado(
+    comando: tuple[str, ...], root: Path, timeout: int
+) -> tuple[int, str, str]:
+    """Cache por (comando, root) durante o processo — corrige a ausência de
+    cache em `robin.py` (pytest rodava 1x por regra QA-RUN-*; aqui roda 1x
+    para as 3) e replica o cache já existente em `oracle.py` (`_ruff_cache`,
+    ORA-001/002/003). Nunca propaga timeout/ausência do comando como
+    exceção — devolve um returncode sentinela (-2 timeout, -1 não
+    encontrado), mesmo espírito de `RuffUnavailable`/`PytestUnavailable`."""
+    chave = (str(root), *comando)
+    if chave in _cache_subprocess:
+        return _cache_subprocess[chave]
+    try:
+        resultado = subprocess.run(
+            list(comando), cwd=root, capture_output=True, text=True, timeout=timeout
+        )
+        valor = (resultado.returncode, resultado.stdout, resultado.stderr)
+    except subprocess.TimeoutExpired:
+        valor = (-2, "", f"comando excedeu timeout de {timeout}s")
+    except FileNotFoundError:
+        valor = (-1, "", "comando não encontrado")
+    _cache_subprocess[chave] = valor
+    return valor
+
+
+def _resultado_de_subprocess(
+    root: Path, descoberta: dict[str, Any]
+) -> list[tuple[str, str | None]]:
+    caminho_relatorio = descoberta.get("caminho_relatorio", ".")
+    requer_dir: str | None = descoberta.get("requer_dir")
+    dir_requerido_existe = (root / requer_dir).exists() if requer_dir else None
+
+    arquivos_teste_encontrados: list[str] = []
+    padroes_teste = descoberta.get("glob_arquivos_teste")
+    if padroes_teste and requer_dir and dir_requerido_existe:
+        base = root / requer_dir
+        for padrao in padroes_teste:
+            arquivos_teste_encontrados.extend(
+                str(p.relative_to(root)).replace("\\", "/") for p in base.rglob(padrao)
+            )
+
+    if requer_dir and dir_requerido_existe is False:
+        payload_ausente: dict[str, Any] = {
+            "returncode": None,
+            "stdout": "",
+            "stderr": "",
+            "dir_requerido_existe": False,
+            "arquivos_teste_encontrados": [],
+        }
+        return [(caminho_relatorio, json.dumps(payload_ausente))]
+
+    args = list(descoberta.get("args", []))
+    dirs_condicionais = descoberta.get("dirs_condicionais")
+    if dirs_condicionais is not None:
+        existentes = [d for d in dirs_condicionais if (root / d).exists()]
+        if not existentes:
+            # replica oracle.py: nenhum dos dirs-alvo existe -> sucesso
+            # vazio, nem roda o comando (`if not targets: rc=0, items=[]`).
+            payload_vazio: dict[str, Any] = {"returncode": 0, "stdout": "[]", "stderr": ""}
+            return [(caminho_relatorio, json.dumps(payload_vazio))]
+        args = [*args, *existentes]
+
+    python = _python_do_venv(root)
+    comando = (python, "-m", descoberta["modulo"], *args)
+    rc, stdout, stderr = _rodar_subprocess_cacheado(comando, root, descoberta.get("timeout", 60))
+
+    payload: dict[str, Any] = {
+        "returncode": rc,
+        "stdout": stdout,
+        "stderr": stderr,
+        "dir_requerido_existe": dir_requerido_existe,
+        "arquivos_teste_encontrados": arquivos_teste_encontrados,
+    }
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _condicoes_adicionais_para(root: Path, descoberta: dict[str, Any]) -> list[CondicaoAdicional]:

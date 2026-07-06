@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "QA-RUN-002",
+    "agente": "robin",
+    "severidade": "medium",
+    "categoria": "testes",
+    "titulo": "Suite de testes vazia — ponto cego na validação",
+    "causa": "Nenhum teste foi coletado pelo pytest. Sem testes, mudanças de comportamento passam invisíveis — Batman cobre padrões de código, mas não comportamento em execução.",
+    "remediacao": "Crie ao menos um teste unitário por módulo de negócio crítico. Prioridade: motor de decisão, validadores de schema, rotas de API. Mesmo um teste trivial já ativa o ciclo de feedback do Robin.",
+    "interpretacao": "pytest_sem_testes"
+  },
+  "descoberta": {
+    "tipo": "subprocess",
+    "modulo": "pytest",
+    "args": ["tests/", "--tb=short", "-q", "--no-header", "--color=no"],
+    "timeout": 120,
+    "requer_dir": "tests",
+    "glob_arquivos_teste": ["test_*.py", "*_test.py"],
+    "caminho_relatorio": "tests/"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "QA-RUN-001",
+    "agente": "robin",
+    "severidade": "high",
+    "categoria": "testes",
+    "titulo": "pytest falhou — suite de testes quebrada",
+    "causa": "Um ou mais testes unitários ou de integração falharam. Código enviado com testes vermelhos indica regressão não detectada ou comportamento divergente do esperado.",
+    "remediacao": "Rode 'pytest tests/ -v' localmente para ver o detalhe completo. Corrija o código ou atualize o teste se o comportamento esperado mudou. Não faça deploy com testes falhando.",
+    "interpretacao": "pytest_falhou"
+  },
+  "descoberta": {
+    "tipo": "subprocess",
+    "modulo": "pytest",
+    "args": ["tests/", "--tb=short", "-q", "--no-header", "--color=no"],
+    "timeout": 120,
+    "requer_dir": "tests",
+    "caminho_relatorio": "tests/"
+  }
+}

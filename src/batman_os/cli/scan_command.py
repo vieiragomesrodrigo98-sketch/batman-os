@@ -15,6 +15,7 @@ foco virar performance: uma Capability que aceita lote de arquivos numa
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -53,6 +54,17 @@ from batman_os.capabilities.rules.ast_padrao_ausente_loader import (
     SpecDeRegraAst,
     carregar_especificacoes_ast,
 )
+from batman_os.capabilities.rules.execucao_comando_interpretada import (
+    EntradaExecucaoComando,
+    RegraExecucaoComandoSpec,
+)
+from batman_os.capabilities.rules.execucao_comando_interpretada import (
+    construir_implementacao as construir_implementacao_execucao_comando,
+)
+from batman_os.capabilities.rules.execucao_comando_interpretada_loader import (
+    SpecDeRegraExecucaoComando,
+    carregar_especificacoes_execucao_comando,
+)
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -72,6 +84,7 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
 )
 from batman_os.cli.descoberta_arquivos import (
     entradas_ast_para_regra,
+    entradas_execucao_comando_para_regra,
     entradas_git_interpretado_para_regra,
     entradas_kwarg_ausente_para_regra,
     entradas_para_regra,
@@ -276,6 +289,30 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_execucao_comando(),
+            {
+                "caminho": "tests/",
+                "conteudo": json.dumps(
+                    {
+                        "returncode": 1,
+                        "stdout": "1 failed",
+                        "stderr": "",
+                        "dir_requerido_existe": True,
+                    }
+                ),
+                "regra": {
+                    "codigo": "CERT-004",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "interpretacao": "pytest_falhou",
+                },
+            },
+        ),
     ]
 
 
@@ -316,7 +353,13 @@ def _preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
     return registry, operator
 
 
-_Especificacao = SpecDeRegra | SpecDeRegraAst | SpecDeRegraKwargAusente | SpecDeRegraGitInterpretado
+_Especificacao = (
+    SpecDeRegra
+    | SpecDeRegraAst
+    | SpecDeRegraKwargAusente
+    | SpecDeRegraGitInterpretado
+    | SpecDeRegraExecucaoComando
+)
 
 
 def _todas_especificacoes() -> list[_Especificacao]:
@@ -326,6 +369,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_ast())
     especificacoes.extend(carregar_especificacoes_kwarg_ausente())
     especificacoes.extend(carregar_especificacoes_git_interpretado())
+    especificacoes.extend(carregar_especificacoes_execucao_comando())
     return especificacoes
 
 
@@ -336,7 +380,8 @@ def executar_scan(
     `especificacoes`, usa todos os lotes/Skills já migrados
     (`carregar_lote_01()` + `carregar_lote_02()` + `carregar_especificacoes_ast()`
     + `carregar_especificacoes_kwarg_ausente()` +
-    `carregar_especificacoes_git_interpretado()`)."""
+    `carregar_especificacoes_git_interpretado()` +
+    `carregar_especificacoes_execucao_comando()`)."""
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
 
     registry, operator = _preparar_capabilities()
@@ -358,7 +403,11 @@ def executar_scan(
         for item in especificacoes:
             regra = item["regra"]
             entradas: Sequence[
-                EntradaRegexArquivo | EntradaAst | EntradaKwargAusente | EntradaGitInterpretado
+                EntradaRegexArquivo
+                | EntradaAst
+                | EntradaKwargAusente
+                | EntradaGitInterpretado
+                | EntradaExecucaoComando
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -366,6 +415,8 @@ def executar_scan(
                 entradas = entradas_kwarg_ausente_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraComparacaoNumericaSpec):
                 entradas = entradas_git_interpretado_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraExecucaoComandoSpec):
+                entradas = entradas_execucao_comando_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

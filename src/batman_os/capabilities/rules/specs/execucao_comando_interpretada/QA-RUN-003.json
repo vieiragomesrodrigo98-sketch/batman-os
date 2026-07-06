@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "QA-RUN-003",
+    "agente": "robin",
+    "severidade": "low",
+    "categoria": "testes",
+    "titulo": "pytest não disponível no ambiente",
+    "causa": "pytest não está instalado ou não está no PATH/venv ativo. Robin não consegue validar a suite — ponto cego de ambiente.",
+    "remediacao": "Ative o venv e rode: pip install -e '.[dev]'. Verifique que está rodando Batman no mesmo ambiente Python do projeto.",
+    "interpretacao": "pytest_indisponivel"
+  },
+  "descoberta": {
+    "tipo": "subprocess",
+    "modulo": "pytest",
+    "args": ["tests/", "--tb=short", "-q", "--no-header", "--color=no"],
+    "timeout": 120,
+    "caminho_relatorio": "pyproject.toml"
+  }
+}

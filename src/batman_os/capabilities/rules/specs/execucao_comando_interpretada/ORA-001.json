@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "ORA-001",
+    "agente": "oracle",
+    "severidade": "high",
+    "categoria": "codigo-morto",
+    "titulo": "Nome indefinido ou erro de sintaxe — código quebra em runtime",
+    "causa": "F821 (nome indefinido) é a classe de bug que matou a auto-calibragem em produção (C1, auditoria jul/2026): um import faltando dentro de um except genérico deixa a feature morta em silêncio. E9 é arquivo que nem compila. Nenhum regex pega isso; só análise semântica.",
+    "remediacao": "Adicione o import faltando ou corrija o nome. Rode 'ruff check --select F821,E9 <arquivo>' para confirmar. DoD: ruff sem F821/E9 no arquivo e teste exercitando o caminho corrigido.",
+    "interpretacao": "ruff_nome_indefinido"
+  },
+  "descoberta": {
+    "tipo": "subprocess",
+    "modulo": "ruff",
+    "args": ["check", "--select", "F821,F401,E9", "--output-format", "json", "--no-cache", "--exit-zero"],
+    "dirs_condicionais": ["api", "src", "dashboard", "scripts", "tests", "Batman"],
+    "timeout": 90,
+    "caminho_relatorio": "pyproject.toml"
+  }
+}
