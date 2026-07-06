@@ -21,14 +21,44 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from batman_os.capabilities.rules.ast_kwarg_ausente_loader import (  # noqa: E402
+    carregar_especificacoes_kwarg_ausente,
+)
+from batman_os.capabilities.rules.ast_padrao_ausente_loader import (  # noqa: E402
+    carregar_especificacoes_ast,
+)
+from batman_os.capabilities.rules.de003_loader import carregar_especificacoes_de003  # noqa: E402
+from batman_os.capabilities.rules.execucao_comando_interpretada_loader import (  # noqa: E402
+    carregar_especificacoes_execucao_comando,
+)
+from batman_os.capabilities.rules.git_comando_interpretado_loader import (  # noqa: E402
+    carregar_especificacoes_git_interpretado,
+)
 from batman_os.capabilities.rules.lote_01 import carregar_lote_01  # noqa: E402
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02  # noqa: E402
+from batman_os.capabilities.rules.ora004_loader import carregar_especificacoes_ora004  # noqa: E402
+from batman_os.capabilities.rules.ora005_loader import carregar_especificacoes_ora005  # noqa: E402
+from batman_os.capabilities.rules.toml_dependencias_loader import (  # noqa: E402
+    carregar_especificacoes_dependencias,
+)
 from batman_os.cli.scan_command import executar_scan  # noqa: E402
 
-# Toda vez que um novo lote for migrado (Milestone 2+), adicionar seu
-# carregar_lote_NN() aqui — nao ha descoberta automatica de lotes de
-# proposito (mais facil de auditar o que exatamente entra na comparacao).
-_CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in carregar_lote_01() + carregar_lote_02())
+# Toda vez que um novo lote/Skill for migrado (Milestone 2+), adicionar seu
+# carregar_*() aqui — nao ha descoberta automatica de lotes de proposito
+# (mais facil de auditar o que exatamente entra na comparacao).
+_TODOS_OS_ITENS = (
+    carregar_lote_01()
+    + carregar_lote_02()
+    + carregar_especificacoes_ast()
+    + carregar_especificacoes_kwarg_ausente()
+    + carregar_especificacoes_git_interpretado()
+    + carregar_especificacoes_execucao_comando()
+    + carregar_especificacoes_dependencias()
+    + carregar_especificacoes_de003()
+    + carregar_especificacoes_ora005()
+    + carregar_especificacoes_ora004()
+)
+_CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 
 _SCRIPT_LEGADO = """
 import json
