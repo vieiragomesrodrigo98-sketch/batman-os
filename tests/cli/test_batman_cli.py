@@ -34,3 +34,29 @@ class TestComandoScan:
             assert exc.code != 0
         else:
             raise AssertionError("esperava SystemExit sem subcomando")
+
+
+class TestMilestone5OpcaoDb:
+    """Achado de revisão fechado na Milestone 5: `--db` persiste o log de
+    eventos do scan entre execuções, em vez de descartá-lo sempre ao final."""
+
+    def test_sem_db_explicito_cria_estado_db_relativo_ao_root(self, tmp_path: Path) -> None:
+        main(["scan", "--root", str(tmp_path)])
+
+        assert (tmp_path / ".batman-os" / "estado.db").exists()
+
+    def test_db_memory_explicito_nao_cria_arquivo_algum(self, tmp_path: Path) -> None:
+        main(["scan", "--root", str(tmp_path), "--db", ":memory:"])
+
+        assert not (tmp_path / ".batman-os").exists()
+
+    def test_db_customizado_e_reaproveitado_entre_execucoes(self, tmp_path: Path) -> None:
+        db_path = tmp_path / "meu_estado.db"
+
+        main(["scan", "--root", str(tmp_path), "--db", str(db_path)])
+        assert db_path.exists()
+
+        tamanho_apos_primeira = db_path.stat().st_size
+        main(["scan", "--root", str(tmp_path), "--db", str(db_path)])
+
+        assert db_path.stat().st_size >= tamanho_apos_primeira

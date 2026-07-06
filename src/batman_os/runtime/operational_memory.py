@@ -11,6 +11,8 @@ Fonte da verdade: docs/spec/03-runtime/03-operational-memory.md
 
 from __future__ import annotations
 
+import sqlite3
+
 from pydantic import BaseModel, Field
 
 from batman_os.foundation.types import (
@@ -90,23 +92,42 @@ class PromotionCandidate(BaseModel):
 class OperationalMemory:
     """Vol.III Cap.13, secao 13.4.
 
-    Implementação de referência: armazenamento append-only alimentado
-    explicitamente via `registrar()`. Numa integração ponta a ponta completa,
-    isso seria preenchido por reconciliação automática a partir do Event Bus
-    (secao 13.3); Decision Engine e Workflow Engine, nesta construção, ainda
-    não publicam eventos ricos o bastante para essa reconstrução automática
-    — registrado como pendência de integração, não uma omissão silenciosa.
+    `db_path` (Milestone 5 desta construção — escopo de persistência real):
+    armazenamento append-only via SQLite, não mais em memória Python —
+    sobrevive a destruir e recriar o processo apontando para o mesmo
+    arquivo. `":memory:"` (default) preserva o comportamento anterior (cada
+    `OperationalMemory()` isolada, nunca compartilhada entre instâncias) —
+    `registrar()`/`all_records()` mantêm a MESMA assinatura pública.
+
+    Numa integração ponta a ponta completa, isso seria preenchido por
+    reconciliação automática a partir do Event Bus (secao 13.3); Decision
+    Engine e Workflow Engine, nesta construção, ainda não publicam eventos
+    ricos o bastante para essa reconstrução automática — registrado como
+    pendência de integração, não uma omissão silenciosa.
     """
 
-    def __init__(self) -> None:
-        self._records: list[OperationalRecord] = []
+    def __init__(self, db_path: str = ":memory:") -> None:
+        self._conn = sqlite3.connect(db_path)
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS records ("
+            "seq INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "tenant_id TEXT NOT NULL, "
+            "payload_json TEXT NOT NULL"
+            ")"
+        )
+        self._conn.commit()
 
     def registrar(self, record: OperationalRecord) -> None:
         """AT-13.1 — append-only; não há método de edição ou remoção."""
-        self._records.append(record)
+        self._conn.execute(
+            "INSERT INTO records (tenant_id, payload_json) VALUES (?, ?)",
+            (str(record.tenant_id), record.model_dump_json()),
+        )
+        self._conn.commit()
 
     def all_records(self) -> list[OperationalRecord]:
-        return list(self._records)
+        cursor = self._conn.execute("SELECT payload_json FROM records ORDER BY seq ASC")
+        return [OperationalRecord.model_validate_json(linha[0]) for linha in cursor.fetchall()]
 
     def find_similar_missions(
         self, tenant_id: TenantId, intent: MissionIntent, limit: int
@@ -117,7 +138,7 @@ class OperationalMemory:
 
         `tenant_id` obrigatório (Vol.III Cap.14, AT-14.1) — nunca retorna
         registro de tenant diferente do solicitado."""
-        do_tenant = [r for r in self._records if r.tenant_id == tenant_id]
+        do_tenant = [r for r in self.all_records() if r.tenant_id == tenant_id]
         pontuados = [(self._similaridade(intent, r), r) for r in do_tenant]
         pontuados.sort(key=lambda par: par[0], reverse=True)
         return [registro for pontuacao, registro in pontuados[:limit] if pontuacao > 0]
@@ -131,7 +152,7 @@ class OperationalMemory:
         histórico de decisão de um tenant diferente do solicitado."""
         return [
             resumo
-            for record in self._records
+            for record in self.all_records()
             if record.tenant_id == tenant_id
             for resumo in record.decision_points_resolved
             if resumo.decision_point_id == decision_point_signature
@@ -140,7 +161,7 @@ class OperationalMemory:
     def get_frequency(self, pattern: PatternQuery) -> int:
         """Vol.III Cap.13, secao 13.6 — usado para detectar candidatos a
         Cognitive Debt recorrente."""
-        return sum(1 for r in self._records if self._casa_padrao(r, pattern))
+        return sum(1 for r in self.all_records() if self._casa_padrao(r, pattern))
 
     def _similaridade(self, intent: MissionIntent, record: OperationalRecord) -> float:
         del record

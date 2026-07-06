@@ -460,7 +460,9 @@ def _todas_especificacoes() -> list[_Especificacao]:
 
 
 def executar_scan(
-    root: Path, especificacoes: Sequence[_Especificacao] | None = None
+    root: Path,
+    especificacoes: Sequence[_Especificacao] | None = None,
+    db_path: str = ":memory:",
 ) -> ResultadoScan:
     """Vol.IX Cap.34 — roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa todos os lotes/Skills já migrados
@@ -469,7 +471,13 @@ def executar_scan(
     `carregar_especificacoes_git_interpretado()` +
     `carregar_especificacoes_execucao_comando()` +
     `carregar_especificacoes_dependencias()` +
-    `carregar_especificacoes_de003()`)."""
+    `carregar_especificacoes_de003()`).
+
+    `db_path` (Milestone 5 desta construção): repassado ao `EventBus`
+    interno do Mission Runtime — `":memory:"` (default) preserva o
+    comportamento anterior (log descartado ao final do scan); um caminho
+    real faz os eventos desta execução sobreviverem e acumularem entre
+    scans sucessivos apontando para o mesmo arquivo (CLI: `--db`)."""
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
 
     registry, operator = _preparar_capabilities()
@@ -477,7 +485,7 @@ def executar_scan(
         validador_schema=ValidadorSchemaEstrutural(),
         validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
     )
-    runtime = MissionRuntime(EventBus(), tipos=_registro_tipos())
+    runtime = MissionRuntime(EventBus(db_path=db_path), tipos=_registro_tipos())
     decision_engine = DecisionEngine(
         base_conhecimento=_SemConhecimentoAinda(),
         llm_gateway=_LlmNuncaChamadoNesteFluxo(),

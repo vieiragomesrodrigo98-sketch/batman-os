@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -193,3 +195,72 @@ def test_get_frequency_filtra_por_tipo_e_estado_final() -> None:
     assert (
         memory.get_frequency(PatternQuery(mission_type=TIPO, final_state=MissionState.FAILED)) == 1
     )
+
+
+class TestMilestone5PersistenciaRealViaSqlite:
+    """Achado de revisão fechado na Milestone 5: os registros deixam de
+    viver só em memória Python — precisam sobreviver a destruir e recriar
+    o objeto apontando para o MESMO arquivo, não só rodar em `:memory:`."""
+
+    def test_registros_sobrevivem_a_destruir_e_recriar_a_memory(self, tmp_path: Path) -> None:
+        db_path = str(tmp_path / "memoria.db")
+
+        memory1 = OperationalMemory(db_path=db_path)
+        memory1.registrar(_record(final_state=MissionState.COMPLETED))
+        memory1.registrar(_record(final_state=MissionState.FAILED))
+        del memory1
+
+        memory2 = OperationalMemory(db_path=db_path)
+        registros = memory2.all_records()
+
+        assert len(registros) == 2
+        assert [r.final_state for r in registros] == [
+            MissionState.COMPLETED,
+            MissionState.FAILED,
+        ]
+
+    def test_duas_memories_memory_nao_compartilham_estado(self) -> None:
+        memory_a = OperationalMemory()
+        memory_b = OperationalMemory()
+
+        memory_a.registrar(_record())
+
+        assert len(memory_a.all_records()) == 1
+        assert memory_b.all_records() == []
+
+    def test_decision_summaries_sao_preservados_apos_reabrir(self, tmp_path: Path) -> None:
+        db_path = str(tmp_path / "memoria2.db")
+        resumo = DecisionSummary(
+            decision_point_id=DecisionPointId("dp-1"),
+            resolved_by="human",
+            chosen_option_id="opcao-a",
+            confidence=0.87,
+        )
+
+        memory1 = OperationalMemory(db_path=db_path)
+        memory1.registrar(_record(resumos=[resumo]))
+        del memory1
+
+        memory2 = OperationalMemory(db_path=db_path)
+        recuperado = memory2.all_records()[0]
+
+        assert recuperado.decision_points_resolved == (resumo,)
+        assert recuperado.tenant_id == TENANT
+
+    def test_metodos_de_consulta_funcionam_apos_reabrir(self, tmp_path: Path) -> None:
+        db_path = str(tmp_path / "memoria3.db")
+        resumo = DecisionSummary(
+            decision_point_id=DecisionPointId("dp-1"),
+            resolved_by="human",
+            chosen_option_id="opcao-a",
+            confidence=1.0,
+        )
+
+        memory1 = OperationalMemory(db_path=db_path)
+        memory1.registrar(_record(resumos=[resumo]))
+        del memory1
+
+        memory2 = OperationalMemory(db_path=db_path)
+
+        assert memory2.get_decision_history(TENANT, "dp-1") == [resumo]
+        assert memory2.get_frequency(PatternQuery(mission_type=TIPO)) == 1

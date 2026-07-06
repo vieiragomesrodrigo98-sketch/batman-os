@@ -22,9 +22,22 @@ def _severidades_a_partir_de(minimo: str) -> list[str]:
     return _ORDEM_SEVERIDADE[: indice + 1]
 
 
+def _resolver_db_path(root: Path, db_arg: str | None) -> str:
+    """Milestone 5 desta construção — `--db` ausente usa
+    `.batman-os/estado.db` relativo ao root escaneado (persistência real
+    entre execuções por padrão); `--db :memory:` explícito preserva o
+    comportamento efêmero anterior para quem preferir."""
+    if db_arg is not None:
+        return db_arg
+    caminho = root / ".batman-os" / "estado.db"
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    return str(caminho)
+
+
 def _comando_scan(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
-    resultado = executar_scan(root)
+    db_path = _resolver_db_path(root, args.db)
+    resultado = executar_scan(root, db_path=db_path)
 
     for achado in resultado.achados:
         print(f"[{achado.severidade.upper()}] {achado.codigo} {achado.arquivo}: {achado.titulo}")
@@ -52,6 +65,15 @@ def _montar_parser() -> argparse.ArgumentParser:
         choices=_ORDEM_SEVERIDADE,
         default=None,
         help="Retorna codigo de saida 1 se houver achado nesta severidade ou mais grave",
+    )
+    scan_parser.add_argument(
+        "--db",
+        default=None,
+        help=(
+            "Caminho do SQLite para persistir eventos entre execucoes "
+            "(default: .batman-os/estado.db relativo a --root; use ':memory:' "
+            "para o comportamento efemero anterior)"
+        ),
     )
     scan_parser.set_defaults(func=_comando_scan)
 
