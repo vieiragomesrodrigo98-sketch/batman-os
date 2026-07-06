@@ -89,9 +89,13 @@ interface SupplyChainIntegrity {
 
 ## 33.9 Status da Implementação
 
+*(Atualizado na Milestone 7 da construção de referência — ver
+`src/batman_os/capabilities/tools.py`, `src/batman_os/foundation/tenant_isolation.py`,
+`src/batman_os/runtime/operational_memory.py`.)*
+
 | Já existe | Precisa refatorar | Ainda não existe |
 |---|---|---|
-| — | — | Integração com cofre de segredos; Row-Level Security em todo armazenamento com `tenantId`; verificação de integridade de artefato no Execution Engine |
+| `SecretResolver` (Protocol) + `EnvVarSecretResolver` — v1 mínima lendo de variável de ambiente, elimina credencial literal em código/config (AT-18.2); Row-Level Security mínima em `OperationalMemory` (filtro na própria query SQL + segunda camada `exigir_tenant_correspondente`, que levanta `IsolamentoDeTenantViolado`) | `EnvVarSecretResolver` → integração real com cofre externo (Vault/AWS Secrets Manager) quando o Protocol `SecretResolver` ganhar uma segunda implementação — `rotate()`/`auditAccess()` da seção 33.2 ainda não têm equivalente algum | Row-Level Security em `KnowledgeGraph` (`KnowledgeNode`/`KnowledgeEdge` ainda não carregam `tenantId` — retrofit estrutural maior que um helper de enforcement, deliberadamente adiado); **verificação de integridade de artefato no Execution Engine (seção 33.5, `SupplyChainIntegrity`) — deliberadamente fora de escopo**: exigiria infraestrutura real de assinatura/hash de artefato e um pipeline de build que a produza, não algo que faça sentido simular com um `verify()` que sempre retorna `True` |
 
 ---
 

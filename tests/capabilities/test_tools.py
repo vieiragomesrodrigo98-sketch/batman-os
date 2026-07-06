@@ -12,11 +12,14 @@ from batman_os.capabilities.tools import (
     CredencialLiteralDetectada,
     CredentialRef,
     Environment,
+    EnvVarSecretResolver,
     EstadoCircuitBreaker,
     FailureBehavior,
+    SecretNaoEncontrado,
     ToolDefinition,
     ToolRegistry,
     ToolResolutionAmbiguity,
+    resolver_credential,
 )
 from batman_os.foundation.types import SkillId, TenantId, Timestamp, ToolId, agora
 
@@ -170,3 +173,40 @@ class TestAT183CircuitBreakerRejeitaEmTempoConstante:
         )
         assert cb.estado == EstadoCircuitBreaker.CLOSED
         assert cb.permite_chamada() is True
+
+
+class TestMilestone7SecretResolver:
+    """Achado de auditoria fechado na Milestone 7: `CredentialRef` era só
+    uma referência opaca — nada existia para de fato resolvê-la a um valor
+    real, fora de código inline espalhado por cada Tool."""
+
+    def test_resolve_a_partir_de_variavel_de_ambiente(self) -> None:
+        ref = CredentialRef(cofre="anthropic", caminho="api-key")
+        resolver = EnvVarSecretResolver(env={"ANTHROPIC_API_KEY": "sk-fake-123"})
+
+        assert resolver.resolver(ref) == "sk-fake-123"
+
+    def test_variavel_ausente_levanta_secret_nao_encontrado(self) -> None:
+        ref = CredentialRef(cofre="anthropic", caminho="api-key")
+        resolver = EnvVarSecretResolver(env={})
+
+        with pytest.raises(SecretNaoEncontrado):
+            resolver.resolver(ref)
+
+    def test_normaliza_hifen_e_barra_no_nome_da_variavel(self) -> None:
+        ref = CredentialRef(cofre="vault-prod", caminho="secret/git/token")
+        resolver = EnvVarSecretResolver(env={"VAULT_PROD_SECRET_GIT_TOKEN": "tok-abc"})
+
+        assert resolver.resolver(ref) == "tok-abc"
+
+    def test_resolver_credential_delega_para_o_resolver_injetado(self) -> None:
+        tool = _tool("t-1", cofre="anthropic", caminho="api-key")
+        resolver = EnvVarSecretResolver(env={"ANTHROPIC_API_KEY": "sk-fake-456"})
+
+        assert resolver_credential(tool, resolver) == "sk-fake-456"
+
+    def test_default_env_e_os_environ_de_verdade(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-do-ambiente-real")
+        ref = CredentialRef(cofre="anthropic", caminho="api-key")
+
+        assert EnvVarSecretResolver().resolver(ref) == "sk-do-ambiente-real"

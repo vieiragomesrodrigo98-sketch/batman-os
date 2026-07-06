@@ -10,10 +10,11 @@ Fonte da verdade: docs/spec/04-capabilities/04-tools.md
 
 from __future__ import annotations
 
+import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -44,6 +45,47 @@ class CredentialRef(BaseModel):
     caminho: str
 
 
+class SecretNaoEncontrado(Exception):
+    """Vol.VIII Cap.33 (Milestone 7 desta construção) — `SecretResolver`
+    não encontrou o segredo referenciado. Nunca degrada para string vazia/
+    `None` em silêncio: uma `CredentialRef` sem segredo resolvível é sempre
+    um erro de configuração explícito."""
+
+
+class SecretResolver(Protocol):
+    """Vol.VIII Cap.33 (Milestone 7 desta construção) — resolve uma
+    `CredentialRef` opaca para o valor real do segredo. Mantém a garantia
+    de AT-18.2 (nunca a credencial literal em código/config): o valor real
+    só existe fora deste módulo, atrás desta interface."""
+
+    def resolver(self, ref: CredentialRef) -> str: ...
+
+
+class EnvVarSecretResolver:
+    """Vol.VIII Cap.33 — implementação padrão (v1): lê de variável de
+    ambiente. NÃO é um cofre externo real (Vault/AWS Secrets Manager) —
+    documentado deliberadamente como o mínimo que já elimina segredo em
+    texto plano no código/config; um `SecretResolver` que fale com um
+    cofre real é extensão natural, sem mudar o Protocol.
+
+    Convenção de nome de variável: `f"{cofre}_{caminho}"`, maiúsculo, com
+    `-`/`/` normalizados para `_` (ex.: `CredentialRef(cofre="anthropic",
+    caminho="api-key")` -> `ANTHROPIC_API_KEY`)."""
+
+    def __init__(self, env: Mapping[str, str] | None = None) -> None:
+        self._env = env if env is not None else os.environ
+
+    def resolver(self, ref: CredentialRef) -> str:
+        nome_var = f"{ref.cofre}_{ref.caminho}".upper().replace("-", "_").replace("/", "_")
+        valor = self._env.get(nome_var)
+        if valor is None:
+            raise SecretNaoEncontrado(
+                f"CredentialRef(cofre='{ref.cofre}', caminho='{ref.caminho}') nao "
+                f"resolvido — variavel de ambiente '{nome_var}' ausente"
+            )
+        return valor
+
+
 class RateLimitPolicy(BaseModel):
     """Vol.IV Cap.18, secao 18.3."""
 
@@ -61,6 +103,14 @@ class ToolDefinition(BaseModel):
     credentials_ref: CredentialRef
     rate_limits: RateLimitPolicy = Field(default_factory=RateLimitPolicy)
     failure_behavior: FailureBehavior
+
+
+def resolver_credential(tool: ToolDefinition, resolver: SecretResolver) -> str:
+    """Vol.VIII Cap.33 — ponto único pelo qual uma `ToolDefinition` já
+    resolvida (`ToolRegistry.resolve_tool`) obtém o valor real do segredo,
+    através do `SecretResolver` injetado — nunca inline, nunca direto de
+    `os.environ` espalhado pelo código de cada Tool."""
+    return resolver.resolver(tool.credentials_ref)
 
 
 class CredencialLiteralDetectada(Exception):

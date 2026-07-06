@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from batman_os.foundation.tenant_isolation import IsolamentoDeTenantViolado
 from batman_os.foundation.types import (
     CognitiveDebtFlag,
     DecisionPointId,
@@ -264,3 +265,61 @@ class TestMilestone5PersistenciaRealViaSqlite:
 
         assert memory2.get_decision_history(TENANT, "dp-1") == [resumo]
         assert memory2.get_frequency(PatternQuery(mission_type=TIPO)) == 1
+
+
+class TestMilestone7RowLevelSecurityMinima:
+    """Achado de auditoria fechado na Milestone 7: `TenantId` existia como
+    tipo, mas nada garantia — de forma auditável e independente da lógica
+    de filtro — que uma consulta escopada por tenant nunca vazasse dado de
+    outro. Aqui provamos as duas camadas: o filtro na própria query SQL
+    (nunca busca linhas de outro tenant) e a segunda camada de defesa
+    (`exigir_tenant_correspondente`) sobre cada registro retornado."""
+
+    OUTRO_TENANT = TenantId("tenant-2")
+
+    def test_find_similar_missions_nunca_retorna_outro_tenant(self) -> None:
+        memory = OperationalMemory()
+        memory.registrar(_record(tenant_id=TENANT))
+        memory.registrar(_record(tenant_id=self.OUTRO_TENANT))
+
+        resultado = memory._records_do_tenant(TENANT)  # noqa: SLF001
+
+        assert all(r.tenant_id == TENANT for r in resultado)
+        assert len(resultado) == 1
+
+    def test_get_decision_history_nunca_mistura_tenants(self) -> None:
+        memory = OperationalMemory()
+        resumo_t1 = DecisionSummary(
+            decision_point_id=DecisionPointId("dp-1"),
+            resolved_by="human",
+            chosen_option_id="a",
+            confidence=1.0,
+        )
+        resumo_t2 = DecisionSummary(
+            decision_point_id=DecisionPointId("dp-1"),
+            resolved_by="human",
+            chosen_option_id="b",
+            confidence=1.0,
+        )
+        memory.registrar(_record(resumos=[resumo_t1], tenant_id=TENANT))
+        memory.registrar(_record(resumos=[resumo_t2], tenant_id=self.OUTRO_TENANT))
+
+        historico = memory.get_decision_history(TENANT, "dp-1")
+
+        assert historico == [resumo_t1]
+
+    def test_linha_com_tenant_id_corrompido_dispara_isolamento_violado(self) -> None:
+        """Simula um bug/corrupcao de dado: a coluna `tenant_id` da tabela
+        SQL nao bate com o `tenant_id` embutido no payload serializado.
+        `_records_do_tenant` deve detectar isso e falhar alto, nunca
+        devolver o registro silenciosamente."""
+        memory = OperationalMemory()
+        registro_de_outro_tenant = _record(tenant_id=self.OUTRO_TENANT)
+        memory._conn.execute(  # noqa: SLF001
+            "INSERT INTO records (tenant_id, payload_json) VALUES (?, ?)",
+            (str(TENANT), registro_de_outro_tenant.model_dump_json()),
+        )
+        memory._conn.commit()  # noqa: SLF001
+
+        with pytest.raises(IsolamentoDeTenantViolado):
+            memory._records_do_tenant(TENANT)  # noqa: SLF001

@@ -15,6 +15,7 @@ import sqlite3
 
 from pydantic import BaseModel, Field
 
+from batman_os.foundation.tenant_isolation import exigir_tenant_correspondente
 from batman_os.foundation.types import (
     CognitiveDebtFlag,
     DecisionPointId,
@@ -129,6 +130,23 @@ class OperationalMemory:
         cursor = self._conn.execute("SELECT payload_json FROM records ORDER BY seq ASC")
         return [OperationalRecord.model_validate_json(linha[0]) for linha in cursor.fetchall()]
 
+    def _records_do_tenant(self, tenant_id: TenantId) -> list[OperationalRecord]:
+        """Vol.VIII Cap.32/33 (Milestone 7 — Row-Level Security mínima):
+        filtro por tenant aplicado na PRÓPRIA query SQL (`WHERE tenant_id =
+        ?`), não só depois de carregar tudo em Python — e cada registro
+        retornado passa por `exigir_tenant_correspondente()` como segunda
+        camada de defesa, que levantaria `IsolamentoDeTenantViolado` se, por
+        algum bug futuro, um registro de outro tenant escapasse do filtro
+        SQL."""
+        cursor = self._conn.execute(
+            "SELECT payload_json FROM records WHERE tenant_id = ? ORDER BY seq ASC",
+            (str(tenant_id),),
+        )
+        registros = [OperationalRecord.model_validate_json(linha[0]) for linha in cursor.fetchall()]
+        for registro in registros:
+            exigir_tenant_correspondente(tenant_id, registro.tenant_id)
+        return registros
+
     def find_similar_missions(
         self, tenant_id: TenantId, intent: MissionIntent, limit: int
     ) -> list[OperationalRecord]:
@@ -138,7 +156,7 @@ class OperationalMemory:
 
         `tenant_id` obrigatório (Vol.III Cap.14, AT-14.1) — nunca retorna
         registro de tenant diferente do solicitado."""
-        do_tenant = [r for r in self.all_records() if r.tenant_id == tenant_id]
+        do_tenant = self._records_do_tenant(tenant_id)
         pontuados = [(self._similaridade(intent, r), r) for r in do_tenant]
         pontuados.sort(key=lambda par: par[0], reverse=True)
         return [registro for pontuacao, registro in pontuados[:limit] if pontuacao > 0]
@@ -152,8 +170,7 @@ class OperationalMemory:
         histórico de decisão de um tenant diferente do solicitado."""
         return [
             resumo
-            for record in self.all_records()
-            if record.tenant_id == tenant_id
+            for record in self._records_do_tenant(tenant_id)
             for resumo in record.decision_points_resolved
             if resumo.decision_point_id == decision_point_signature
         ]
