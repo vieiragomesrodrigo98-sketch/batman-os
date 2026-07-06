@@ -51,6 +51,7 @@ from batman_os.kernel.mission_runtime import (
 )
 from batman_os.kernel.planning_engine import DecisionPoint, plan
 from batman_os.kernel.workflow_engine import ResultadoInvocacao, WorkflowEngine
+from batman_os.learning.knowledge_graph import KnowledgeGraph, TipoNoKnowledge
 from batman_os.learning.operational_learning import cognitive_debt_por_tipo
 from batman_os.learning.rule_evolution import (
     DecisionPointSignature,
@@ -251,7 +252,9 @@ class TestCicloDeAprendizadoEExecucaoN:
             )
         return memory
 
-    def _promover_regra_via_shadow_mode(self, assinatura: str) -> RuleDefinition:
+    def _promover_regra_via_shadow_mode(
+        self, assinatura: str, grafo: KnowledgeGraph | None = None
+    ) -> RuleDefinition:
         regra_draft = RuleDefinition(
             id=RuleId("R-gunicorn-timeout"),
             version="1.0.0",
@@ -275,7 +278,13 @@ class TestCicloDeAprendizadoEExecucaoN:
             )
             for indice in range(50)
         ]
-        return promover_a_active(regra_draft, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50)
+        return promover_a_active(
+            regra_draft,
+            avaliacoes,
+            taxa_minima=0.9,
+            minimo_avaliacoes=50,
+            grafo=grafo if grafo is not None else KnowledgeGraph(),
+        )
 
     def test_padrao_recorrente_e_identificado_como_candidato(self) -> None:
         memory = self._memoria_com_12_ocorrencias_humanas()
@@ -289,11 +298,16 @@ class TestCicloDeAprendizadoEExecucaoN:
     def test_regra_promovida_via_shadow_mode_atinge_active(self) -> None:
         memory = self._memoria_com_12_ocorrencias_humanas()
         candidatos = find_promotion_candidates(memory, threshold=12)
+        grafo = KnowledgeGraph()
 
-        regra_ativa = self._promover_regra_via_shadow_mode(candidatos[0].assinatura)
+        regra_ativa = self._promover_regra_via_shadow_mode(candidatos[0].assinatura, grafo=grafo)
 
         assert regra_ativa.status == StatusRegra.ACTIVE
         assert regra_ativa.provenance.reviewed_by == HumanReviewRef("review-domain-expert")
+        # Milestone 4: a regra promovida agora entra no Knowledge Graph
+        # (Cap.23) de verdade, fechando o ciclo descrito no Cap.26.
+        nos_rule = grafo.nos_por_tipo(TipoNoKnowledge.RULE)
+        assert any(no.ref == str(regra_ativa.id) for no in nos_rule)
 
     def test_execucao_n_resolve_por_conhecimento_sem_escalar_e_cognitive_debt_cai(self) -> None:
         memory = self._memoria_com_12_ocorrencias_humanas()

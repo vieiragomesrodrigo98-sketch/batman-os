@@ -24,6 +24,13 @@ from batman_os.foundation.types import (
     PlaybookId,
     ProposalId,
 )
+from batman_os.learning.knowledge_graph import (
+    KnowledgeEdge,
+    KnowledgeGraph,
+    KnowledgeNode,
+    TipoAresta,
+    TipoNoKnowledge,
+)
 from batman_os.workflow.playbooks import (
     GapDeCertificacaoDoPlaybook,
     PlaybookDefinition,
@@ -97,6 +104,7 @@ class ResultadoAplicacao(BaseModel):
 def aplicar_proposta(
     proposta: WorkflowEvolutionProposal,
     certificar: Callable[[PlaybookDefinition], PlaybookDefinition],
+    grafo: KnowledgeGraph,
 ) -> ResultadoAplicacao:
     """Vol.VI Cap.25, secao 25.4/25.7 (AT-25.1) — nenhuma proposta atinge
     `applied` sem passar pela certificação COMPLETA de Playbook (Vol.V
@@ -106,7 +114,13 @@ def aplicar_proposta(
     `certificar` é fornecido pelo chamador (tipicamente
     `workflow.playbooks.certificar_playbook` com os outros Playbooks ativos
     e os callables do Capability Registry já parametrizados via closure/
-    `functools.partial`) — este módulo não acopla diretamente ao Runtime."""
+    `functools.partial`) — este módulo não acopla diretamente ao Runtime.
+
+    `grafo` (Milestone 4 desta construção — achado de revisão): toda
+    proposta que atinge `applied` registra os Playbooks certificados no
+    Knowledge Graph (Vol.VI Cap.23) — nó `playbook` com aresta
+    `justified-by` para a Human Review (Evidence First, AT-23.3) e
+    `supersedes` para cada Playbook afetado pela proposta."""
     if proposta.reviewed_by is None:
         raise RevisaoHumanaObrigatoriaParaProposta(
             f"Proposta '{proposta.id}' nao pode ser aplicada sem Human Review, "
@@ -137,6 +151,21 @@ def aplicar_proposta(
         return ResultadoAplicacao(proposta=proposta_rejeitada, motivo_rejeicao=str(erro))
 
     proposta_aplicada = proposta.model_copy(update={"status": StatusProposta.APPLIED})
+
+    no_evidencia = KnowledgeNode(tipo=TipoNoKnowledge.EVIDENCE, ref=str(proposta.reviewed_by))
+    grafo.adicionar_no(no_evidencia)
+    for playbook in certificados:
+        no_playbook = KnowledgeNode(tipo=TipoNoKnowledge.PLAYBOOK, ref=str(playbook.id))
+        grafo.adicionar_no(no_playbook)
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.JUSTIFIED_BY, de=no_playbook, para=no_evidencia)
+        )
+        for afetado in proposta.affected_playbooks:
+            no_afetado = KnowledgeNode(tipo=TipoNoKnowledge.PLAYBOOK, ref=str(afetado))
+            grafo.adicionar_aresta(
+                KnowledgeEdge(kind=TipoAresta.SUPERSEDES, de=no_playbook, para=no_afetado)
+            )
+
     return ResultadoAplicacao(proposta=proposta_aplicada, playbooks_certificados=certificados)
 
 

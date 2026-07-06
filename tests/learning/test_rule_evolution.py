@@ -13,6 +13,7 @@ from batman_os.foundation.types import (
     RuleId,
 )
 from batman_os.kernel.planning_engine import DecisionPoint
+from batman_os.learning.knowledge_graph import KnowledgeGraph, TipoAresta, TipoNoKnowledge
 from batman_os.learning.rule_evolution import (
     DecisionPointSignature,
     RuleCondition,
@@ -84,7 +85,9 @@ class TestAT241ShadowModeObrigatorioAntesDeActive:
         ]
 
         with pytest.raises(ShadowModeInsuficiente):
-            promover_a_active(regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50)
+            promover_a_active(
+                regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=KnowledgeGraph()
+            )
 
     def test_taxa_de_concordancia_abaixo_do_limiar_reprova(self) -> None:
         regra = _regra("R-1", status=StatusRegra.DRAFT)
@@ -100,7 +103,9 @@ class TestAT241ShadowModeObrigatorioAntesDeActive:
         ]
 
         with pytest.raises(ShadowModeInsuficiente):
-            promover_a_active(regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=10)
+            promover_a_active(
+                regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=10, grafo=KnowledgeGraph()
+            )
 
     def test_avaliacoes_suficientes_e_concordantes_promove(self) -> None:
         regra = _regra("R-1", status=StatusRegra.DRAFT)
@@ -115,11 +120,81 @@ class TestAT241ShadowModeObrigatorioAntesDeActive:
             for i in range(50)
         ]
 
-        promovida = promover_a_active(regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50)
+        grafo = KnowledgeGraph()
+        promovida = promover_a_active(
+            regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo
+        )
         assert promovida.status == StatusRegra.ACTIVE
 
     def test_taxa_de_concordancia_vazia_e_zero(self) -> None:
         assert taxa_de_concordancia([]) == 0.0
+
+
+class TestMilestone4RegraPromovidaEntraNoKnowledgeGraph:
+    """Achado de revisão fechado na Milestone 4: antes, `promover_a_active`
+    não escrevia no Knowledge Graph (Vol.VI Cap.23) — uma regra `active`
+    nunca aparecia lá, apesar do Cap.26 descrever o ciclo completo passando
+    por ele."""
+
+    def _promover(self) -> tuple[RuleDefinition, KnowledgeGraph]:
+        regra = _regra("R-graph", status=StatusRegra.DRAFT)
+        avaliacoes = [
+            ShadowEvaluation(
+                rule_id=regra.id,
+                decision_point_id="dp-1",
+                shadow_resolution=DecisionOption(id="a", descricao="A"),
+                actual_resolution=DecisionOption(id="a", descricao="A"),
+                agreement=i < 48,
+            )
+            for i in range(50)
+        ]
+        grafo = KnowledgeGraph()
+        promovida = promover_a_active(
+            regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo
+        )
+        return promovida, grafo
+
+    def test_regra_promovida_vira_no_rule_no_grafo(self) -> None:
+        promovida, grafo = self._promover()
+
+        nos_rule = grafo.nos_por_tipo(TipoNoKnowledge.RULE)
+        assert any(no.ref == str(promovida.id) for no in nos_rule)
+
+    def test_regra_promovida_tem_aresta_justified_by(self) -> None:
+        promovida, grafo = self._promover()
+
+        no_regra = next(
+            no for no in grafo.nos_por_tipo(TipoNoKnowledge.RULE) if no.ref == str(promovida.id)
+        )
+        vizinhos = grafo.get_neighbors(no_regra, edge_kind=TipoAresta.JUSTIFIED_BY)
+        assert any(v.ref == str(promovida.provenance.reviewed_by) for v in vizinhos)
+
+    def test_regra_promovida_tem_aresta_promoted_from(self) -> None:
+        promovida, grafo = self._promover()
+
+        no_regra = next(
+            no for no in grafo.nos_por_tipo(TipoNoKnowledge.RULE) if no.ref == str(promovida.id)
+        )
+        vizinhos = grafo.get_neighbors(no_regra, edge_kind=TipoAresta.PROMOTED_FROM)
+        assert any(v.ref == promovida.provenance.source_candidate_signature for v in vizinhos)
+
+    def test_promocao_reprovada_nao_escreve_no_grafo(self) -> None:
+        regra = _regra("R-reprovada", status=StatusRegra.DRAFT)
+        avaliacoes = [
+            ShadowEvaluation(
+                rule_id=regra.id,
+                decision_point_id="dp-1",
+                shadow_resolution=DecisionOption(id="a", descricao="A"),
+                actual_resolution=DecisionOption(id="a", descricao="A"),
+                agreement=True,
+            )
+        ]
+        grafo = KnowledgeGraph()
+
+        with pytest.raises(ShadowModeInsuficiente):
+            promover_a_active(regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo)
+
+        assert grafo.nos_por_tipo(TipoNoKnowledge.RULE) == []
 
 
 class TestAT242ReviewedByObrigatorioEstruturalmente:

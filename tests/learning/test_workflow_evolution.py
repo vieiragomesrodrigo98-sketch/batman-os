@@ -19,6 +19,7 @@ from batman_os.foundation.types import (
     agora,
 )
 from batman_os.kernel.planning_engine import PlanStepTemplate
+from batman_os.learning.knowledge_graph import KnowledgeGraph, TipoAresta, TipoNoKnowledge
 from batman_os.learning.workflow_evolution import (
     CoberturaDeRecoveryReduzida,
     EvolutionEvidence,
@@ -95,13 +96,13 @@ class TestAT251NuncaAplicaSemCertificacaoCompleta:
         proposta = _proposta(reviewed_by=None)
 
         with pytest.raises(RevisaoHumanaObrigatoriaParaProposta):
-            aplicar_proposta(proposta, certificar=lambda pb: pb)
+            aplicar_proposta(proposta, certificar=lambda pb: pb, grafo=KnowledgeGraph())
 
     def test_proposta_nao_aprovada_nao_pode_ser_aplicada(self) -> None:
         proposta = _proposta(status=StatusProposta.PROPOSED)
 
         with pytest.raises(PropostaNaoAprovada):
-            aplicar_proposta(proposta, certificar=lambda pb: pb)
+            aplicar_proposta(proposta, certificar=lambda pb: pb, grafo=KnowledgeGraph())
 
     def test_certificacao_bem_sucedida_aplica(self) -> None:
         proposta = _proposta()
@@ -109,7 +110,7 @@ class TestAT251NuncaAplicaSemCertificacaoCompleta:
         def certificar_ok(pb: PlaybookDefinition) -> PlaybookDefinition:
             return pb.model_copy(update={"status": StatusPlaybook.ACTIVE})
 
-        resultado = aplicar_proposta(proposta, certificar=certificar_ok)
+        resultado = aplicar_proposta(proposta, certificar=certificar_ok, grafo=KnowledgeGraph())
 
         assert resultado.proposta.status == StatusProposta.APPLIED
         assert len(resultado.playbooks_certificados) == 1
@@ -121,7 +122,7 @@ class TestAT251NuncaAplicaSemCertificacaoCompleta:
         def certificar_falha(pb: PlaybookDefinition) -> PlaybookDefinition:
             raise GapDeCertificacaoDoPlaybook(f"Playbook '{pb.id}' reprovado: motivo de teste")
 
-        resultado = aplicar_proposta(proposta, certificar=certificar_falha)
+        resultado = aplicar_proposta(proposta, certificar=certificar_falha, grafo=KnowledgeGraph())
 
         assert resultado.proposta.status == StatusProposta.REJECTED
         assert resultado.playbooks_certificados == []
@@ -134,10 +135,69 @@ class TestAT251NuncaAplicaSemCertificacaoCompleta:
         def certificar_falha(pb: PlaybookDefinition) -> PlaybookDefinition:
             raise GapDeCertificacaoDoPlaybook(f"Playbook '{pb.id}' reprovado")
 
-        resultado = aplicar_proposta(proposta, certificar=certificar_falha)
+        resultado = aplicar_proposta(proposta, certificar=certificar_falha, grafo=KnowledgeGraph())
 
         assert resultado.proposta.evidence.metrics_snapshot["fallbackRate"] == 0.87
         assert resultado.proposta.evidence.metrics_snapshot["certification_failure"] == 1.0
+
+
+class TestMilestone4PropostaAplicadaEntraNoKnowledgeGraph:
+    """Achado de revisão fechado na Milestone 4: `aplicar_proposta` não
+    escrevia no Knowledge Graph (Vol.VI Cap.23) — um Playbook certificado
+    via evolução nunca aparecia lá."""
+
+    def test_playbook_certificado_vira_no_playbook_no_grafo(self) -> None:
+        proposta = _proposta()
+        grafo = KnowledgeGraph()
+
+        def certificar_ok(pb: PlaybookDefinition) -> PlaybookDefinition:
+            return pb.model_copy(update={"status": StatusPlaybook.ACTIVE})
+
+        aplicar_proposta(proposta, certificar=certificar_ok, grafo=grafo)
+
+        nos_playbook = grafo.nos_por_tipo(TipoNoKnowledge.PLAYBOOK)
+        assert any(no.ref == "pb-novo" for no in nos_playbook)
+
+    def test_playbook_certificado_tem_aresta_justified_by(self) -> None:
+        proposta = _proposta()
+        grafo = KnowledgeGraph()
+
+        def certificar_ok(pb: PlaybookDefinition) -> PlaybookDefinition:
+            return pb.model_copy(update={"status": StatusPlaybook.ACTIVE})
+
+        aplicar_proposta(proposta, certificar=certificar_ok, grafo=grafo)
+
+        no_novo = next(
+            no for no in grafo.nos_por_tipo(TipoNoKnowledge.PLAYBOOK) if no.ref == "pb-novo"
+        )
+        vizinhos = grafo.get_neighbors(no_novo, edge_kind=TipoAresta.JUSTIFIED_BY)
+        assert any(v.ref == str(_APPROVED_BY) for v in vizinhos)
+
+    def test_playbook_certificado_supersede_o_playbook_afetado(self) -> None:
+        proposta = _proposta()
+        grafo = KnowledgeGraph()
+
+        def certificar_ok(pb: PlaybookDefinition) -> PlaybookDefinition:
+            return pb.model_copy(update={"status": StatusPlaybook.ACTIVE})
+
+        aplicar_proposta(proposta, certificar=certificar_ok, grafo=grafo)
+
+        no_novo = next(
+            no for no in grafo.nos_por_tipo(TipoNoKnowledge.PLAYBOOK) if no.ref == "pb-novo"
+        )
+        vizinhos = grafo.get_neighbors(no_novo, edge_kind=TipoAresta.SUPERSEDES)
+        assert any(v.ref == "pb-original" for v in vizinhos)
+
+    def test_proposta_rejeitada_nao_escreve_no_grafo(self) -> None:
+        proposta = _proposta()
+        grafo = KnowledgeGraph()
+
+        def certificar_falha(pb: PlaybookDefinition) -> PlaybookDefinition:
+            raise GapDeCertificacaoDoPlaybook(f"Playbook '{pb.id}' reprovado")
+
+        aplicar_proposta(proposta, certificar=certificar_falha, grafo=grafo)
+
+        assert grafo.nos_por_tipo(TipoNoKnowledge.PLAYBOOK) == []
 
 
 class TestAT252FusaoNuncaReduzCoberturaDeRecovery:

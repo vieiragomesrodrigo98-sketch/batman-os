@@ -26,6 +26,13 @@ from batman_os.foundation.types import (
     Timestamp,
     agora,
 )
+from batman_os.learning.knowledge_graph import (
+    KnowledgeEdge,
+    KnowledgeGraph,
+    KnowledgeNode,
+    TipoAresta,
+    TipoNoKnowledge,
+)
 
 
 class DecisionPointComoAssinatura(Protocol):
@@ -193,11 +200,20 @@ def promover_a_active(
     avaliacoes: list[ShadowEvaluation],
     taxa_minima: float,
     minimo_avaliacoes: int,
+    grafo: KnowledgeGraph,
 ) -> RuleDefinition:
     """Vol.VI Cap.24, secao 24.3/24.4 (AT-24.1) — só promove a `active` com
     volume mínimo de avaliações de shadow mode E taxa de concordância acima
     do limiar; nunca confia apenas na Human Review isolada de dados
-    empíricos subsequentes (ADR-0011)."""
+    empíricos subsequentes (ADR-0011).
+
+    `grafo` (Milestone 4 desta construção — achado de revisão): toda regra
+    que atinge `active` é registrada no Knowledge Graph (Vol.VI Cap.23) —
+    nó `rule` com aresta `justified-by` para a Human Review que aprovou a
+    promoção (satisfaz `verificar_integridade`, AT-23.3, Evidence First) e
+    `promoted-from` para o `OperationalRecord`-signature de origem
+    (Vol.III Cap.13). Sem isso, uma regra promovida nunca aparecia no
+    grafo, apesar do Cap.26 descrever o ciclo completo passando por ele."""
     if len(avaliacoes) < minimo_avaliacoes:
         raise ShadowModeInsuficiente(
             f"Regra '{regra.id}': {len(avaliacoes)} avaliacoes de shadow mode, "
@@ -211,4 +227,26 @@ def promover_a_active(
             f"limiar {taxa_minima:.2%} ({len(avaliacoes)} avaliacoes)"
         )
 
-    return regra.model_copy(update={"status": StatusRegra.ACTIVE})
+    promovida = regra.model_copy(update={"status": StatusRegra.ACTIVE})
+
+    no_regra = KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref=str(promovida.id))
+    grafo.adicionar_no(no_regra)
+
+    no_evidencia = KnowledgeNode(
+        tipo=TipoNoKnowledge.EVIDENCE, ref=str(promovida.provenance.reviewed_by)
+    )
+    grafo.adicionar_no(no_evidencia)
+    grafo.adicionar_aresta(
+        KnowledgeEdge(kind=TipoAresta.JUSTIFIED_BY, de=no_regra, para=no_evidencia)
+    )
+
+    no_origem = KnowledgeNode(
+        tipo=TipoNoKnowledge.OPERATIONAL_RECORD,
+        ref=promovida.provenance.source_candidate_signature,
+    )
+    grafo.adicionar_no(no_origem)
+    grafo.adicionar_aresta(
+        KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=no_regra, para=no_origem)
+    )
+
+    return promovida
