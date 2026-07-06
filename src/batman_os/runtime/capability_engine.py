@@ -221,10 +221,31 @@ class CapabilityRegistry:
         return max(candidatas, key=lambda d: _partes_versao(d.version))
 
     def _schema_compativel(self, definicao: CapabilityDefinition, intent: MissionIntent) -> bool:
+        """Vol.III Cap.11, secao 11.6 — casamento estrutural de schema.
+
+        Achado de auditoria (validacao final do lote Milestones 2-7 desta
+        construcao): checar SO a presenca das chaves nao discrimina entre
+        Capabilities com o MESMO conjunto de nomes de campo mas schemas
+        semanticamente diferentes (ex.: 8 Entradas da Milestone 3 — todas
+        `{tipo, caminho, conteudo, regra}` — cada uma com um `tipo:
+        Literal[...]` proprio). Sem checar o VALOR de um campo `const`
+        (discriminador), todas as 8 empatavam como candidatas para
+        qualquer uma das 8 entradas, gerando um plano de 8 passos em vez
+        de 1 (`EntradaNaoRegistrada` ao tentar invocar o passo 2+, ja que
+        `scan_command.py` so registra entrada para o passo 0). Campo sem
+        `const` continua exigindo so presenca da chave — comportamento
+        inalterado para schemas sem discriminador (ex.: `EntradaRegexArquivo`,
+        Milestone 1/2)."""
         propriedades = definicao.input_schema.get("properties")
         if not propriedades:
             return True  # sem requisitos declarados -> compativel com qualquer intent
-        return all(chave in intent.dados for chave in propriedades)
+        for chave, propriedade in propriedades.items():
+            if chave not in intent.dados:
+                return False
+            valor_const = propriedade.get("const")
+            if valor_const is not None and intent.dados[chave] != valor_const:
+                return False
+        return True
 
     def _especificidade(self, definicao: CapabilityDefinition, intent: MissionIntent) -> int:
         propriedades = definicao.input_schema.get("properties") or {}

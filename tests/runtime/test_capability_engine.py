@@ -162,6 +162,53 @@ class TestAT113FindCandidatesDeterministico:
 
         assert refs == [CapabilityRef(capability_id=CapabilityId("cap-a"), versao="1.0.0")]
 
+    def test_campo_const_discrimina_capabilities_com_mesmas_chaves(self) -> None:
+        """Achado de auditoria (validacao final Milestones 2-7): duas
+        Capabilities com o MESMO conjunto de nomes de campo (`tipo`,
+        `caminho`) mas valores de `tipo` diferentes NAO podem empatar como
+        candidatas para a mesma entrada — sem isso, `_compor_via_grafo_
+        capacidades` gera um passo por candidato empatado, e o scan crasha
+        com `EntradaNaoRegistrada` ao tentar invocar o segundo passo."""
+        registry = CapabilityRegistry()
+        registry.register(
+            _def(
+                nome="cap-tipo-a",
+                input_schema={
+                    "properties": {
+                        "tipo": {"const": "tipo-a", "default": "tipo-a"},
+                        "caminho": {},
+                    }
+                },
+            )
+        )
+        registry.register(
+            _def(
+                nome="cap-tipo-b",
+                input_schema={
+                    "properties": {
+                        "tipo": {"const": "tipo-b", "default": "tipo-b"},
+                        "caminho": {},
+                    }
+                },
+            )
+        )
+        intent = MissionIntent(dados={"tipo": "tipo-a", "caminho": "x.py"})
+
+        candidatos = registry.find_candidates(intent)
+
+        assert [d.id for d in candidatos] == [CapabilityId("cap-tipo-a")]
+
+    def test_campo_sem_const_continua_exigindo_so_presenca_da_chave(self) -> None:
+        """Propriedade sem `const` (schema de Milestone 1/2, sem
+        discriminador) preserva o comportamento anterior — nao regride."""
+        registry = CapabilityRegistry()
+        registry.register(_def(nome="cap-a", input_schema={"properties": {"alvo": {}}}))
+        intent = MissionIntent(dados={"alvo": "qualquer-valor"})
+
+        candidatos = registry.find_candidates(intent)
+
+        assert [d.id for d in candidatos] == [CapabilityId("cap-a")]
+
 
 def test_versao_do_registro_muda_a_cada_mutacao() -> None:
     registry = CapabilityRegistry()

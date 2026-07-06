@@ -93,3 +93,26 @@ class TestExecutarScanComTodosOsLotes:
 
         codigos = {achado.codigo for achado in resultado.achados}
         assert {"VPS-001", "DE-002"}.issubset(codigos)
+
+    def test_arquivo_python_nao_crasha_com_todas_as_skills_registradas(
+        self, tmp_path: Path
+    ) -> None:
+        """Achado de auditoria (validacao final Milestones 2-7): as 8
+        Capabilities da Milestone 3 (ast_padrao_ausente, ast_kwarg_ausente,
+        git_comando_interpretado, execucao_comando_interpretada,
+        toml_dependencias, de003, ora005, ora004) compartilham o mesmo
+        conjunto de nomes de campo na entrada (`tipo, caminho, conteudo,
+        regra`) — um `.py` real, escaneado com TODOS os lotes registrados
+        simultaneamente (como acontece de verdade via `executar_scan` sem
+        `especificacoes` explicito), antes gerava um plano de 8 passos por
+        arquivo (`CapabilityRegistry.find_candidates` empatando as 8 como
+        candidatas) e crashava com `EntradaNaoRegistrada` ao tentar invocar
+        o segundo passo — `scan_command.py` so registra entrada para o
+        passo 0. Fixado em `capability_engine._schema_compativel` (checa o
+        valor de campos `const`, nao so a presenca da chave)."""
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "exemplo.py").write_text("class Foo:\n    pass\n", encoding="utf-8")
+
+        resultado = executar_scan(tmp_path)  # nao deve levantar EntradaNaoRegistrada
+
+        assert resultado is not None
