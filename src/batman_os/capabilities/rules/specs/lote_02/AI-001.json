@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "AI-001",
+    "agente": "ai-engineer",
+    "severidade": "medium",
+    "categoria": "arquitetura-llm",
+    "titulo": "Chamada ao LLM fora do módulo src/radar/llm/",
+    "causa": "Chamadas ao OpenAI espalhadas pelo código contornam o circuit breaker de custo, o logging centralizado e o schema de structured output — cada caller reimplementa tratamento de erro de forma inconsistente.",
+    "remediacao": "Mover toda chamada ao LLM para src/radar/llm/. DoD: grep por 'openai.' fora de src/radar/llm/ retorna vazio.",
+    "modo": "presenca",
+    "pattern": "openai\\.|client\\.chat|client\\.completions|ChatCompletion",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["src/radar/llm"],
+    "excluir_caminho_contem_lower": ["test"]
+  }
+}

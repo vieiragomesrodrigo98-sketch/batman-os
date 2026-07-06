@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "SUP-003",
+    "agente": "support",
+    "severidade": "high",
+    "categoria": "seguranca",
+    "titulo": "Endpoint retornando stack trace ou traceback como mensagem de erro ao cliente",
+    "causa": "Expor traceback ao cliente revela estrutura interna, versões e caminhos de arquivo — informação explorada por atacantes.",
+    "remediacao": "Usar mensagem genérica ao cliente, logar traceback internamente. DoD: sem traceback.format_exc() em detail de HTTPException.",
+    "modo": "presenca",
+    "pattern": "traceback\\.format_exc\\(\\)|str\\(traceback",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

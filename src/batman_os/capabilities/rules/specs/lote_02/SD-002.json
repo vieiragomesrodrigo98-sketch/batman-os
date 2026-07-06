@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SD-002",
+    "agente": "service-designer",
+    "severidade": "medium",
+    "categoria": "jornada",
+    "titulo": "Botão com onClick vazio — clique sem efeito visível",
+    "causa": "onClick={() => {}} resulta em botão que o usuário clica sem nenhum feedback. Deteriora confiança e indica feature incompleta exposta em produção. Especialmente danoso em mobile onde o toque é impreciso: o usuário toca várias vezes achando que o seu toque não foi registrado.",
+    "remediacao": "Implementar a ação ou desabilitar o botão com disabled + tooltip enquanto a feature não estiver pronta. DoD: nenhum onClick vazio em componente de produto em produção.",
+    "modo": "presenca",
+    "pattern": "onClick=\\{\\s*\\(\\s*\\)\\s*=>\\s*\\{?\\s*\\}"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

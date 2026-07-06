@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "MOB-005",
+    "agente": "mobile-engineer",
+    "severidade": "low",
+    "categoria": "performance-mobile",
+    "titulo": "Imagem <img> sem srcset para diferentes resoluções",
+    "causa": "Sem srcset, mobile carrega a mesma imagem HD que desktop — desperdiça dados e degrada performance.",
+    "remediacao": "Adicionar srcset com versões 1x e 2x para imagens de conteúdo. DoD: todo <img> de conteúdo tem srcset.",
+    "modo": "presenca",
+    "pattern": "<img\\s(?=[^\\n]*src=)(?![^\\n]*srcset)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

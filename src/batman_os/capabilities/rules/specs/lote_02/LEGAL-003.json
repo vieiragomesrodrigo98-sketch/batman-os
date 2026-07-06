@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "LEGAL-003",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "CPF ou e-mail exposto em log",
+    "causa": "Logar CPF ou e-mail em texto plano viola a LGPD (art. 46) e pode expor dados em sistemas de log de terceiros.",
+    "remediacao": "Nunca incluir CPF/email em log.info/log.error ou print. Usar IDs opacos. DoD: nenhum log contém CPF ou e-mail literal.",
+    "modo": "presenca",
+    "pattern": "(log\\.|logger\\.|print\\()[^)]*\\{[^}]*\\bcpf\\b|(log\\.|logger\\.|print\\()[^)]*\\{[^}]*\\bemail\\b",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,10 +1,10 @@
-"""Compara os achados do primeiro lote migrado (14 regras) com o motor
-Batman legado (`radar-preditivo/Batman/scan/engine.py::run`), rodando os
-dois contra o MESMO repositório alvo real.
+"""Compara os achados de todos os lotes migrados com o motor Batman legado
+(`radar-preditivo/Batman/scan/engine.py::run`), rodando os dois contra o
+MESMO repositório alvo real.
 
 Divergência de fingerprint = bug de migração (não do alvo) — mesma
 disciplina de shadow mode do Volume VI (Cap.24) antes de considerar o
-legado substituível para estes 14 códigos: os dois motores rodam em
+legado substituível para os códigos já migrados: os dois motores rodam em
 paralelo, sem que o legado pare de ser a fonte de verdade em produção.
 
 Uso:
@@ -22,9 +22,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from batman_os.capabilities.rules.lote_01 import carregar_lote_01  # noqa: E402
+from batman_os.capabilities.rules.lote_02 import carregar_lote_02  # noqa: E402
 from batman_os.cli.scan_command import executar_scan  # noqa: E402
 
-_CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in carregar_lote_01())
+# Toda vez que um novo lote for migrado (Milestone 2+), adicionar seu
+# carregar_lote_NN() aqui — nao ha descoberta automatica de lotes de
+# proposito (mais facil de auditar o que exatamente entra na comparacao).
+_CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in carregar_lote_01() + carregar_lote_02())
 
 _SCRIPT_LEGADO = """
 import json

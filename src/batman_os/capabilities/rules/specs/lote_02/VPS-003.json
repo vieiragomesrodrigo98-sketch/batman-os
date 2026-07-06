@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-003",
+    "agente": "vps-infra",
+    "severidade": "high",
+    "categoria": "observabilidade",
+    "titulo": "Variáveis de alerta ausentes em .env.production.example",
+    "causa": "Produção sem sistema de alertas significa falhas no pipeline, erros de API e anomalias passando despercebidas até o usuário reclamar. ALERT_SMTP_HOST (e-mail) e ALERT_TELEGRAM_TOKEN (Telegram) são os canais principais de notificação operacional.",
+    "remediacao": "Adicionar ao .env.production.example as variáveis: ALERT_SMTP_HOST, ALERT_SMTP_PORT, ALERT_SMTP_USER, ALERT_SMTP_PASS, ALERT_SMTP_TO, ALERT_TELEGRAM_TOKEN, ALERT_TELEGRAM_CHAT_ID. DoD: ambos os grupos presentes no template.",
+    "modo": "ausencia",
+    "pattern": "(?=[\\s\\S]*?ALERT_SMTP_HOST)(?=[\\s\\S]*?ALERT_TELEGRAM_TOKEN)"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.production.example"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "regra": {
+    "codigo": "CLOUD-004",
+    "agente": "cloud-engineer",
+    "severidade": "high",
+    "categoria": "secrets",
+    "titulo": ".env não listado no .gitignore",
+    "causa": "Arquivos .env contêm segredos de produção. Se não ignorados pelo git, qualquer `git add .` os inclui no histórico, expondo credenciais mesmo após remoção posterior.",
+    "remediacao": "Adicionar `.env` e `.env.*` ao .gitignore (mas NÃO .env.example). DoD: `git check-ignore -v .env` retorna o arquivo como ignorado.",
+    "modo": "arquivo-presente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".",
+    "caminho_relatorio": ".gitignore",
+    "condicoes_adicionais": [
+      {
+        "tipo": "arquivo_fixo",
+        "caminho": ".gitignore",
+        "checar": "ausencia",
+        "pattern": "(?:^|\\n)\\.env\\b",
+        "vazio_se_ausente": true
+      }
+    ]
+  }
+}

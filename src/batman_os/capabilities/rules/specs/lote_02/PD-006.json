@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PD-006",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "clareza",
+    "titulo": "Valor monetário exibido sem símbolo de moeda (R$)",
+    "causa": "Exibir números de preço/capital sem 'R$' deixa ambíguo se é Reais, Dólares, pontos ou percentual. Em plataforma de investimentos isso é especialmente crítico — o usuário não pode agir com segurança sem saber a moeda do valor.",
+    "remediacao": "Prefixar todo valor monetário com 'R$ ' (com espaço). DoD: nenhum preço (entry, stop, target, capital) sem R$ visível.",
+    "modo": "ausencia",
+    "pattern": "R\\$|BRL|toLocaleString.*currency",
+    "pattern_escopo": "(entry_price|stop_price|target_price|capital_simulado|balance)\\b[^;]*\\.toFixed\\(",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

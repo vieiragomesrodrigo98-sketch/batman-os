@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "UXW-002",
+    "agente": "ux-writer",
+    "severidade": "low",
+    "categoria": "mensagens",
+    "titulo": "Mensagem de erro genérica sem contexto",
+    "causa": "Mensagens como 'Erro' ou 'Failed' não dizem ao usuário o que aconteceu nem o que fazer — geram frustração e aumentam chamados de suporte.",
+    "remediacao": "Substituir por mensagens específicas e acionáveis (ex.: 'Não foi possível carregar os sinais. Tente novamente ou contate o suporte.'). DoD: nenhuma mensagem de erro com menos de 15 caracteres.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*(?:===|!==|\\bcase\\b|:\\s*[\"']|\\btype\\s*[\\s:]|\\.includes\\s*\\(|\\|\\s*[\"']|\\bset[A-Z]\\w*\\s*\\())).*[\"'](?:Erro|Error|Falhou|Failed|Something went wrong|Ops|Oops|Deu errado)[\"']",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

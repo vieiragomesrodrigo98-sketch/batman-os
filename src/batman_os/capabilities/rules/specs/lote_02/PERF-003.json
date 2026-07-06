@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "PERF-003",
+    "agente": "performance-engineer",
+    "severidade": "high",
+    "categoria": "query",
+    "titulo": "N+1 query: chamada ao banco de dados dentro de loop sem batch",
+    "causa": "N+1 query é uma das causas mais comuns de degradação de performance — 100 registros geram 101 queries ao banco em vez de 1.",
+    "remediacao": "Usar .joinedload(), .selectinload() ou batch query. DoD: nenhuma query dentro de for loop sem prefetch.",
+    "modo": "presenca",
+    "pattern": "(?m)^\\s*(?:async\\s+)?for\\s+\\w+\\s+in\\s+[^\\n]*:[ \\t]*\\n(?:[^\\n]*\\n){0,4}[^\\n]*(?:session\\.(?:get|query|execute)|\\.filter\\s*\\(|await\\s+db\\.)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

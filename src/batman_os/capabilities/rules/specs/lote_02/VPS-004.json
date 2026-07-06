@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-004",
+    "agente": "vps-infra",
+    "severidade": "medium",
+    "categoria": "disponibilidade",
+    "titulo": "Deploy script sem health check pós-restart do serviço",
+    "causa": "Após 'systemctl restart', o processo pode falhar ao iniciar por erro de configuração, import ou migração. Sem um health check (curl /health), o deploy finaliza com sucesso mesmo quando a API não está respondendo.",
+    "remediacao": "Adicionar após o restart uma verificação de saúde: curl -s http://localhost:$PORT/health retornando 200. DoD: scripts/deploy.sh tem 'curl' + '/health' na seção REMOTE.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*?systemctl\\s+restart)(?![\\s\\S]*curl[\\s\\S]*/health)"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "scripts/deploy.sh"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SD-003",
+    "agente": "service-designer",
+    "severidade": "medium",
+    "categoria": "jornada",
+    "titulo": "Página com fetch de API sem estado de erro visível ao usuário",
+    "causa": "Componente busca dados mas trata .catch() silenciosamente. Quando a API falha, a tela fica em branco ou com spinner infinito: o usuário não sabe se houve erro, se deve esperar ou se deve tentar novamente. Dead-end de jornada — o usuário não tem para onde ir.",
+    "remediacao": "Adicionar estado 'loadError' e exibir mensagem + botão de retry. DoD: todo useEffect com fetch tem fallback de erro visível ao usuário (não só no console).",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "(?=[\\s\\S]*?(?:useState.*loading|setLoading|isLoading))(?=[\\s\\S]*?\\.catch\\(\\s*\\(\\s*\\)\\s*=>\\s*\\{?\\s*\\})",
+    "pattern_mitigacao": "loadError|setError|errorMsg|error\\s*&&|<Error|AlertTriangle",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

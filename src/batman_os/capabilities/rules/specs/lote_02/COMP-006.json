@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "COMP-006",
+    "agente": "compliance",
+    "severidade": "high",
+    "categoria": "cvm-segredo-motor",
+    "titulo": "Funcionamento/validação do motor exposto em tela de usuário (CVM + segredo de negócio)",
+    "causa": "Ordem do DEV (2026-07-03): a visão de usuário NÃO pode divulgar informações que entregam o funcionamento do motor. Métricas de validação (Sharpe, Calmar, walk-forward, folds, backtest) e internals de calibração (pesos, sample_size, autocalibragem) em página pública ou de usuário comum expõem propriedade intelectual e criam risco regulatório (CVM — promessa de performance). Permitido somente em telas admin (pages/admin/, MotorAdmin).",
+    "remediacao": "Remover o termo da tela de usuário ou mover o conteúdo para tela admin. Se for métrica do PORTFÓLIO do próprio usuário (não do motor), obter decisão explícita do DEV e registrar supressão/deferimento com justificativa. DoD: grep dos termos zerado fora de pages/admin/ e MotorAdmin.",
+    "modo": "presenca",
+    "pattern": "(?<![\\w.])(sharpe|calmar)(?![\\w])|walk[-_ ]?forward|\\bfolds?\\b|backtest|out[-_ ]of[-_ ]sample|autocalibr|weights_config|sample_size",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_caminho_contem_lower": ["pages/admin/", "components/admin/", "motoradmin", "frontend/src/api/", ".test.", "__tests__"]
+  }
+}

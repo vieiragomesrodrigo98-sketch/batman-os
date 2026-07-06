@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "CLOUD-003",
+    "agente": "cloud-engineer",
+    "severidade": "high",
+    "categoria": "containers",
+    "titulo": "Container Docker rodando como root (sem USER)",
+    "causa": "Sem instrução USER, o container executa como root por padrão. Uma vulnerabilidade na aplicação dá ao atacante privilégio total no container e facilita escape para o host.",
+    "remediacao": "Adicionar instrução USER com UID não-root (ex.: USER 1000) antes do CMD/ENTRYPOINT. DoD: todo Dockerfile finaliza com USER não-root.",
+    "modo": "ausencia",
+    "pattern": "(?:^|\\n)USER\\s+"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "Dockerfile*",
+    "excluir_caminho_contem": [".venv", "node_modules"]
+  }
+}

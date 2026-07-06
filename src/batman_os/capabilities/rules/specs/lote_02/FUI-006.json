@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FUI-006",
+    "agente": "frontend-ui",
+    "severidade": "medium",
+    "categoria": "camadas",
+    "titulo": "Elemento fixed/absolute sem z-index explícito — sobreposição imprevisível",
+    "causa": "Elementos com position:fixed ou absolute sem z-index dependem da ordem de empilhamento implícita do DOM, que muda com refactors. Em mobile, banners fixos, dropdowns e toasts frequentemente sobrepõem conteúdo de página ou ficam atrás de outros elementos posicionados.",
+    "remediacao": "Definir z-index explícito para todo fixed/absolute (Tailwind: z-10, z-20, z-50). Documentar a hierarquia: page < header < banner < dropdown < toast < modal. DoD: nenhum fixed/absolute sem z-index em componente de UI.",
+    "modo": "presenca",
+    "pattern": "className=[\"'](?:(?!z-\\d+|z-auto|inset|top-0.*left-0|rounded-full.*w-\\d)[^\"'])*\\b(?:fixed|absolute)\\b(?:(?!z-\\d+|z-auto|inset|top-0.*left-0|rounded-full.*w-\\d)[^\"'])*[\"']"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "BA-001",
+    "agente": "business-analyst",
+    "severidade": "medium",
+    "categoria": "regra-negocio",
+    "titulo": "Limiar de negócio hardcoded sem constante nomeada",
+    "causa": "Valores literais usados diretamente em comparações de regras de negócio (score >= 0.7, sample_size < 10, etc.) ficam invisíveis para revisão de produto e não disparam busca no código quando a regra muda.",
+    "remediacao": "Extrair o valor para uma constante nomeada (ex.: MIN_SCORE = 0.7) no módulo de configuração ou no topo do arquivo. DoD: nenhum literal numérico em comparações de regra de negócio fora de constantes.",
+    "modo": "presenca",
+    "pattern": "(>=|<=|>|<)\\s*0\\.\\d+"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["src", "api/services", "api/routers"],
+    "extensoes": [".py"]
+  }
+}

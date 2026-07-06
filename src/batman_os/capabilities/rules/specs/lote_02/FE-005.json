@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FE-005",
+    "agente": "frontend-engineer",
+    "severidade": "high",
+    "categoria": "security",
+    "titulo": "Token ou dado sensível armazenado em localStorage",
+    "causa": "localStorage é acessível a qualquer script na página — qualquer XSS rouba tokens permanentemente. Tokens devem ser em cookies httpOnly.",
+    "remediacao": "Mover tokens de autenticação para cookies httpOnly. DoD: sem localStorage.setItem com chave contendo token/auth/jwt/session/password/secret.",
+    "modo": "presenca",
+    "pattern": "localStorage\\.setItem\\s*\\(\\s*['\"]?(token|auth|jwt|session|password|secret)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

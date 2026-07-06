@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "UXW-004",
+    "agente": "ux-writer",
+    "severidade": "high",
+    "categoria": "mensagens",
+    "titulo": "Mensagem de erro expondo detalhe técnico ao usuário",
+    "causa": "Expor stack trace, mensagens SQL ou caminhos de arquivo ao usuário revela estrutura interna da aplicação e prejudica a experiência.",
+    "remediacao": "Usar mensagens de erro amigáveis. DoD: sem {error.stack}, {error.message}, {err.detail} renderizados diretamente no JSX de componente de erro.",
+    "modo": "presenca",
+    "pattern": "\\{(?:error|err)\\.(?:stack|message|detail)\\}"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

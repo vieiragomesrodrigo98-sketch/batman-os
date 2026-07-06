@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FUI-007",
+    "agente": "frontend-ui",
+    "severidade": "low",
+    "categoria": "layout",
+    "titulo": "Grid com colunas fixas mas filhos sem min-w-0 — vazamento de conteúdo",
+    "causa": "Em CSS Grid, assim como em flex, a largura mínima de um item é 'min-content' por padrão. Conteúdo longo (texto, tabela) pode fazer o item crescer além da coluna, causando overflow. 'min-w-0' redefine o mínimo para zero e deixa o grid controlar o tamanho.",
+    "remediacao": "Adicionar 'min-w-0' ou 'overflow-hidden' aos filhos diretos de grid que contêm texto longo ou tabelas. DoD: células de grid com conteúdo variável têm min-w-0.",
+    "modo": "presenca",
+    "pattern": "(?=[\\s\\S]*?grid(?:\\s+grid-cols-\\d+|\\s+md:grid-cols-\\d+))(?=[\\s\\S]*?\\.map\\([\\s\\S]*?=>\\s*\\(?\\s*<div(?!\\s[^>]*\\bmin-w-0\\b))(?=[\\s\\S]*?(?:line-clamp|truncate|text-sm|text-xs))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

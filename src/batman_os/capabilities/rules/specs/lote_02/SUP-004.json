@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "SUP-004",
+    "agente": "support",
+    "severidade": "high",
+    "categoria": "api-contract",
+    "titulo": "Resposta HTTP 200 com corpo indicando erro (erro mascarado como sucesso)",
+    "causa": "HTTP 200 com success:false ou error no corpo confunde clientes e sistemas de monitoramento que verificam apenas status code.",
+    "remediacao": "Usar status codes apropriados (4xx/5xx). DoD: sem JSONResponse(200) com corpo de erro.",
+    "modo": "presenca",
+    "pattern": "(?:status_code\\s*=\\s*200(?:[^\\n]*\\n){0,5}[^\\n]*(?:['\"]error['\"]|['\"]success['\"].*[Ff]alse|[Ff]alse.*['\"]success['\"]))|(?:(?:['\"]error['\"]|['\"]success['\"].*[Ff]alse|[Ff]alse.*['\"]success['\"])(?:[^\\n]*\\n){0,5}[^\\n]*status_code\\s*=\\s*200)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

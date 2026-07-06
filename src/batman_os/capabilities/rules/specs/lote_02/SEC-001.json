@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-001",
+    "agente": "security-engineer",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Escrita direta no SQLite a partir do Streamlit, fora da API",
+    "causa": "Páginas do Streamlit que abrem sqlite3 gravam no banco sem passar pela camada de API: sem validação Pydantic, sem rate limiting e sem auditoria (log_action). Toda garantia que a API oferece é silenciosamente contornada.",
+    "remediacao": "Remover qualquer uso de sqlite3 das páginas. Toda escrita deve chamar um endpoint da API (criar um se necessário), com validação Pydantic e registro em log_action. DoD: grep por 'sqlite3' em pages/ retorna vazio.",
+    "modo": "presenca",
+    "pattern": "\\bsqlite3\\b"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["pages"],
+    "extensoes": [".py"]
+  }
+}

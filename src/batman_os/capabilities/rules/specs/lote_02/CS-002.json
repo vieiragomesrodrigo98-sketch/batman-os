@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "CS-002",
+    "agente": "customer-success",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "Projeto sem arquivo de changelog/release notes",
+    "causa": "Sem changelog, usuários e time de CS não conseguem rastrear o que mudou entre versões, dificultando comunicação de valor e suporte a versões anteriores.",
+    "remediacao": "Criar CHANGELOG.md seguindo Keep a Changelog (https://keepachangelog.com). DoD: CHANGELOG.md existe na raiz com pelo menos a versão atual documentada.",
+    "modo": "arquivo-ausente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "CHANGELOG.md",
+    "condicoes_adicionais": [
+      {"tipo": "arquivo_fixo", "caminho": "CHANGELOG.rst", "checar": "arquivo-ausente"},
+      {"tipo": "arquivo_fixo", "caminho": "CHANGES.md", "checar": "arquivo-ausente"},
+      {"tipo": "arquivo_fixo", "caminho": "HISTORY.md", "checar": "arquivo-ausente"}
+    ]
+  }
+}

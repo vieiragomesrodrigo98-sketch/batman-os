@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-008",
+    "agente": "vps-infra",
+    "severidade": "low",
+    "categoria": "configuracao",
+    "titulo": "LOG_LEVEL=DEBUG ou INFO em .env.production.example",
+    "causa": "LOG_LEVEL=DEBUG em produção gera volume excessivo de logs, expõe dados internos (tokens, payloads) e degrada performance. Produção deve usar WARNING ou ERROR.",
+    "remediacao": "Definir LOG_LEVEL=WARNING em .env.production.example. DoD: LOG_LEVEL não é DEBUG nem INFO no template de produção.",
+    "modo": "presenca",
+    "pattern": "LOG_LEVEL\\s*=\\s*(?:DEBUG|INFO)"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.production.example"
+  }
+}

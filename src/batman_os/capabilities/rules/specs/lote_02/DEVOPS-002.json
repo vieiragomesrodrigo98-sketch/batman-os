@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DEVOPS-002",
+    "agente": "devops-engineer",
+    "severidade": "medium",
+    "categoria": "configuracao",
+    "titulo": "DEBUG=True em configuração",
+    "causa": "DEBUG ativo em produção expõe stack traces, variáveis internas e pode desabilitar verificações de segurança do framework.",
+    "remediacao": "Garantir DEBUG=False em produção via variável de ambiente. DoD: nenhum DEBUG=True fora de .env.example e de testes.",
+    "modo": "presenca",
+    "pattern": "DEBUG\\s*=\\s*True"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["config", "api", "src"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["test", "example"]
+  }
+}

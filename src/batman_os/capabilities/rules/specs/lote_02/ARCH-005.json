@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "ARCH-005",
+    "agente": "software-architect",
+    "severidade": "low",
+    "categoria": "imports",
+    "titulo": "sys.path manipulado manualmente em entrypoint",
+    "causa": "Inserir caminhos em sys.path em runtime mascara a estrutura de pacote do projeto e torna os imports dependentes de quem chamou e de onde. Frágil entre ambientes.",
+    "remediacao": "Tornar o projeto um pacote instalável (pyproject / editable install) e remover as manipulações. DoD: nenhum sys.path.insert/append nos entrypoints.",
+    "modo": "presenca",
+    "pattern": "sys\\.path\\.(insert|append)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "dashboard"],
+    "extensoes": [".py"],
+    "excluir_nome_contem_lower": ["seed_admin.py", "init_db.py", "app.py", "main.py"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "PERF-002",
+    "agente": "performance-engineer",
+    "severidade": "low",
+    "categoria": "react",
+    "titulo": "Lista renderizada com .map() sem prop key",
+    "causa": "Sem key estável, o React re-renderiza a lista inteira a cada mudança em vez de reconciliar item a item — custo de render e bugs de estado. (heurística)",
+    "remediacao": "Adicionar key estável (id) ao elemento retornado no .map(). DoD: todo .map() que retorna JSX tem key.",
+    "modo": "presenca",
+    "pattern": "(?=\\.map\\([\\s\\S]{0,80}=>\\s*[({]?\\s*\\n?\\s*<)(?![\\s\\S]{0,400}key=)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "SD-012",
+    "agente": "service-designer",
+    "severidade": "high",
+    "categoria": "dados-tempo-real",
+    "titulo": "Pipeline overnight chama notify_new_signal antes da abertura do pregão",
+    "causa": "Sinais overnight são WATCHLIST (mercado fechado, preço estimado). Notificar Discord/Push neste momento envia ao usuário um sinal que (a) não pode ser executado e (b) terá preço diferente ao abrir. Resultado: usuário acorda com alerta, entra no app, vê sinal 'ao vivo' mas mercado está fechado. Confusão e perda de confiança.",
+    "remediacao": "Remover notify_new_signal de run_overnight_events.py. Mover para confirm_watchlist.py (chamado às 9h55 BRT com preço real). DoD: notify_new_signal só chamado para sinais com status PAPER_TRADING.",
+    "modo": "presenca",
+    "pattern": "notify_new_signal"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "scripts/run_overnight_events.py"
+  }
+}

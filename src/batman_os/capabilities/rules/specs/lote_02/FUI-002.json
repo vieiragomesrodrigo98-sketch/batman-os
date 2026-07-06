@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FUI-002",
+    "agente": "frontend-ui",
+    "severidade": "high",
+    "categoria": "layout",
+    "titulo": "Tabela com overflow-x-auto + w-full sem min-w — comprime em vez de rolar",
+    "causa": "Uma tabela com className='w-full' estica-se até 100% do container. O wrapper overflow-x-auto nunca ativa scroll horizontal porque a tabela já 'cabe' (ela comprime as colunas em vez de ultrapassar o container). Resultado: células comprimem a zero, texto invade células vizinhas — o clássico bug 'PCAR3.2%' onde ticker e P&L fundem visualmente.",
+    "remediacao": "Adicionar min-w-[Xpx] na tabela (ex: min-w-[320px]) para forçar o scroll quando a largura mínima não cabe. Ou adicionar whitespace-nowrap nas células críticas. DoD: toda tabela em overflow-x-auto tem min-w explícito.",
+    "modo": "ausencia",
+    "pattern": "\\bmin-w-\\[",
+    "pattern_escopo": "(?=[\\s\\S]*?overflow-x-auto)(?=[\\s\\S]*?<table[^>]+className[^>]+\\bw-full\\b)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

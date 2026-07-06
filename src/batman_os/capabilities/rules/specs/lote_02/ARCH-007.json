@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "ARCH-007",
+    "agente": "software-architect",
+    "severidade": "medium",
+    "categoria": "architecture",
+    "titulo": "Módulo de domínio importando diretamente módulo de infraestrutura (violação de dependência)",
+    "causa": "Importar database/ORM diretamente em módulos de lógica de negócio acopla o domínio à infraestrutura — impossível testar o domínio sem banco real.",
+    "remediacao": "Injetar dependências via interfaces/protocolos. DoD: nenhum módulo em src/radar/ importa diretamente de database ou sqlalchemy.",
+    "modo": "presenca",
+    "pattern": "from\\s+(api\\.database|src\\.radar\\.database|database)\\s+import|import\\s+sqlalchemy|from\\s+sqlalchemy"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["src/radar"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["radar/database/", "radar/ingestion/"],
+    "excluir_nome_contem_lower": ["repository.py", "_repo.py"]
+  }
+}

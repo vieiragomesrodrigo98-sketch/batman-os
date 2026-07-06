@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "MOB-004",
+    "agente": "mobile-engineer",
+    "severidade": "medium",
+    "categoria": "mobile-ios",
+    "titulo": "Fonte menor que 16px em campo de input (causa zoom automático em iOS)",
+    "causa": "iOS faz zoom automático em inputs com font-size < 16px, causando salto visual inesperado que quebra o fluxo de preenchimento de formulário.",
+    "remediacao": "Usar font-size >= 16px em todos os inputs. DoD: nenhum input com font-size < 16px no CSS.",
+    "modo": "presenca",
+    "pattern": "(?=[\\s\\S]*?(?:input|textarea))(?=[\\s\\S]*?font-size\\s*:\\s*(?:[0-9]|1[0-5])px)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".css", ".scss"]
+  }
+}

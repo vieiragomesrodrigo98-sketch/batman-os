@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "DS-003",
+    "agente": "data-scientist",
+    "severidade": "medium",
+    "categoria": "mlops",
+    "titulo": "Predição de modelo sem registro de métricas de desempenho",
+    "causa": "Modelos que geram predições sem registrar acurácia, RMSE, Sharpe ou outras métricas não permitem detectar degradação (drift) ao longo do tempo, tornando impossível comparar versões (Champion/Challenger).",
+    "remediacao": "Adicionar registro de métricas (accuracy, sharpe, hit_rate) após cada predição ou ciclo de validação. DoD: toda função predict/score registra ao menos uma métrica de desempenho.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "\\.(predict|fit|score)\\s*\\(",
+    "pattern_mitigacao": "accuracy|precision|recall|sharpe|rmse|mae|mse|r2_score|log_metric",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "RED-004",
+    "agente": "red-team",
+    "severidade": "medium",
+    "categoria": "crypto",
+    "titulo": "Hash fraco (MD5/SHA1) em contexto de segurança",
+    "causa": "MD5 e SHA1 são quebrados para fins de segurança (colisão viável). Inúteis para senha, assinatura ou integridade contra adversário.",
+    "remediacao": "SHA-256+ para integridade; bcrypt/argon2 para senha. DoD: sem MD5/SHA1 em contexto de segurança.",
+    "modo": "presenca",
+    "pattern": "hashlib\\.(?:md5|sha1)\\b",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

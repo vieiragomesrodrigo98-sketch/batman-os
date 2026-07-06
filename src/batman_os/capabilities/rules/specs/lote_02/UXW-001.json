@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "UXW-001",
+    "agente": "ux-writer",
+    "severidade": "low",
+    "categoria": "clareza",
+    "titulo": "Label ou placeholder vazio em componente",
+    "causa": "Label ou placeholder vazio deixa o usuário sem contexto sobre o que o campo espera — aumenta abandono e erros de preenchimento.",
+    "remediacao": "Preencher todos os labels, placeholders e titles com texto descritivo. DoD: nenhum label='' ou placeholder='' no produto.",
+    "modo": "presenca",
+    "pattern": "(?:children|label|title|placeholder)\\s*[:=]\\s*[\"']{2}"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

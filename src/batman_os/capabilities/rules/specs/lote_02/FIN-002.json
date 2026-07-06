@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FIN-002",
+    "agente": "financial-analyst",
+    "severidade": "medium",
+    "categoria": "reprodutibilidade",
+    "titulo": "train_test_split sem random_state",
+    "causa": "Split sem random_state gera partições diferentes a cada execução, tornando métricas irreproduziveis e comparações entre modelos inválidas.",
+    "remediacao": "Sempre passar random_state=SEED (constante de configuração). DoD: todo train_test_split tem random_state explícito.",
+    "modo": "presenca",
+    "pattern": "(?=train_test_split\\()(?!(?:(?!random_state)[\\s\\S]){0,300}random_state)train_test_split\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

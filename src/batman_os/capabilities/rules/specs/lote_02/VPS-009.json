@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-009",
+    "agente": "vps-infra",
+    "severidade": "low",
+    "categoria": "segurança",
+    "titulo": "ENABLE_REAL_TRADING ausente em .env.example (template de desenvolvimento)",
+    "causa": "Sem ENABLE_REAL_TRADING no template de desenvolvimento, o dev que copiar .env.example pode trabalhar sem a variável definida — o validator vai levantar erro confuso em vez de uma mensagem clara.",
+    "remediacao": "Garantir ENABLE_REAL_TRADING=false em .env.example. DoD: variável presente no template de desenvolvimento.",
+    "modo": "ausencia",
+    "pattern": "ENABLE_REAL_TRADING"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.example"
+  }
+}

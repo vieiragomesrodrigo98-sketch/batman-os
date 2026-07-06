@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DOC-003",
+    "agente": "technical-writer",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "Função pública exportada sem type hints completos (parâmetros e retorno)",
+    "causa": "Funções sem type hints não são verificadas por mypy — erros de tipo em integrações só aparecem em runtime.",
+    "remediacao": "Adicionar type hints em todas as funções públicas. DoD: toda função pública tem -> e tipos em parâmetros.",
+    "modo": "presenca",
+    "pattern": "(?m)^[ ]{0,4}def [a-zA-Z]\\w*\\s*\\([^)]*\\)(?!\\s*->)\\s*:"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_nome_contem_lower": ["test"]
+  }
+}

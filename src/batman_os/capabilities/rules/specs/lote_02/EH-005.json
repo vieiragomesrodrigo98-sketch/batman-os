@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "EH-005",
+    "agente": "ethical-hacker",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Endpoint aceita user_id como query param sem verificação de ownership (IDOR)",
+    "causa": "Aceitar user_id como parâmetro de query sem verificar que o usuário autenticado é dono dos dados permite IDOR: qualquer usuário troca o user_id na URL e lê ou manipula dados de outro. Detectado no Bloco E-02 do plano de QA.",
+    "remediacao": "Comparar user_id com current_user.id e retornar 403 se diferente, ou exigir require_admin para endpoints que cruzam usuários. DoD: nenhum endpoint aceita user_id em Query sem ownership check ou require_admin.",
+    "modo": "ausencia",
+    "pattern": "require_admin|is_admin\\s*\\(|role\\s*==\\s*['\"]admin|current_user\\.id\\s*[!=]=\\s*user_id|user_id\\s*[!=]=\\s*current_user\\.id",
+    "pattern_escopo": "(?=[\\s\\S]*?user_id\\s*:\\s*(?:Optional\\[)?(?:int|str))(?=[\\s\\S]*?(?:=\\s*Query\\s*\\(|Query\\[))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}

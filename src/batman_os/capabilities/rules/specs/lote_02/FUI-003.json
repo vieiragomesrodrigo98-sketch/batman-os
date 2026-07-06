@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FUI-003",
+    "agente": "frontend-ui",
+    "severidade": "medium",
+    "categoria": "layout",
+    "titulo": "flex justify-between com filho sem min-w-0 — conteúdo pode sobrepor",
+    "causa": "Em flex justify-between, se o filho esquerdo não tem 'min-w-0' ou 'flex-1', ele pode expandir além do espaço disponível e empurrar ou sobrepor o filho direito. O browser não trunca o filho esquerdo — ele apenas cresce. Bug típico: ticker 'PCAR3' e '%' de P&L aparecem fusionados.",
+    "remediacao": "Adicionar 'min-w-0 flex-1' no filho esquerdo de qualquer flex justify-between que tenha conteúdo dinâmico. DoD: nenhum div crescente sem min-w-0 em layout justify-between.",
+    "modo": "presenca",
+    "pattern": "className=[\"'][^\"']*\\bflex\\b[^\"']*\\bjustify-between\\b[^\"']*[\"'][^>]*>\\s*<div(?!\\s[^>]*\\bmin-w-0\\b)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

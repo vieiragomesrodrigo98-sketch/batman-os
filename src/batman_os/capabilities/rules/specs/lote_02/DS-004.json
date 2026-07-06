@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DS-004",
+    "agente": "data-scientist",
+    "severidade": "high",
+    "categoria": "validacao",
+    "titulo": "train_test_split aleatório em série temporal (viés temporal)",
+    "causa": "sklearn.train_test_split com shuffle padrão mistura passado e futuro, permitindo que o modelo aprenda padrões do futuro durante o treino. Para séries temporais financeiras, apenas walk-forward é válido.",
+    "remediacao": "Substituir por TimeSeriesSplit ou implementação walk-forward própria (docs/decisions/0002-phase0-as-gate.md). DoD: sem train_test_split sem shuffle=False em dados de série temporal.",
+    "modo": "presenca",
+    "pattern": "train_test_split\\s*\\((?![^\\n]*shuffle)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

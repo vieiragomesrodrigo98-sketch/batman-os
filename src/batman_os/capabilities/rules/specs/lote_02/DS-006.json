@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DS-006",
+    "agente": "data-scientist",
+    "severidade": "low",
+    "categoria": "ml",
+    "titulo": "Hiperparâmetro hardcoded sem registro em experiment tracking",
+    "causa": "Hiperparâmetros hardcoded sem mlflow/wandb são invisíveis para comparação de experimentos — impossível reproduzir ou comparar modelos.",
+    "remediacao": "Registrar hiperparâmetros com mlflow.log_param() ou wandb.log(). DoD: todo construtor de modelo com literal numérico tem log_param próximo.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "(RandomForest|GradientBoosting|XGB|LightGBM|LogisticRegression|SVC|DecisionTree)\\w*\\s*\\([^)]*\\d+",
+    "pattern_mitigacao": "mlflow|wandb\\.log|log_param"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

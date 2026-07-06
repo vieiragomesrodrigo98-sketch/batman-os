@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "SRE-003",
+    "agente": "sre",
+    "severidade": "medium",
+    "categoria": "resiliencia",
+    "titulo": "Rota de autenticação sem rate limiting",
+    "causa": "Login e refresh sem rate limit são alvos fáceis de brute-force e credential stuffing — um atacante pode testar milhões de senhas sem nenhum bloqueio.",
+    "remediacao": "Aplicar slowapi ou middleware de rate-limit nas rotas /auth/login e /auth/refresh. DoD: grep por 'limiter' ou 'RateLimiter' nas rotas de auth retorna resultado.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*?['\"]/auth/)(?![\\s\\S]*(?i:limiter|ratelimiter|rate.limit))"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": [
+      "api/routers"
+    ],
+    "extensoes": [
+      ".py"
+    ]
+  }
+}

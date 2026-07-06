@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "LEGAL-006",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "Envio de dado pessoal a serviço externo sem verificação de consentimento",
+    "causa": "Enviar CPF, email ou nome a terceiros sem verificar consentimento do titular viola LGPD art. 7 inc. I.",
+    "remediacao": "Verificar consent_given antes de qualquer envio para API externa. DoD: todo requests.post com payload pessoal verifica consentimento.",
+    "modo": "ausencia",
+    "pattern": "consent|consentimento",
+    "pattern_escopo": "(?=[\\s\\S]*?(?:requests\\.(?:post|put)\\s*\\(|httpx\\.(?:post|put)\\s*\\())(?=[\\s\\S]*?(?:cpf|email|nome))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

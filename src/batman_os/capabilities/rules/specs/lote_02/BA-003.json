@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "BA-003",
+    "agente": "business-analyst",
+    "severidade": "medium",
+    "categoria": "rastreabilidade",
+    "titulo": "FIXME/HACK em lógica de negócio crítica sem ticket rastreável",
+    "causa": "Comentários FIXME/HACK em serviços ou routers indicam desvios intencionais de regra de negócio que foram conscientemente adiados — sem ticket, nunca serão corrigidos e podem mascarar comportamento incorreto.",
+    "remediacao": "Substituir por comentário com referência ao ticket (ex.: # FIXME RP-123) ou abrir o item no backlog e vincular. DoD: sem FIXME/HACK sem ticket em api/services e api/routers.",
+    "modo": "presenca",
+    "pattern": "#\\s*(FIXME|HACK)\\b(?!.*[A-Z]{2,}-\\d+)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/services", "api/routers", "src"],
+    "extensoes": [".py"]
+  }
+}

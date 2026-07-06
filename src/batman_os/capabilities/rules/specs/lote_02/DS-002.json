@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DS-002",
+    "agente": "data-scientist",
+    "severidade": "high",
+    "categoria": "look-ahead",
+    "titulo": "Possível look-ahead bias: acesso a índices futuros em série temporal",
+    "causa": "Usar shift(-n), .iloc[i+n] ou `.future_` em features de modelo de série temporal vaza informação do futuro para o treino, produzindo backtests inflados que colapsam em produção.",
+    "remediacao": "Garantir que toda feature usa apenas dados do passado (shift(+n) ou índice anterior). Validar com walk-forward. DoD: sem shift(-) em código de feature engineering.",
+    "modo": "presenca",
+    "pattern": "\\.shift\\s*\\(\\s*-\\d+|\\.iloc\\s*\\[\\s*[^]]*\\+\\s*\\d+"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

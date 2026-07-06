@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PD-005",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "monetizacao",
+    "titulo": "Feature bloqueada por plano sem CTA de upgrade explícito",
+    "causa": "Conteúdo bloqueado (403 plan_required, locked) sem link claro para a página de planos é uma oportunidade perdida de conversão. O usuário vê o bloqueio, não entende o que comprar e abandona. Também frustrante em mobile onde o contexto de 'por que está bloqueado' some fora do viewport.",
+    "remediacao": "Todo gate de plano deve mostrar: qual feature está bloqueada, qual plano desbloqueia, e CTA direto para /planos ou /conta?tab=planos. DoD: toda resposta 403 plan_required tem CTA visível de upgrade.",
+    "modo": "ausencia",
+    "pattern": "(/planos|/conta\\?tab=planos|upgrade|Ver planos|Assinar)",
+    "pattern_escopo": "plan_required|locked|LOCKED|403.*plan|plano\\s+requerido",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "AI-006",
+    "agente": "ai-engineer",
+    "severidade": "medium",
+    "categoria": "qualidade-llm",
+    "titulo": "Resposta do LLM usada diretamente como dado tipado sem validação de schema",
+    "causa": "Usar .choices[0].message.content diretamente como dado tipado assume que o LLM sempre retorna o formato esperado — o que não é garantido e causa crashes em produção.",
+    "remediacao": "Validar resposta do LLM com Pydantic ou JSON schema antes de usar. DoD: sem .choices[0].message.content usado diretamente como retorno sem parse/validação.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "\\.choices\\[0\\]\\.message\\.content|\\.content\\[0\\]\\.text",
+    "pattern_mitigacao": "(\\.parse\\s*\\(|model_validate|json\\.loads|parse_raw|parse_obj|from_json|TypeAdapter|BaseModel)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem_lower": ["test"]
+  }
+}

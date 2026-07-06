@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "FE-003",
+    "agente": "frontend-engineer",
+    "severidade": "medium",
+    "categoria": "robustez",
+    "titulo": "Componente React com fetch/axios sem tratamento de erro",
+    "causa": "useEffect que faz fetch sem capturar erros exibe tela branca quando a API falha ou fica offline. O plano de QA exige (D-17, P0) que toda rota exiba mensagem de erro amigável ao bloquear o endpoint.",
+    "remediacao": "Adicionar .catch() ou try/catch ao fetch e setar estado de erro (setError, setIsError). Exibir mensagem amigável quando error != null. DoD: todo componente com fetch tem error state exibido ou error boundary.",
+    "modo": "ausencia",
+    "pattern": "\\.catch\\(|catch\\s*\\(err|catch\\s*\\(e\\b|setError\\b|setIsError\\b|onError\\b|isError\\b",
+    "pattern_escopo": "(?=[\\s\\S]*?useEffect)(?=[\\s\\S]*?\\b(?:fetch\\(|axios\\.|api\\.\\w+\\())"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".tsx"],
+    "excluir_caminho_contem": [".test.", ".spec."]
+  }
+}

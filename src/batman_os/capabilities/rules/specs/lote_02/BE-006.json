@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "BE-006",
+    "agente": "backend-engineer",
+    "severidade": "medium",
+    "categoria": "routing",
+    "titulo": "Tabela criada via DDL inline no router",
+    "causa": "CREATE TABLE dentro de um router acopla schema à camada de roteamento e foge do ORM/migração, criando uma fonte de verdade paralela para o schema.",
+    "remediacao": "Declarar a tabela no modelo ORM / migração canônica e remover o DDL do router. DoD: nenhum 'CREATE TABLE' em api/routers/.",
+    "modo": "presenca",
+    "pattern": "CREATE\\s+TABLE",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}

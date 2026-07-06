@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "PM-003",
+    "agente": "product-manager",
+    "severidade": "medium",
+    "categoria": "manutencao",
+    "titulo": "Feature flag sem data de remoção ou condição de ativação documentada",
+    "causa": "Feature flags sem data de remoção acumulam como código morto, aumentando complexidade e superfície de bugs.",
+    "remediacao": "Documentar data de remoção ou card de cleanup em toda feature flag. DoD: toda FEATURE_FLAG_/FF_/ENABLE_ tem comentário de cleanup.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*(?:#.*\\d{4}-\\d{2}-\\d{2}|(?i:#.*(?:cleanup|remove|remoção)))).*(?<!\\w)(?:FEATURE_FLAG_|FF_|ENABLE_)\\w+\\s*="
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages", "frontend/src"],
+    "extensoes": [".py", ".ts", ".tsx"]
+  }
+}

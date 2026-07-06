@@ -1,0 +1,23 @@
+{
+  "regra": {
+    "codigo": "UI-004",
+    "agente": "ui-designer",
+    "severidade": "low",
+    "categoria": "acessibilidade",
+    "titulo": "Animação ou transição CSS sem @media (prefers-reduced-motion)",
+    "causa": "Animações sem prefers-reduced-motion causam desconforto e podem desencadear crises em usuários com distúrbios vestibulares.",
+    "remediacao": "Adicionar @media (prefers-reduced-motion: reduce) { animation: none; } para cada animação. DoD: todo animation: e transition: não-trivial tem override de reduced-motion.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*?(?:animation\\s*:|transition\\s*:))(?![\\s\\S]*prefers-reduced-motion)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": [
+      "frontend/src"
+    ],
+    "extensoes": [
+      ".css",
+      ".scss"
+    ]
+  }
+}

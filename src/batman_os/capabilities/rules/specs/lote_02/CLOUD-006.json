@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "CLOUD-006",
+    "agente": "cloud-engineer",
+    "severidade": "high",
+    "categoria": "secrets",
+    "titulo": "Segredo passado como ARG de Docker (visível no histórico de layers)",
+    "causa": "ARG de Docker é salvo no histórico de layers — docker history revela o valor mesmo após a build, comprometendo segredos indefinidamente.",
+    "remediacao": "Usar Docker BuildKit secrets (--secret). Nunca ARG para credenciais. DoD: sem ARG PASSWORD/SECRET/TOKEN/KEY em Dockerfiles.",
+    "modo": "presenca",
+    "pattern": "(?:^|\\n)ARG\\s+\\w*(PASSWORD|SECRET|TOKEN|API_KEY|PRIVATE_KEY|ENCRYPTION_KEY)\\w*",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "Dockerfile*",
+    "excluir_caminho_contem": [".venv", "node_modules"]
+  }
+}

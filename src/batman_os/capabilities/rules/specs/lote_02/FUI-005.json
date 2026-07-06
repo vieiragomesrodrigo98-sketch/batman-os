@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FUI-005",
+    "agente": "frontend-ui",
+    "severidade": "medium",
+    "categoria": "layout",
+    "titulo": "overflow-hidden em card que contém tabela ou dropdown scrollável",
+    "causa": "Um container com overflow-hidden corta qualquer conteúdo filho que ultrapasse sua borda — incluindo tabelas com overflow-x-auto e dropdowns posicionados absolutamente. O scroll horizontal da tabela nunca funciona, e dropdowns ficam clipeados pela borda do card.",
+    "remediacao": "Remover overflow-hidden do card quando ele contém tabelas scrolláveis ou dropdowns. Use overflow-hidden apenas em cards de conteúdo estático (imagens, texto). DoD: nenhum card com overflow-hidden contém overflow-x-auto ou position:absolute filhos.",
+    "modo": "presenca",
+    "pattern": "(?=[\\s\\S]*?(?:className=[\"'][^\"']*\\bcard\\b[^\"']*\\boverflow-hidden\\b[^\"']*[\"']|className=[\"'][^\"']*\\boverflow-hidden\\b[^\"']*\\bcard\\b[^\"']*[\"']))(?=[\\s\\S]*?(?:overflow-x-auto|overflow-y-auto|position.*absolute|absolute\\b))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FUI-004",
+    "agente": "frontend-ui",
+    "severidade": "medium",
+    "categoria": "layout",
+    "titulo": "Classe 'truncate' sem 'min-w-0' no elemento pai flex",
+    "causa": "A classe 'truncate' (overflow:hidden + text-overflow:ellipsis + white-space:nowrap) só funciona se o elemento tem largura máxima definida. Em flex, a largura mínima default é 'min-content' — o elemento cresce para caber o conteúdo inteiro, tornando o truncate inoperante. Sem 'min-w-0', o texto nunca é truncado — simplesmente vaza.",
+    "remediacao": "Adicionar 'min-w-0' ao elemento com 'truncate' quando ele está em flex. DoD: todo 'truncate' em elemento filho de flex tem 'min-w-0' no mesmo elemento.",
+    "modo": "presenca",
+    "pattern": "\\bflex\\b[\\s\\S]{0,400}?className=[\"'](?:(?!min-w-0)[^\"'])*\\btruncate\\b(?:(?!min-w-0)[^\"'])*[\"']"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

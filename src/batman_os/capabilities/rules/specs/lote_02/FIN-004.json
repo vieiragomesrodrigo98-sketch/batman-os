@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "FIN-004",
+    "agente": "financial-analyst",
+    "severidade": "medium",
+    "categoria": "qualidade-dados",
+    "titulo": "Uso de preço de fechamento sem ajuste explícito (dividendos/splits não documentado)",
+    "causa": "Coluna 'Close' sem ajuste de dividendos/splits produz descontinuidades na série que distorcem qualquer modelo ou sinal treinado.",
+    "remediacao": "Usar 'Adj Close' ou documentar explicitamente que ajuste não é necessário. DoD: toda referência a coluna 'Close' tem comentário de ajuste ou usa 'Adj Close'.",
+    "modo": "ausencia",
+    "pattern": "Adj Close|adj_close|# sem ajuste|auto_adjust",
+    "pattern_escopo": "(?-i:['\"]Close['\"])",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

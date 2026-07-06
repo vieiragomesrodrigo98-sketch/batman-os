@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "NS-005",
+    "agente": "network-security",
+    "severidade": "high",
+    "categoria": "network",
+    "titulo": "Script de firewall sem política padrão de negação (deny-all ausente)",
+    "causa": "Firewall sem 'default deny' aceita tráfego de entrada por padrão — qualquer porta aberta acidentalmente fica exposta sem proteção.",
+    "remediacao": "Adicionar 'ufw default deny incoming' ou 'iptables -P INPUT DROP' no início do script. DoD: todo script de firewall define política default deny na entrada.",
+    "modo": "ausencia",
+    "pattern": "ufw default deny incoming|iptables -P INPUT DROP"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": ["scripts/firewall*.sh", "scripts/*firewall*.sh", "deploy/firewall*.sh"]
+  }
+}

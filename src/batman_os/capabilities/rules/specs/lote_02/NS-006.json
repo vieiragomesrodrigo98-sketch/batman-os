@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "NS-006",
+    "agente": "network-security",
+    "severidade": "medium",
+    "categoria": "network",
+    "titulo": "URL de serviço interno usando HTTP em variável de ambiente de produção",
+    "causa": "Tráfego HTTP entre serviços não está criptografado — credenciais e tokens trafegam em texto plano na rede interna.",
+    "remediacao": "Usar HTTPS para todos os endpoints de serviço interno. DoD: sem http:// em variáveis de URL interna em .env.production*.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*http://(?:localhost|127\\.0\\.0\\.1)).*(?:INTERNAL_API_URL|SERVICE_URL|INTERNAL_\\w+_URL|BACKEND_URL|API_BASE_URL|INTERNAL_HOST)\\s*=\\s*http://",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": [".env.production*", ".env.prod*"]
+  }
+}

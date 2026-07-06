@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "AI-004",
+    "agente": "ai-engineer",
+    "severidade": "high",
+    "categoria": "resiliencia-llm",
+    "titulo": "Chamada ao LLM sem timeout configurado",
+    "causa": "Chamadas ao LLM sem timeout podem bloquear o worker indefinidamente se a API estiver lenta, causando esgotamento de pool e indisponibilidade em cascata.",
+    "remediacao": "Adicionar timeout= em todas as chamadas ao LLM. DoD: todo client.chat.completions.create() tem timeout=.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "(completions\\.create|messages\\.create)\\s*\\(",
+    "pattern_mitigacao": "\\btimeout\\s*="
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem_lower": ["test"]
+  }
+}

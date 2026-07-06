@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "DA-001",
+    "agente": "deployment-analyst",
+    "severidade": "medium",
+    "categoria": "configuracao",
+    "titulo": ".env.example ausente",
+    "causa": ".env.example é o contrato público das variáveis de ambiente necessárias. Sem ele, quem faz deploy (ou um novo dev) não sabe quais variáveis configurar e descobre na hora do erro.",
+    "remediacao": "Criar .env.example com todas as variáveis necessárias (sem valores reais). DoD: .env.example existe na raiz e está no git.",
+    "modo": "arquivo-ausente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.example",
+    "caminho_relatorio": ".",
+    "condicoes_adicionais": [
+      {"tipo": "arquivo_fixo", "caminho": ".env.sample", "checar": "arquivo-ausente"},
+      {"tipo": "arquivo_fixo", "caminho": ".env.template", "checar": "arquivo-ausente"}
+    ]
+  }
+}

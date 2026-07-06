@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "DOC-005",
+    "agente": "technical-writer",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "Módulo Python público sem docstring de módulo",
+    "causa": "Módulo sem docstring não documenta seu propósito — ferramentas como help() e IDEs não conseguem exibir informações.",
+    "remediacao": "Adicionar docstring de módulo na primeira linha. DoD: todo módulo público tem docstring.",
+    "modo": "presenca",
+    "pattern": "^(?:[ \\t]*\\r?\\n|[ \\t]*#[^\\n]*\\r?\\n)*(?![ \\t]*(?:\"\"\"|'''))"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_nome_prefixo": ["__"],
+    "excluir_nome_contem_lower": ["test"]
+  }
+}

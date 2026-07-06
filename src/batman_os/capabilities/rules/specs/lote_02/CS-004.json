@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "CS-004",
+    "agente": "customer-success",
+    "severidade": "high",
+    "categoria": "estabilidade",
+    "titulo": "Ausência de error handler global na aplicação (HTTP 500 sem tratamento amigável)",
+    "causa": "Sem exception_handler global, erros inesperados retornam HTTP 500 com stack trace — má experiência e exposição de detalhes internos.",
+    "remediacao": "Adicionar @app.exception_handler(Exception) ou middleware de erro. DoD: main.py tem exception_handler global.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "FastAPI\\(\\)|Flask\\(\\)",
+    "pattern_mitigacao": "exception_handler|add_middleware.*Exception",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": ["main.py", "app.py", "api/main.py", "api/app.py"]
+  }
+}

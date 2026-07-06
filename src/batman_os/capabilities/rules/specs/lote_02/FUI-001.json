@@ -1,0 +1,23 @@
+{
+  "regra": {
+    "codigo": "FUI-001",
+    "agente": "frontend-ui",
+    "severidade": "high",
+    "categoria": "tailwind",
+    "titulo": "Uso de breakpoint 'xs:' inexistente no Tailwind CSS",
+    "causa": "O Tailwind CSS não tem breakpoint 'xs' por padrão (apenas sm/md/lg/xl/2xl). Classes como 'hidden xs:block' ou 'xs:flex' nunca ativam — o elemento permanece no estado da classe base para sempre, em qualquer tamanho de tela. Bug silencioso: não quebra o build, mas o layout está sempre errado.",
+    "remediacao": "Substituir 'xs:' pelo breakpoint correto ('sm:' para 640px, ou remover se deve ser visível em mobile). DoD: nenhum 'xs:' em classe Tailwind sem definição custom do breakpoint em tailwind.config.",
+    "modo": "presenca",
+    "pattern": "\\bxs:[a-z]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "condicoes_adicionais": [
+      {"tipo": "arquivo_fixo", "caminho": "frontend/tailwind.config.js", "checar": "ausencia", "pattern": "['\"]xs['\"]", "vazio_se_ausente": true},
+      {"tipo": "arquivo_fixo", "caminho": "frontend/tailwind.config.ts", "checar": "ausencia", "pattern": "['\"]xs['\"]", "vazio_se_ausente": true}
+    ]
+  }
+}

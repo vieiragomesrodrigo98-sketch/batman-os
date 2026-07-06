@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-004",
+    "agente": "security-engineer",
+    "severidade": "medium",
+    "categoria": "auth",
+    "titulo": "Cookie de sessão com secure=False",
+    "causa": "secure=False permite o cookie trafegar fora de HTTPS, ampliando a janela de interceptação e replay do token de sessão.",
+    "remediacao": "Definir secure=True (condicionado ao ambiente, se preciso) e alinhar o TTL do cookie ao do JWT. DoD: nenhuma ocorrência de secure=False no auth.",
+    "modo": "presenca",
+    "pattern": "secure\\s*=\\s*False"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

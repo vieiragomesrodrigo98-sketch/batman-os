@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "MOB-001",
+    "agente": "mobile-engineer",
+    "severidade": "high",
+    "categoria": "responsividade",
+    "titulo": "Página HTML sem meta viewport",
+    "causa": "Sem <meta name='viewport' content='width=device-width, initial-scale=1'>, dispositivos móveis renderizam a página na largura do desktop e reduzem o zoom, tornando texto e botões ilegíveis e inutilizáveis.",
+    "remediacao": "Adicionar <meta name='viewport' content='width=device-width, initial-scale=1'> ao <head> de todo HTML. DoD: toda página HTML tem meta viewport.",
+    "modo": "ausencia",
+    "pattern": "viewport",
+    "pattern_escopo": "<html",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "*.html",
+    "excluir_caminho_contem": [".venv", "node_modules", "__pycache__"]
+  }
+}

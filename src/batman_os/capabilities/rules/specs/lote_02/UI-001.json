@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "UI-001",
+    "agente": "ui-designer",
+    "severidade": "low",
+    "categoria": "design-system",
+    "titulo": "Cor hexadecimal hardcoded em componente",
+    "causa": "Cores hardcoded (#xxxxxx) fora do design system criam inconsistência visual e tornam o rebranding impossível sem busca global — cada componente tem sua própria definição de 'azul primário'.",
+    "remediacao": "Usar tokens do design system (ex.: theme.colors.primary ou variáveis CSS). DoD: nenhum #xxxxxx em JSX/TSX fora de arquivos de tema.",
+    "modo": "presenca",
+    "pattern": "(?<!=)[\"']#[0-9a-fA-F]{3,6}[\"']|color:\\s*#[0-9a-fA-F]{3,6}"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_caminho_contem_lower": ["theme", "token"],
+    "excluir_nome_contem_lower": ["color"]
+  }
+}

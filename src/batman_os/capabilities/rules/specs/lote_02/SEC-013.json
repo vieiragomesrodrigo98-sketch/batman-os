@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SEC-013",
+    "agente": "security-engineer",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Schema Pydantic com extra='allow' em endpoint de escrita (mass assignment)",
+    "causa": "extra='allow' aceita campos não declarados no schema, permitindo que atacantes injetem campos protegidos como is_admin, role, balance nas requisições.",
+    "remediacao": "Usar extra='ignore' ou extra='forbid'. Nunca extra='allow' em modelos de request body. DoD: sem ConfigDict(extra='allow') em schemas de entrada.",
+    "modo": "presenca",
+    "pattern": "extra\\s*=\\s*['\\\"]allow['\\\"]"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_prefixo": ["tests/"],
+    "excluir_nome_prefixo": ["test_"]
+  }
+}

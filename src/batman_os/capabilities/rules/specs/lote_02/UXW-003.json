@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "UXW-003",
+    "agente": "ux-writer",
+    "severidade": "medium",
+    "categoria": "qualidade",
+    "titulo": "Texto de placeholder (TODO/Lorem ipsum) na UI",
+    "causa": "TODO, Lorem ipsum ou 'placeholder text' chegando em produção expõe que o produto está inacabado e destrói a credibilidade com o usuário.",
+    "remediacao": "Substituir por copy real antes do deploy. DoD: nenhum TODO/Lorem ipsum em strings de UI.",
+    "modo": "presenca",
+    "pattern": "[\"'](?:TODO|FIXME|Lorem ipsum|placeholder text)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

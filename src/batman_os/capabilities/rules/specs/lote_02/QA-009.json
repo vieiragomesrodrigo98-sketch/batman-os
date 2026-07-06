@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "QA-009",
+    "agente": "qa-analyst",
+    "severidade": "high",
+    "categoria": "tests",
+    "titulo": "Suite de testes com skip global (pytest.mark.skip aplicado a todo o módulo)",
+    "causa": "Skip global desabilita toda a suite silenciosamente — tests passam na CI mas nada é verificado.",
+    "remediacao": "Remover skip global ou converter em xfail com razão documentada. DoD: sem @pytest.mark.skip no nível de módulo.",
+    "modo": "presenca",
+    "pattern": "^(?:[^\\n]*\\n){0,19}[^\\n]*@pytest\\.mark\\.skip"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["tests"],
+    "extensoes": [".py"]
+  }
+}

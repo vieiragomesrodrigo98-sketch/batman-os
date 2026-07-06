@@ -1,0 +1,31 @@
+{
+  "regra": {
+    "codigo": "LEGAL-001",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "compliance",
+    "titulo": "Componente de sinal sem disclaimer CVM",
+    "causa": "Exibir sinais ou recomendações de investimento sem aviso de que não constituem recomendação personalizada pode configurar atividade de consultoria não autorizada pela CVM (Resolução CVM 20/2021).",
+    "remediacao": "Garantir que toda tela que exibe sinais ou sugestões de operação contenha disclaimer visível. DoD: componentes de sinal têm texto de disclaimer ou importam o componente Disclaimer.",
+    "modo": "ausencia",
+    "pattern": "disclaimer|não.*recomendação|not.*recommendation|cvm|aviso\\s+legal",
+    "pattern_escopo": "sinal|signal|recomend|operac",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src/pages"],
+    "extensoes": [".tsx"],
+    "excluir_caminho_contem": ["admin/", "Guard", "Layout", "App.tsx", "main.tsx"],
+    "condicoes_adicionais": [
+      {
+        "tipo": "arquivo_fixo",
+        "caminho": "frontend/src/components/Layout.tsx",
+        "checar": "ausencia",
+        "pattern": "disclaimer|não.*recomendação|not.*recommendation|cvm|aviso\\s+legal",
+        "ignore_case": true,
+        "vazio_se_ausente": true
+      }
+    ]
+  }
+}

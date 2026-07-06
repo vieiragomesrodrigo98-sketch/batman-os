@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PERF-005",
+    "agente": "performance-engineer",
+    "severidade": "low",
+    "categoria": "cache",
+    "titulo": "Endpoint de dado estático ou computado sem Cache-Control ou decorator de cache",
+    "causa": "Endpoints GET sem cache recalculam dados idênticos a cada request — desperdiça CPU e tempo de resposta.",
+    "remediacao": "Adicionar Cache-Control header ou decorator de cache. DoD: endpoints GET de dados estáticos/lentos têm cache.",
+    "modo": "ausencia",
+    "pattern": "cache|Cache-Control|lru_cache|ttl",
+    "pattern_escopo": "(?=[\\s\\S]*?@router\\.get\\s*\\()(?=[\\s\\S]*?session\\.(?:query|execute))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}

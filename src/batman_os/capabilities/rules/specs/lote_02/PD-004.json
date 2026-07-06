@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "PD-004",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "regra-de-negocio",
+    "titulo": "Status interno do motor exibido sem humanização",
+    "causa": "Exibir 'paper_trading', 'watchlist', 'queda_com_recuperacao' diretamente ao usuário é terminologia técnica do motor. O usuário não entende o que significa e perde confiança na plataforma — parece um produto inacabado.",
+    "remediacao": "Usar humanize.ts para converter status/trilha para linguagem do usuário. Ex: paper_trading→'Sinal Ativo', watchlist→'Aguarda Abertura'. DoD: nenhum enum/string interna do motor aparece cru na UI.",
+    "modo": "ausencia",
+    "pattern": "humanize|humanizaTrilha|humanizeStatus|humanizaStatus|statusLabel",
+    "pattern_escopo": "['\"](?:paper_trading|watchlist|queda_com_recuperacao|operacao_rapida|valorizacao_longa)['\"]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_caminho_contem": ["api/", "utils/", "types", "humanize"]
+  }
+}

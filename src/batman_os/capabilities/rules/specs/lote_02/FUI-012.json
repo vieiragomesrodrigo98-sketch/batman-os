@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FUI-012",
+    "agente": "frontend-ui",
+    "severidade": "medium",
+    "categoria": "layout",
+    "titulo": "Célula de tabela com valor numérico/monetário sem whitespace-nowrap",
+    "causa": "Células de tabela com valores como 'R$ 48.22', '+2.2%' ou '↓3.1%' quebram linha quando a coluna comprime em mobile, causando leitura confusa. Pior: sem whitespace-nowrap, o texto pode invadir a célula vizinha na renderização mobile do browser.",
+    "remediacao": "Adicionar 'whitespace-nowrap' à célula <td> ou ao span interno para valores monetários/percentuais em tabelas. DoD: toda célula de tabela com R$, % ou seta direcional tem whitespace-nowrap.",
+    "modo": "presenca",
+    "pattern": "(?!(?:(?!whitespace-nowrap)[\\s\\S]){0,300}whitespace-nowrap)<td\\b[^>]*>(?:[^<]*<(?:span|div)[^>]*>)?[^<]*(?:R\\s*\\$|toFixed|pnl_pct|dist_stop|dist_alvo|\\+.*%|-.*%)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

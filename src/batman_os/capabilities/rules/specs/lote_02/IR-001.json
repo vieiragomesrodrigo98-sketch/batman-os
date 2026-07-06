@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "IR-001",
+    "agente": "incident-response",
+    "severidade": "high",
+    "categoria": "auth",
+    "titulo": "Endpoint de login sem proteção contra brute force (rate limiting ausente)",
+    "causa": "Sem contador de tentativas ou rate limiting, atacantes podem realizar ataques de força bruta ilimitados contra credenciais de usuários.",
+    "remediacao": "Implementar rate limiting (slowapi, fastapi-limiter) ou failed_attempts counter. DoD: todo endpoint de login tem RateLimiter ou failed_attempts configurado.",
+    "modo": "ausencia",
+    "pattern": "(failed_attempts|login_attempts|slowapi|fastapi[_.-]limiter|RateLimiter|rate_limit|Limiter)",
+    "pattern_escopo": "def\\s+(login|authenticate|token)\\s*\\(",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

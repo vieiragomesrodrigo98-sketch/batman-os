@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "RISK-003",
+    "agente": "risk-manager",
+    "severidade": "high",
+    "categoria": "gestao-capital",
+    "titulo": "Geração de posição sem regra de sizing (ausência de cálculo de tamanho de posição)",
+    "causa": "Entrar em posição sem calcular tamanho pela volatilidade ou Kelly pode resultar em risco desproporcional por trade — crítico para gestão de capital.",
+    "remediacao": "Implementar sizing por volatilidade, Kelly ou fração fixa. DoD: toda geração de ordem tem cálculo de position_size, kelly ou fração de capital.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "place_order|create_order|generate_signal",
+    "pattern_mitigacao": "position_size|kelly|lot_size|paper_trading|simulac|simulation",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

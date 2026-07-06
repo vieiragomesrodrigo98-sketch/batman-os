@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "CRO-002",
+    "agente": "cro-specialist",
+    "severidade": "low",
+    "categoria": "feedback-usuario",
+    "titulo": "Formulário sem estado de loading (isLoading / isSubmitting)",
+    "causa": "Submits sem feedback visual de carregamento fazem o usuário clicar várias vezes (requisições duplicadas) ou achar que a ação falhou silenciosamente, aumentando erros e abandono.",
+    "remediacao": "Adicionar estado isLoading/isSubmitting ao submit; desabilitar o botão e mostrar spinner enquanto aguarda resposta. DoD: todo formulário de ação tem feedback visual de carregamento.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "<form|onSubmit|handleSubmit",
+    "pattern_mitigacao": "isLoading|isSubmitting|isPending|loading",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

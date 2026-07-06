@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DA-003",
+    "agente": "deployment-analyst",
+    "severidade": "medium",
+    "categoria": "deploy",
+    "titulo": "Script de deploy sem etapa ou função de rollback documentada",
+    "causa": "Deploy sem procedimento de rollback documentado torna reversão manual e demorada em caso de falha — aumenta MTTR.",
+    "remediacao": "Adicionar função rollback() ou comentário # ROLLBACK com procedimento. DoD: todo script de deploy tem rollback documentado.",
+    "modo": "ausencia",
+    "pattern": "rollback",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": ["scripts/deploy*.sh", "scripts/deploy*.py"]
+  }
+}

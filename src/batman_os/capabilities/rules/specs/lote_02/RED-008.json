@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-008",
+    "agente": "red-team",
+    "severidade": "medium",
+    "categoria": "dos",
+    "titulo": "Regex com potencial para backtracking catastrófico sobre entrada do usuário (ReDoS)",
+    "causa": "Padrões (.+)+ ou (.*)* têm complexidade exponencial: entrada maliciosa pode travar o servidor por minutos com CPU a 100%.",
+    "remediacao": "Reescrever regex para eliminar grupos aninhados com quantificadores. DoD: sem padrão (.+)+, (.*)* em regexes sobre entrada de usuário.",
+    "modo": "presenca",
+    "pattern": "\\(\\.[+*]\\)[+*]"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

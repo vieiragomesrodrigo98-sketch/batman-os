@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "UXR-004",
+    "agente": "ux-research",
+    "severidade": "low",
+    "categoria": "seo",
+    "titulo": "Página sem <title> único e descritivo",
+    "causa": "Sem <title>, o navegador mostra URL ou título genérico — prejudica SEO e identidade da página para o usuário.",
+    "remediacao": "Adicionar <title> ou equivalente (Helmet, Next Head) em toda página. DoD: todo componente de página tem <title> ou <Helmet><title>.",
+    "modo": "ausencia",
+    "pattern": "<[Tt]itle\\b|<[Hh]elmet\\b|usePageTitle\\b|document\\.title\\s*="
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src/pages"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

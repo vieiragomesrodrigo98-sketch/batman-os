@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-002",
+    "agente": "red-team",
+    "severidade": "high",
+    "categoria": "deserialization",
+    "titulo": "Desserialização insegura (pickle/marshal/yaml.load)",
+    "causa": "Desserializar dado não confiável com pickle/marshal, ou yaml.load sem SafeLoader, permite ao atacante executar código no momento da carga.",
+    "remediacao": "Usar formatos seguros (json) para dado externo; yaml.safe_load / SafeLoader. DoD: sem pickle/marshal de fonte não confiável; yaml seguro.",
+    "modo": "presenca",
+    "pattern": "(?m)pickle\\.loads|marshal\\.loads|cPickle\\.loads|^(?!.*Loader).*yaml\\.load\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "IR-002",
+    "agente": "incident-response",
+    "severidade": "medium",
+    "categoria": "logging",
+    "titulo": "Handler de log sem política de retenção (FileHandler sem rotação)",
+    "causa": "FileHandler sem rotação causa crescimento ilimitado do arquivo de log — disco cheio é vetor de DoS e logs antigos são perdidos durante investigação de incidentes.",
+    "remediacao": "Usar RotatingFileHandler com maxBytes e backupCount. DoD: todo FileHandler de produção tem política de rotação configurada.",
+    "modo": "presenca",
+    "pattern": "(?<!\\w)FileHandler\\s*\\((?![^\\n]*(?:Rotating|Timed))"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_prefixo": ["tests/"],
+    "excluir_nome_prefixo": ["test_"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "DA-002",
+    "agente": "deployment-analyst",
+    "severidade": "medium",
+    "categoria": "configuracao",
+    "titulo": "URL de ambiente hardcoded no código",
+    "causa": "URLs de localhost ou de produção hardcoded no código quebram em outros ambientes (staging, CI, outro dev) e exigem alteração de código para fazer deploy.",
+    "remediacao": "Mover URLs de ambiente para variável de ambiente lida via config/settings.py. DoD: nenhuma URL hardcoded de localhost ou domínio de produção fora de .env.example.",
+    "modo": "presenca",
+    "pattern": "['\"]https?://(localhost|127\\.0\\.0\\.1|exemplo\\.group)[^'\"]*['\"]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["test", "example", "conftest", "config", "settings"]
+  }
+}

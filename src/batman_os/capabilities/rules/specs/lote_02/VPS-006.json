@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-006",
+    "agente": "vps-infra",
+    "severidade": "medium",
+    "categoria": "custos",
+    "titulo": "MAX_DAILY_LLM_COST_USD ausente em .env.production.example",
+    "causa": "Sem limite diário de custo de LLM configurado em produção, uma anomalia no pipeline (loop, retry storm) pode gerar custo ilimitado na API OpenAI/Anthropic antes de alguém perceber.",
+    "remediacao": "Adicionar MAX_DAILY_LLM_COST_USD ao .env.production.example com valor apropriado. DoD: variável presente no template de produção.",
+    "modo": "ausencia",
+    "pattern": "MAX_DAILY_LLM_COST_USD"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": ".env.production.example"
+  }
+}

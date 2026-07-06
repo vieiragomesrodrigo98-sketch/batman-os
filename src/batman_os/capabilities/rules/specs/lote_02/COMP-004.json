@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "COMP-004",
+    "agente": "compliance",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "Exportação de dados sem registro de operação de tratamento (LGPD auditoria)",
+    "causa": "LGPD exige registro de operações de tratamento — exports sem log_action não são auditáveis para DPA.",
+    "remediacao": "Chamar log_action antes de qualquer export de dados pessoais. DoD: todo endpoint de export tem log_action.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "def\\s+(?!_)\\w*(export|download|relatorio)\\w*\\s*\\(|@router\\.(get|post)\\s*\\([^)]*['\"](export|download|relatorio)",
+    "pattern_mitigacao": "log_action",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

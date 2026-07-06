@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SRE-004",
+    "agente": "sre",
+    "severidade": "medium",
+    "categoria": "disponibilidade",
+    "titulo": "Aplicação sem handler de graceful shutdown (SIGTERM não tratado)",
+    "causa": "Sem SIGTERM handler, containers terminados abruptamente matam requests em andamento — causa erros 502/504 durante deploys rolling.",
+    "remediacao": "Adicionar signal.signal(signal.SIGTERM, handler) ou usar lifespan context manager no FastAPI. DoD: SIGTERM tratado no entrypoint.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*?(?:uvicorn\\.run\\s*\\(|app\\s*=\\s*FastAPI\\s*\\())(?![\\s\\S]*SIGTERM)(?![\\s\\S]*lifespan)"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": [
+      "main.py",
+      "app.py"
+    ]
+  }
+}

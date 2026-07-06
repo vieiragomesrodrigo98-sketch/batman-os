@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "PM-004",
+    "agente": "product-manager",
+    "severidade": "medium",
+    "categoria": "manutencao",
+    "titulo": "Endpoint marcado como deprecated sem timeline de remoção",
+    "causa": "Endpoint deprecated sem data de remoção nunca é removido — clientes não se atualizam e o código legado é mantido indefinidamente.",
+    "remediacao": "Documentar versão ou data de remoção. DoD: todo @deprecated tem versão ou data de remoção.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*(?:\\d{4}-\\d{2}|v\\d+\\.\\d+)).*(?:@deprecated|# deprecated|deprecated=True)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

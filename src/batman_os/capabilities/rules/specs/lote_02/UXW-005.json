@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "UXW-005",
+    "agente": "ux-writer",
+    "severidade": "low",
+    "categoria": "clareza",
+    "titulo": "Texto de botão de ação genérico sem contexto ('OK', 'Submit', 'Clique aqui')",
+    "causa": "Textos genéricos não comunicam a ação ao usuário — 'OK' em um dialog de confirmação não diz o que será confirmado.",
+    "remediacao": "Usar texto descritivo da ação: 'Salvar alterações', 'Confirmar exclusão'. DoD: sem button/Button com texto exato 'OK', 'Submit', 'Clique aqui', 'Click here'.",
+    "modo": "presenca",
+    "pattern": "<[Bb]utton\\b[^>]*>[^\\S\\n]*(?:OK|Submit|Clique aqui|Click here)[^\\S\\n]*</[Bb]utton>"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

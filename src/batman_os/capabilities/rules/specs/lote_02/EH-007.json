@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "EH-007",
+    "agente": "ethical-hacker",
+    "severidade": "high",
+    "categoria": "redirect",
+    "titulo": "Redirect para URL de parâmetro sem validação de domínio (open redirect)",
+    "causa": "Redirecionar para URL fornecida pelo usuário sem validar o domínio permite phishing: atacante constrói link legítimo que redireciona para site malicioso.",
+    "remediacao": "Validar que o redirect URL pertence a domínio permitido antes de redirecionar. DoD: sem RedirectResponse(url=param) sem validação de domínio.",
+    "modo": "presenca",
+    "pattern": "RedirectResponse\\s*\\(\\s*url\\s*=\\s*(request\\.|params\\.|query_params\\.)|redirect\\s*\\(\\s*request\\.args\\.get"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

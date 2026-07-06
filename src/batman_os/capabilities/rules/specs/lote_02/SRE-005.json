@@ -1,0 +1,28 @@
+{
+  "regra": {
+    "codigo": "SRE-005",
+    "agente": "sre",
+    "severidade": "medium",
+    "categoria": "resiliencia",
+    "titulo": "Pool de conexão de banco sem limite configurado (pool_size / max_overflow ausentes)",
+    "causa": "create_engine() sem pool_size usa padrão de 5 conexões — em produção isso esgota rapidamente e causa filas. Sem max_overflow pode criar conexões ilimitadas.",
+    "remediacao": "Configurar pool_size e max_overflow explicitamente. DoD: todo create_engine() tem pool_size= e max_overflow=.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*?create_engine\\s*\\()(?![\\s\\S]*(?i:sqlite|check_same_thread))(?![\\s\\S]*pool_size)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": [
+      "api",
+      "src",
+      "dashboard",
+      "pages"
+    ],
+    "extensoes": [
+      ".py"
+    ],
+    "excluir_caminho_contem": [
+      "test"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "A11Y-008",
+    "agente": "accessibility-specialist",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "tabIndex maior que 0 (quebra a ordem natural de foco)",
+    "causa": "tabIndex > 0 cria ordem de foco artificial que diverge da ordem visual do DOM, desorientando usuários de teclado e screen readers.",
+    "remediacao": "Usar tabIndex={0} para incluir na ordem natural ou tabIndex={-1} para excluir. Nunca tabIndex > 0. DoD: sem tabIndex positivo no código.",
+    "modo": "presenca",
+    "pattern": "tabIndex\\s*=\\s*\\{?[1-9]"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FUI-011",
+    "agente": "frontend-ui",
+    "severidade": "high",
+    "categoria": "robustez",
+    "titulo": "Chamada .toFixed()/.toLocaleString() sem null guard — TypeError em runtime",
+    "causa": "Chamar .toFixed() ou .toLocaleString() em valor null/undefined lança TypeError e quebra o componente (tela branca). Valores vindos de API de mercado (preço, score, PnL) podem ser null antes do dado carregar ou quando o mercado está fechado.",
+    "remediacao": "Usar '(value ?? 0).toFixed(N)' ou '(Number(value) || 0).toFixed(N)'. DoD: todo .toFixed() e .toLocaleString() em dado de API tem fallback para 0 ou string vazia.",
+    "modo": "presenca",
+    "pattern": "(?:(?!\\?\\?|\\|\\|\\s*0|\\|\\|\\s*\\d+|Number\\s*\\()[\\s\\S]){0,80}(?:entry_price|stop_price|target_price|pnl_pct|score_total|preco_atual|dist_stop_pct|dist_alvo_pct|selic_pct|usdbrl|vix|ibovespa)\\s*\\.\\s*(?:toFixed|toLocaleString)\\s*\\(",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

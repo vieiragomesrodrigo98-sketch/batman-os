@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "A11Y-001",
+    "agente": "ux-designer",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "<img> sem atributo alt",
+    "causa": "Imagem sem alt não é descrita por leitor de tela: usuário com deficiência visual perde o conteúdo. Viola WCAG e a acessibilidade exigida em produto público.",
+    "remediacao": "Adicionar alt descritivo (ou alt=\"\" se for puramente decorativa). DoD: todo <img> tem alt.",
+    "modo": "presenca",
+    "pattern": "<img\\b(?:(?!alt=)[^>])*>",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

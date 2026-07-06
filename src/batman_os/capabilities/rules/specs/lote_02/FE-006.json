@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FE-006",
+    "agente": "frontend-engineer",
+    "severidade": "medium",
+    "categoria": "robustez",
+    "titulo": "Componente de rota principal sem ErrorBoundary",
+    "causa": "Sem ErrorBoundary, um erro em qualquer componente da árvore desmonta a aplicação inteira para o usuário.",
+    "remediacao": "Envolver RouteProvider ou Router com ErrorBoundary. DoD: todo RouterProvider/Routes tem ErrorBoundary no ancestral imediato no mesmo arquivo.",
+    "modo": "ausencia",
+    "pattern": "ErrorBoundary",
+    "pattern_escopo": "RouterProvider|<Routes\\b|createBrowserRouter"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

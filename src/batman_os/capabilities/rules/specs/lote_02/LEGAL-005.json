@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "LEGAL-005",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "Coleta de dado pessoal sem base legal explícita no código (LGPD art. 7)",
+    "causa": "LGPD exige base legal para cada operação de tratamento de dado pessoal — ausência viola art. 7 e sujeita a multa de até 2% do faturamento.",
+    "remediacao": "Documentar base_legal como campo no model ou comentário no handler. DoD: todo endpoint que grava CPF/email/nome tem base_legal documentada.",
+    "modo": "ausencia",
+    "pattern": "base_legal",
+    "pattern_escopo": "(cpf|email|nome|phone|telefone|endereco)\\s*=",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

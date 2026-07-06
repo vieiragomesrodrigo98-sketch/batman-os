@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "UI-003",
+    "agente": "ui-designer",
+    "severidade": "low",
+    "categoria": "design-system",
+    "titulo": "Valor de z-index acima de 100 hardcoded sem constante CSS nomeada",
+    "causa": "z-index > 100 hardcoded cria guerras de z-index imprevisíveis — sem variável nomeada, não há hierarquia visual documentada.",
+    "remediacao": "Definir variáveis CSS --z-modal, --z-dropdown, etc. DoD: todo z-index > 100 usa variável CSS --z-*.",
+    "modo": "presenca",
+    "pattern": "z-index\\s*:\\s*[1-9][0-9]{2,}(?![^\\n]*var\\(--z-)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx", ".css", ".scss"]
+  }
+}

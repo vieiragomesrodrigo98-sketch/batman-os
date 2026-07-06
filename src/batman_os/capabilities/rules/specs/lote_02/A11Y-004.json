@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "A11Y-004",
+    "agente": "ux-designer",
+    "severidade": "low",
+    "categoria": "acessibilidade",
+    "titulo": "<a> sem href válido",
+    "causa": "Âncora sem href (ou href=\"#\") não é focável nem anunciada como link, e quebra navegação por teclado. Geralmente é um botão disfarçado de link.",
+    "remediacao": "Usar <button> para ações, ou dar um href real ao link. DoD: todo <a> tem href significativo.",
+    "modo": "presenca",
+    "pattern": "<a\\b(?:(?!href=)[^>])*>|<a\\b[^>]*?href=[\"']#?[\"'][^>]*>",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

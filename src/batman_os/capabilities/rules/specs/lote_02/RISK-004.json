@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "RISK-004",
+    "agente": "risk-manager",
+    "severidade": "medium",
+    "categoria": "liquidez",
+    "titulo": "Sinal de entrada sem verificação de liquidez mínima do ativo",
+    "causa": "Ativos ilíquidos têm spreads enormes — um sinal sem filtro de liquidez pode gerar entrada em ativo onde o custo de transação anula o retorno esperado.",
+    "remediacao": "Filtrar por volume mínimo ou liquidez antes de gerar sinal. DoD: toda função de sinal verifica volume_min ou spread_max.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "def\\s+(?:generate|detect|create|emit|produce|compute|calc|evaluate)_\\w*signal\\w*\\s*\\(|def\\s+\\w*signal_?(?:generate|detect|create|emit|produce|compute|calc|evaluate)\\w*\\s*\\(",
+    "pattern_mitigacao": "volume|liquidity|spread",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["repository", "notifier", "notification", "routers/"]
+  }
+}

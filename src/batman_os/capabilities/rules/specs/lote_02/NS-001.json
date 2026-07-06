@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "NS-001",
+    "agente": "network-security",
+    "severidade": "critical",
+    "categoria": "network",
+    "titulo": "Banco de dados com bind 0.0.0.0 em docker-compose de produção",
+    "causa": "Port mapping PORT:PORT sem prefixo 127.0.0.1 expõe o banco diretamente na interface pública do host — qualquer IP pode conectar na porta do banco.",
+    "remediacao": "Restringir o bind: '127.0.0.1:5432:5432' em vez de '5432:5432'. DoD: nenhum serviço de banco sem prefixo 127.0.0.1 em docker-compose de produção.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*127\\.0\\.0\\.1:).*[-\\s]+[\"']?\\d+:(?:5432|3306|27017|6379|5433|3307)"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "docker-compose*.y*ml",
+    "excluir_caminho_contem": [".dev.", ".local.", "test"]
+  }
+}

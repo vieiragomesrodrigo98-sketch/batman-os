@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DEVOPS-004",
+    "agente": "devops-engineer",
+    "severidade": "high",
+    "categoria": "ci-cd",
+    "titulo": "Pipeline CI/CD com step de deploy antes de step de teste",
+    "causa": "Deploy sem testes aprovados pode enviar código quebrado para produção — testes são o portão de qualidade obrigatório.",
+    "remediacao": "Garantir que jobs de deploy dependem de jobs de test (needs: [test]). DoD: todo job de deploy tem needs: apontando para job de test.",
+    "modo": "ausencia",
+    "pattern": "needs\\s*:",
+    "pattern_escopo": "deploy",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+  }
+}

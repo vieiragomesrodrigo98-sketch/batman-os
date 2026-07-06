@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DE-005",
+    "agente": "data-engineer",
+    "severidade": "low",
+    "categoria": "performance",
+    "titulo": "Chave estrangeira SQLAlchemy declarada sem index=True",
+    "causa": "ForeignKeys sem índice tornam joins e queries de relacionamento lentos em tabelas grandes — problema crítico em operações de busca por usuário/conta.",
+    "remediacao": "Adicionar index=True em todas as colunas com ForeignKey. DoD: todo Column com ForeignKey tem index=True.",
+    "modo": "presenca",
+    "pattern": "ForeignKey\\((?![^\\n]*index=True)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

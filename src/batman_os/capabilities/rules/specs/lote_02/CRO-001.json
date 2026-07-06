@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "CRO-001",
+    "agente": "cro-specialist",
+    "severidade": "low",
+    "categoria": "feedback-usuario",
+    "titulo": "Mensagem de erro genérica sem orientação de recuperação",
+    "causa": "Mensagens como 'Something went wrong', 'Erro interno' ou 'Ocorreu um erro' não dizem ao usuário o que fazer a seguir, aumentando a taxa de abandono após falha e gerando chamados desnecessários ao suporte.",
+    "remediacao": "Substituir por mensagens que expliquem o que aconteceu e ofereçam ação (ex.: 'Não foi possível salvar. Tente novamente ou entre em contato.'). DoD: nenhuma mensagem de erro sem orientação de próximo passo.",
+    "modo": "presenca",
+    "pattern": "something went wrong|ocorreu um erro|erro interno|unexpected error|tente mais tarde",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src", "api", "src", "dashboard", "pages"],
+    "extensoes": [".ts", ".tsx", ".py"]
+  }
+}

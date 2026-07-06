@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PD-002",
+    "agente": "product-designer",
+    "severidade": "low",
+    "categoria": "completude",
+    "titulo": "Spinner de loading sem estado de timeout/fallback",
+    "causa": "Componente com loading state sem timeout: se a API não responder, o spinner gira para sempre. Usuário não sabe se houve erro ou se deve esperar. Em mobile com 3G, timeouts são comuns — o produto precisa ter posição para esse cenário.",
+    "remediacao": "Adicionar timeout máximo (~10s) e exibir mensagem com retry. DoD: todo loading tem fallback de timeout ou erro visível.",
+    "modo": "ausencia",
+    "pattern": "setTimeout|AbortController|signal\\.aborted|TimeoutError",
+    "pattern_escopo": "setLoading\\(true\\)|loading\\s*&&\\s*<|isLoading\\s*&&",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

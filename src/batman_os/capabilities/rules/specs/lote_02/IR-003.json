@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "IR-003",
+    "agente": "incident-response",
+    "severidade": "high",
+    "categoria": "auth",
+    "titulo": "Acesso negado (403/401) em rota admin sem registro de log de segurança",
+    "causa": "Tentativas de acesso não autorizado a rotas admin sem log impedem detecção de reconhecimento e ataques de escalonamento de privilégio.",
+    "remediacao": "Logar com logger.warning() ou log_action() todo 403/401 em contexto admin. DoD: todo HTTPException(401/403) em arquivo com 'admin' tem logger.warning próximo.",
+    "modo": "ausencia",
+    "pattern": "logger\\.(warning|warn|error)\\s*\\(|log_action",
+    "pattern_escopo": "(?=[\\s\\S]*?admin)(?=[\\s\\S]*?(?:HTTPException\\s*\\(\\s*status_code\\s*=\\s*40[13]|status_code\\s*=\\s*40[13]))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "CRO-003",
+    "agente": "cro-specialist",
+    "severidade": "low",
+    "categoria": "onboarding",
+    "titulo": "Fluxo de múltiplas etapas sem indicador de progresso",
+    "causa": "Fluxos de cadastro ou onboarding com múltiplos passos sem barra ou indicador de progresso aumentam a percepção de esforço e a taxa de abandono.",
+    "remediacao": "Adicionar componente de progresso (stepper, barra, '2 de 5'). DoD: todo componente de multi-step tem indicador de progresso visível.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "(step|etapa|passo)\\s*[=:]\\s*\\d|currentStep|activeStep",
+    "pattern_mitigacao": "progress|stepper|StepIndicator|Breadcrumb|passo\\s+\\d+\\s+de",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

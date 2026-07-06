@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SD-010",
+    "agente": "service-designer",
+    "severidade": "high",
+    "categoria": "jornada",
+    "titulo": "Sinal WATCHLIST exibido sem badge 'Aguarda abertura do pregão'",
+    "causa": "Sinais gerados overnight ficam em WATCHLIST até a abertura da B3 (9h55 BRT). Exibi-los sem diferenciação visual cria confusão: o usuário vê um sinal com preço de entrada mas o mercado está fechado — não pode agir. Pior: o preço de entrada muda ao confirmar, invalidando a leitura anterior.",
+    "remediacao": "Adicionar badge 'Aguarda abertura' em cards com status WATCHLIST. Exibir preço como estimativa ('≈ R$ X') e desabilitar CTA de simulação. DoD: status WATCHLIST tem representação visual distinta de PAPER_TRADING.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "watchlist",
+    "pattern_mitigacao": "Aguarda|aguardando|pendente|badge.*watchlist|watchlist.*badge|humanizeStatus|statusLabel",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

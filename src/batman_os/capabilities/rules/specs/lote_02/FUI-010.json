@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FUI-010",
+    "agente": "frontend-ui",
+    "severidade": "medium",
+    "categoria": "layout",
+    "titulo": "Flex com itens dinâmicos (.map) sem flex-wrap — itens saem do container",
+    "causa": "Um container flex sem flex-wrap força todos os itens em uma única linha. Quando o .map() retorna mais itens do que a largura permite, os itens extrapolam o container em vez de quebrar linha — especialmente problemático em mobile onde a largura é estreita.",
+    "remediacao": "Adicionar 'flex-wrap' ao container flex quando o número de itens é dinâmico. DoD: todo flex com .map() tem flex-wrap ou número máximo de itens garantido.",
+    "modo": "presenca",
+    "pattern": "className=[\"'][^\"']*\\bflex\\b(?![^\"']*\\bflex-col\\b)(?![^\"']*\\bflex-wrap\\b)[^\"']*[\"'][^}]{0,500}\\.map\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

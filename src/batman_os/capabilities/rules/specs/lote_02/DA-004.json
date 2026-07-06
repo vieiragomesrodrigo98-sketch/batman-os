@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DA-004",
+    "agente": "deployment-analyst",
+    "severidade": "high",
+    "categoria": "configuracao",
+    "titulo": "Variável de ambiente crítica lida com os.environ[] sem .get() (crash se ausente)",
+    "causa": "os.environ['VAR'] levanta KeyError se a variável não está definida — crash imediato na inicialização da aplicação em ambiente com config incompleta.",
+    "remediacao": "Usar os.environ.get('VAR') com valor padrão ou Pydantic Settings. DoD: sem os.environ['CRITICAL_VAR'] fora de testes.",
+    "modo": "presenca",
+    "pattern": "os\\.environ\\s*\\[.*(KEY|SECRET|PASSWORD|URL|TOKEN|DATABASE)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["test"]
+  }
+}

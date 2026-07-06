@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "A11Y-006",
+    "agente": "ux-designer",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "<button> sem texto visível nem aria-label (botão inacessível)",
+    "causa": "Screen readers anunciam o papel do botão mas não seu propósito sem texto ou aria-label — usuário com deficiência visual não sabe o que o botão faz.",
+    "remediacao": "Adicionar texto descritivo ou aria-label em todo botão sem texto. DoD: todo <button> tem aria-label ou conteúdo de texto.",
+    "modo": "presenca",
+    "pattern": "<button\\b(?![^>]*aria-label)[^>]*/>",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

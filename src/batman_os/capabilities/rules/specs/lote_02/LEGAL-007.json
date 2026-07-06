@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "LEGAL-007",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "lgpd",
+    "titulo": "Endpoint de exclusão de conta sem apagamento de dados pessoais (LGPD art. 18)",
+    "causa": "LGPD art. 18 dá ao titular direito de exclusão — endpoint /delete-account sem anonimizar dados viola este direito.",
+    "remediacao": "Implementar anonimização ou exclusão completa de dados pessoais. DoD: endpoint de exclusão chama função de anonimização.",
+    "modo": "ausencia",
+    "pattern": "anonimiz|anonymiz|delete_personal|apagar_dados",
+    "pattern_escopo": "delete.account|cancel.account|delete_account|cancel_account|desativar.conta",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

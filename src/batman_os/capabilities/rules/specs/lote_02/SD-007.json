@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "SD-007",
+    "agente": "service-designer",
+    "severidade": "medium",
+    "categoria": "feedback-usuario",
+    "titulo": "Formulário de ação sem feedback de sucesso ao usuário",
+    "causa": "Após submit de formulário (salvar perfil, configurar alertas, simular trade), o usuário precisa de confirmação explícita de que a ação foi concluída. Sem toast/alerta/mensagem, o usuário reenvia achando que falhou — gerando duplicatas e confusão.",
+    "remediacao": "Exibir toast, snackbar ou mensagem inline de sucesso após cada submit. DoD: todo formulário com onSubmit/handleSubmit exibe feedback de sucesso.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "onSubmit|handleSubmit|\\.post\\(|\\.put\\(|\\.patch\\(",
+    "pattern_mitigacao": "toast|sucesso|salvo|atualizado|enviado|Toast|alert\\(|setSuccess|successMsg|snack",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_nome_contem_lower": ["hook", "util", "context", "api", "service"]
+  }
+}

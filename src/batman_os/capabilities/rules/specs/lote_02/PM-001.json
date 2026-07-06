@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "PM-001",
+    "agente": "product-manager",
+    "severidade": "low",
+    "categoria": "rastreabilidade",
+    "titulo": "TODO/FIXME sem referência a item rastreável",
+    "causa": "TODO/FIXME solto vira dívida invisível: ninguém prioriza nem acompanha o que não está ligado a um item (issue/ticket). Lembra o QA-009 (trabalho sem backlog).",
+    "remediacao": "Vincular o TODO a um item rastreável (ex.: TODO(#123) ou TODO RADAR-45), ou abrir o item. DoD: todo TODO/FIXME referencia um ticket.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*(?:#\\d+|[A-Z]{2,}-\\d+)).*\\b(?:TODO|FIXME)\\b"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-003",
+    "agente": "red-team",
+    "severidade": "high",
+    "categoria": "injection",
+    "titulo": "Superfície de command injection (os.system / shell=True)",
+    "causa": "os.system, ou subprocess com shell=True, concatenando entrada deixa o atacante injetar comandos no sistema operacional.",
+    "remediacao": "Usar subprocess com lista de argumentos e shell=False; nunca concatenar entrada no comando. DoD: sem os.system / shell=True com entrada dinâmica.",
+    "modo": "presenca",
+    "pattern": "os\\.system\\(|shell\\s*=\\s*True"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

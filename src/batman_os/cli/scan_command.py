@@ -1,9 +1,10 @@
-"""Vol.IX Cap.34 — orquestrador real do "scan estático" (primeiro lote).
+"""Vol.IX Cap.34 — orquestrador real do "scan estático".
 
 Migra `python -m Batman.scan.runner` (o motor legado) para o caminho real
 Mission Runtime -> Planning Engine -> Decision Engine -> Workflow Engine ->
 Execution Engine -> Operator -> Capability certificada, uma Missão por
-(arquivo, regra) do primeiro lote (`capabilities/rules/lote_01.py`).
+(arquivo, regra) de todos os lotes já migrados
+(`capabilities/rules/lote_01.py`, `lote_02.py`, ...).
 
 Nota de escala (aceita no Milestone 1, ver plano de migração): 1 Missão por
 (arquivo, regra) é correto e honesto, mas caro em repositórios grandes
@@ -30,6 +31,7 @@ from batman_os.capabilities.operator import (
     SideEffectScope,
 )
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
+from batman_os.capabilities.rules.lote_02 import carregar_lote_02
 from batman_os.capabilities.rules.regex_sobre_conteudo import construir_implementacao
 from batman_os.cli.descoberta_arquivos import entradas_para_regra
 from batman_os.foundation.types import (
@@ -190,10 +192,12 @@ def _preparar_capability() -> tuple[CapabilityRegistry, CapabilityImplementation
 
 
 def executar_scan(root: Path, especificacoes: list[SpecDeRegra] | None = None) -> ResultadoScan:
-    """Vol.IX Cap.34 — roda o primeiro lote de Capabilities migradas contra
-    `root`. Sem `especificacoes`, usa as 14 do primeiro lote
-    (`carregar_lote_01()`)."""
-    especificacoes = especificacoes if especificacoes is not None else carregar_lote_01()
+    """Vol.IX Cap.34 — roda as Capabilities migradas contra `root`. Sem
+    `especificacoes`, usa todos os lotes já migrados (`carregar_lote_01()` +
+    `carregar_lote_02()`)."""
+    especificacoes = (
+        especificacoes if especificacoes is not None else carregar_lote_01() + carregar_lote_02()
+    )
 
     registry, _implementacao, operator = _preparar_capability()
     execution_engine = ExecutionEngine(

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-006",
+    "agente": "red-team",
+    "severidade": "high",
+    "categoria": "xss",
+    "titulo": "Sink de XSS no front (dangerouslySetInnerHTML)",
+    "causa": "dangerouslySetInnerHTML injeta HTML cru no DOM. Com qualquer dado vindo do usuário sem sanitização, é XSS direto.",
+    "remediacao": "Renderizar como texto; se precisar de HTML, sanitizar (ex.: DOMPurify). DoD: sem dangerouslySetInnerHTML com dado não sanitizado.",
+    "modo": "presenca",
+    "pattern": "dangerouslySetInnerHTML"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

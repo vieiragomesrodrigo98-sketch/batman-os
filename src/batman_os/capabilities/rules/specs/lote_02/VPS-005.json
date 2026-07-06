@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "VPS-005",
+    "agente": "vps-infra",
+    "severidade": "medium",
+    "categoria": "confiabilidade",
+    "titulo": "Script shell sem 'set -euo pipefail'",
+    "causa": "Sem 'set -euo pipefail', um script bash continua executando mesmo após erro em um comando intermediário — migrações parciais, builds incompletos e restarts desnecessários ficam invisíveis.",
+    "remediacao": "Adicionar 'set -euo pipefail' após o shebang em todos os scripts .sh de produção e deploy. DoD: todos os scripts em scripts/ contêm a diretiva.",
+    "modo": "ausencia",
+    "pattern": "set -euo pipefail|set -e"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": ["scripts/*.sh"]
+  }
+}

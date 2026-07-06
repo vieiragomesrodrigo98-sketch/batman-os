@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PERF-001",
+    "agente": "performance-engineer",
+    "severidade": "low",
+    "categoria": "query",
+    "titulo": "SELECT * em consulta SQL",
+    "causa": "SELECT * traz colunas desnecessárias (mais I/O e rede), quebra ao mudar o schema e impede o banco de usar índices de cobertura.",
+    "remediacao": "Selecionar só as colunas necessárias. DoD: nenhum SELECT * no código.",
+    "modo": "presenca",
+    "pattern": "SELECT\\s+\\*",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_nome_contem_lower": ["novidades.py"]
+  }
+}

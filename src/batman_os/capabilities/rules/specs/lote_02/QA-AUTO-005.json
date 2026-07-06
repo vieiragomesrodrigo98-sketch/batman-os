@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "QA-AUTO-005",
+    "agente": "qa-automation",
+    "severidade": "low",
+    "categoria": "cobertura",
+    "titulo": "Seletor frágil por posição CSS em vez de data-testid",
+    "causa": "Seletores como :nth-child() ou .class > button quebram quando o DOM muda — data-testid é semântico e estável.",
+    "remediacao": "Usar data-testid em elementos de teste. DoD: sem locator(':nth-child(', '.class > button') em testes.",
+    "modo": "presenca",
+    "pattern": "locator\\s*\\(\\s*['\\\"][^'\\\"]*:nth-child|locator\\s*\\(\\s*['\\\"][^'\\\"]*>\\s*\\w+['\\\"]"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["tests/e2e", "e2e"],
+    "extensoes": [".ts"]
+  }
+}

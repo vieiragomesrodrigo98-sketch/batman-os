@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-015",
+    "agente": "security-engineer",
+    "severidade": "medium",
+    "categoria": "auth",
+    "titulo": "Cookie secure amarrado a igualdade que falha aberto (== 'production')",
+    "causa": "secure=<env> == 'production' deixa o cookie SEM Secure em todo ambiente que não seja exatamente 'production' — inclusive staging (HTTPS, exposto à internet) e quando a variável está ausente ou com typo. Falha ABERTO: o default de código é o estado inseguro (sweep security-engineer 2026-07-04, achado F9).",
+    "remediacao": "Amarrar secure ao complemento do ambiente inseguro: `secure=<env> != 'development'` (seguro por padrão, exceto dev explícito). DoD: nenhum secure=... == 'production' em set_cookie.",
+    "modo": "presenca",
+    "pattern": "secure\\s*=\\s*.*==\\s*['\\\"]production['\\\"]"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

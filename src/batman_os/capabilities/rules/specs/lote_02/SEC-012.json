@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-012",
+    "agente": "security-engineer",
+    "severidade": "medium",
+    "categoria": "auth",
+    "titulo": "Cookie de sessão com httponly=False",
+    "causa": "httponly=False permite acesso JavaScript ao cookie de sessão, abrindo vetor direto para roubo de cookie via XSS.",
+    "remediacao": "Definir httponly=True em todos os cookies de sessão. DoD: sem httponly=False em set_cookie.",
+    "modo": "presenca",
+    "pattern": "response\\.set_cookie\\((?:[^\\n]*\\n){0,4}[^\\n]*httponly\\s*=\\s*False"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

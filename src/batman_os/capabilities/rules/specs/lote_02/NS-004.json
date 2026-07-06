@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "NS-004",
+    "agente": "network-security",
+    "severidade": "high",
+    "categoria": "network",
+    "titulo": "Porta de debug exposta em docker-compose de produção (debugpy 5678 / delve 2345)",
+    "causa": "Portas de debugger abertas em produção permitem execução arbitrária de código via protocolo de debug remoto — comprometimento total do container.",
+    "remediacao": "Remover mapeamento de portas de debug dos arquivos de produção. DoD: sem '5678:5678' ou '2345:2345' em docker-compose de produção.",
+    "modo": "presenca",
+    "pattern": "(5678|2345):\\d*(5678|2345)"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "docker-compose*.y*ml",
+    "excluir_caminho_contem": [".dev.", ".local.", "test"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DS-007",
+    "agente": "data-scientist",
+    "severidade": "medium",
+    "categoria": "ml",
+    "titulo": "train_test_split sem estratificação em problema de classificação com target binário",
+    "causa": "Sem stratify=, classes desbalanceadas podem ficar mal representadas no conjunto de teste, produzindo avaliações enganosas.",
+    "remediacao": "Usar stratify=y em train_test_split. DoD: todo train_test_split em contexto de classificação tem stratify=.",
+    "modo": "presenca",
+    "pattern": "train_test_split\\s*\\((?![^\\n]*stratify)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

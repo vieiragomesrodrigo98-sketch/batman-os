@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DS-005",
+    "agente": "data-scientist",
+    "severidade": "high",
+    "categoria": "ml",
+    "titulo": "Feature calculada com dados do conjunto de teste antes do split (data leakage)",
+    "causa": "Aplicar scaler.fit() ou encoder.fit() no dataset completo antes de train_test_split contamina o conjunto de teste com informação do treino — métricas infladas que não se reproduzem em produção.",
+    "remediacao": "Aplicar fit() apenas no conjunto de treino, transform() em treino e teste. DoD: sem scaler.fit ou encoder.fit chamado antes de train_test_split.",
+    "modo": "presenca",
+    "pattern": "(?=[\\s\\S]*?train_test_split)(?=[\\s\\S]*?\\.fit\\s*\\()"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DS-001",
+    "agente": "data-scientist",
+    "severidade": "medium",
+    "categoria": "precisao-numerica",
+    "titulo": "Comparação de igualdade direta entre floats",
+    "causa": "Comparar floats com == é numericamente instável: 0.1 + 0.2 != 0.3 em ponto flutuante IEEE 754. Em cálculos financeiros e de score, isso produz resultados intermitentes e difíceis de depurar.",
+    "remediacao": "Usar math.isclose() ou numpy.isclose() com tolerância absoluta/relativa adequada ao domínio. DoD: nenhum `== float_literal` em cálculos de score/retorno.",
+    "modo": "presenca",
+    "pattern": "==\\s*\\d+\\.\\d+|\\d+\\.\\d+\\s*=="
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

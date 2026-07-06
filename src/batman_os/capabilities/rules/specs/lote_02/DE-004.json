@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DE-004",
+    "agente": "data-engineer",
+    "severidade": "medium",
+    "categoria": "precisao",
+    "titulo": "datetime.now() sem timezone em campo de operação financeira/transacional",
+    "causa": "datetime.now() retorna hora local do servidor sem tzinfo — ambíguo em servidores com timezone diferente do usuário, causando erros de cálculo em registros financeiros.",
+    "remediacao": "Usar datetime.now(timezone.utc) ou datetime.utcnow() explicitamente. Melhor: datetime.now(timezone.utc) para ter tzinfo. DoD: sem datetime.now() sem timezone em módulos financeiros.",
+    "modo": "presenca",
+    "pattern": "datetime\\.now\\(\\)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem_lower": ["test"]
+  }
+}

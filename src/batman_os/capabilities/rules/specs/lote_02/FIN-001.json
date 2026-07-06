@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FIN-001",
+    "agente": "financial-analyst",
+    "severidade": "high",
+    "categoria": "lookahead-bias",
+    "titulo": "Possível look-ahead bias: shift negativo em série temporal",
+    "causa": "shift(-N) em pandas traz dados futuros para a linha atual — o modelo vê o futuro durante o treino e infla métricas de forma ilusória. É a forma mais comum de look-ahead bias em backtest.",
+    "remediacao": "Usar shift(+N) para lags históricos. Toda feature deve ser construída apenas com dados disponíveis no momento t. DoD: nenhum shift negativo nos pipelines de feature engineering.",
+    "modo": "presenca",
+    "pattern": "\\.shift\\(\\s*-\\d+"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-006",
+    "agente": "security-engineer",
+    "severidade": "medium",
+    "categoria": "cors",
+    "titulo": "CORS com allow_credentials=True e methods/headers curinga",
+    "causa": "allow_methods=['*'] ou allow_headers=['*'] combinados a allow_credentials=True aceitam qualquer header/método junto de credenciais, ampliando a superfície de CSRF e vazamento.",
+    "remediacao": "Listar explicitamente métodos e headers quando credentials=True e restringir allow_origins a domínios conhecidos. DoD: sem '*' em allow_methods/headers quando há credentials.",
+    "modo": "presenca",
+    "pattern": "(?=[\\s\\S]*?allow_credentials\\s*=\\s*True)(?=[\\s\\S]*?allow_(?:methods|headers)\\s*=\\s*\\[\\s*['\\\"]\\*['\\\"])"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

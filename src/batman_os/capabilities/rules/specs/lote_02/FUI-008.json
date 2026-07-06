@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FUI-008",
+    "agente": "frontend-ui",
+    "severidade": "low",
+    "categoria": "layout",
+    "titulo": "Classe line-clamp sem overflow-hidden no mesmo elemento",
+    "causa": "A utilidade line-clamp do Tailwind (v3+) inclui overflow:hidden internamente, mas em alguns browsers mais antigos ou com CSS custom, a combinação '-webkit-line-clamp' exige 'overflow: hidden' explícito no mesmo elemento. Sem ele, o texto pode não ser truncado corretamente.",
+    "remediacao": "Adicionar 'overflow-hidden' junto com 'line-clamp-N'. DoD: todo 'line-clamp-*' tem 'overflow-hidden' no mesmo className.",
+    "modo": "presenca",
+    "pattern": "className=[\"'](?:(?!overflow-hidden)[^\"'])*\\bline-clamp-\\d\\b(?:(?!overflow-hidden)[^\"'])*[\"']"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

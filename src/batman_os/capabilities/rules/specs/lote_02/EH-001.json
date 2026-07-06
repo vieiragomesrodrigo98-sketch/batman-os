@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "EH-001",
+    "agente": "ethical-hacker",
+    "severidade": "high",
+    "categoria": "config",
+    "titulo": "Debug mode habilitado no código (debug=True / DEBUG=True)",
+    "causa": "debug=True em FastAPI/Uvicorn/Flask expõe rastreamentos de pilha completos nas respostas de erro, revela estrutura interna da aplicação e pode habilitar o reloader automático — vetor claro de vazamento de informação em produção.",
+    "remediacao": "Remover debug=True do código; controlar via variável de ambiente DEBUG=false (padrão) e ler em settings.py. DoD: nenhum debug=True hardcoded fora de testes.",
+    "modo": "presenca",
+    "pattern": "\\bdebug\\s*=\\s*True\\b",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem_lower": ["test"]
+  }
+}

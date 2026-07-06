@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "ARCH-006",
+    "agente": "software-architect",
+    "severidade": "medium",
+    "categoria": "architecture",
+    "titulo": "Acesso direto ao banco de dados no router sem camada de serviço (violação de camada)",
+    "causa": "Routers com lógica de banco mistura responsabilidades: o handler de HTTP passa a ter conhecimento de persistência, tornando difícil testar, reutilizar e trocar de banco.",
+    "remediacao": "Mover consultas ao banco para uma camada de serviço/repositório. DoD: nenhum session.query/session.execute/filter() direto no body de handler de router.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*?(?:session\\.(?:query|execute|add|delete|commit)\\s*\\(|\\.filter\\s*\\(|\\.filter_by\\s*\\())(?![\\s\\S]*(?:get_db|Depends\\s*\\(\\s*get_db))"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": [
+      "api/routers"
+    ],
+    "extensoes": [
+      ".py"
+    ]
+  }
+}

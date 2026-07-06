@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "PD-007",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "regra-de-negocio",
+    "titulo": "Gate de score 70% do motor sem representação visual para o usuário",
+    "causa": "O motor só gera sinais quando score_total ≥ 0.70. Se o usuário não vê essa régua, não entende por que há poucos sinais, por que um ticker específico não aparece, ou o que significa a pontuação exibida. Gera chamados de suporte e percepção de produto quebrado.",
+    "remediacao": "Adicionar linha de gate (70%) no termômetro de score. Exibir tooltip explicando o critério de entrada. DoD: todo score_total exibido tem referência visual ao gate 70%.",
+    "modo": "ausencia",
+    "pattern": "gate|70%|0\\.7[^0-9]|linha.*gate|gate.*linha",
+    "pattern_escopo": "score_total|ScoreThermometer|ScoreBreakdown|score.*70",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_caminho_contem": ["Admin", "admin", "engine", "motor"]
+  }
+}

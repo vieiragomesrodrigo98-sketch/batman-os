@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "SD-001",
+    "agente": "service-designer",
+    "severidade": "high",
+    "categoria": "jornada",
+    "titulo": "Link/NavLink com destino vazio ou '#' — clique não leva a lugar algum",
+    "causa": "Link com to=\"\" ou to=\"#\" não navega: o usuário clica e nada acontece. Quebra a jornada e gera percepção de feature inexistente ou quebrada. Feature incompleta deve ser oculta ou marcada 'Em breve', nunca exposta como link morto.",
+    "remediacao": "Definir rota real ou substituir por badge não-clicável 'Em breve'. DoD: nenhum <Link>/<NavLink> com to vazio ou âncora nu em produção.",
+    "modo": "presenca",
+    "pattern": "\\bto=\\s*[\"'](?:#|)\\s*[\"']",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

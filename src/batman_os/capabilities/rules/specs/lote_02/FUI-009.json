@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "FUI-009",
+    "agente": "frontend-ui",
+    "severidade": "low",
+    "categoria": "layout",
+    "titulo": "max-w sem w-full ou flex-1 — limite máximo nunca atingido",
+    "causa": "Um elemento com max-w-Xpx mas sem w-full ou flex-1 não cresce até atingir o max-w — ele permanece com largura min-content (largura do conteúdo). O max-w é definido mas nunca aplicado.",
+    "remediacao": "Adicionar 'w-full' junto com 'max-w-Xpx' quando o objetivo é limitar a largura de um elemento que deve crescer. DoD: todo max-w em elemento não-flex tem w-full ou está em flex-1.",
+    "modo": "presenca",
+    "pattern": "className=[\"'](?=[^\"']*\\bmax-w-\\w+)(?![^\"']*(?:\\bw-full\\b|\\bflex-1\\b|\\bw-\\d+\\b|\\bmx-auto\\b|\\bcontainer\\b))[^\"']*[\"']"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

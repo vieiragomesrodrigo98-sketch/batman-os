@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "DE-001",
+    "agente": "data-engineer",
+    "severidade": "high",
+    "categoria": "precisao",
+    "titulo": "float usado para valor monetário (deve ser Decimal)",
+    "causa": "float tem erros de arredondamento binário que acumulam em cálculos financeiros — R$0.1 + R$0.2 != R$0.3 em float. Para preços, P&L e stops use sempre Decimal.",
+    "remediacao": "Substituir float por Decimal nos campos de preço, stop, alvo e P&L. No SQLAlchemy usar Numeric(18,8). DoD: grep por 'Float' em tabelas financeiras retorna vazio.",
+    "modo": "presenca",
+    "pattern": "(preco|price|stop|alvo|target|pnl|retorno|return|valor|value|custo|cost)(?![^=\\n(]*_pct\\b)[^=\\n(]*[:=]\\s*(float|Float)\\b",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["src/radar"],
+    "excluir_nome_contem_lower": ["simulacoes.py", "sim.py"]
+  }
+}

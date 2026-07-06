@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "BT-004",
+    "agente": "blue-team",
+    "severidade": "medium",
+    "categoria": "log",
+    "titulo": "Entrada do usuário interpolada diretamente em mensagem de log sem sanitização",
+    "causa": "Interpolar dados do usuário em logs sem sanitização permite log injection: o atacante injeta newlines para forjar entradas de log, dificultando auditoria e investigação forense.",
+    "remediacao": "Não interpolar entrada do usuário diretamente em mensagens de log. Usar parâmetros estruturados: logger.info('msg', extra={'field': value}). DoD: sem f-string com dados de request em chamadas de logger.",
+    "modo": "presenca",
+    "pattern": "logger\\.(info|debug|warning|error|critical)\\s*\\(f['\"].*(?:request\\.|user\\.|body\\.|params\\.)|logging\\.(info|debug|warning|error)\\s*\\(f['\"].*(?:request\\.|user\\.)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

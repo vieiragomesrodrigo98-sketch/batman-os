@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "EH-003",
+    "agente": "ethical-hacker",
+    "severidade": "critical",
+    "categoria": "auth",
+    "titulo": "Senha padrão/fraca atribuída a variável de credencial",
+    "causa": "Senhas padrão atribuídas diretamente a variáveis de credencial ('password=', 'senha=', 'secret=', 'pwd=') são as primeiras tentadas em ataques de credential stuffing, especialmente em staging.",
+    "remediacao": "Remover senhas hardcoded; ler de variável de ambiente obrigatória. DoD: sem senha literal atribuída a variável de credencial fora de testes.",
+    "modo": "presenca",
+    "pattern": "(password|senha|secret|pwd|api_key|token)\\s*[=:]\\s*['\"](admin|password|senha|123456|secret|changeme|test123|default|Admin@2024|Admin@2025|Admin@2026)['\"]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem_lower": ["test"],
+    "excluir_nome_contem_lower": ["seed_admin.py"]
+  }
+}

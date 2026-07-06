@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-009",
+    "agente": "red-team",
+    "severidade": "high",
+    "categoria": "injection",
+    "titulo": "render_template_string com variável de entrada direta (Server-Side Template Injection)",
+    "causa": "render_template_string interpolando entrada do usuário permite SSTI: o atacante injeta código de template Jinja2 para executar código arbitrário no servidor.",
+    "remediacao": "Nunca usar render_template_string com entrada do usuário. Usar render_template com arquivo de template fixo. DoD: sem render_template_string(f' no código.",
+    "modo": "presenca",
+    "pattern": "render_template_string\\s*\\(f['\\\"]|render_template_string\\s*\\([^)]*\\+"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

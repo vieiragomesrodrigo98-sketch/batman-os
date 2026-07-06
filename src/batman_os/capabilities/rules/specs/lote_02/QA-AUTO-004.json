@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "QA-AUTO-004",
+    "agente": "qa-automation",
+    "severidade": "medium",
+    "categoria": "cobertura",
+    "titulo": "Teste E2E sem asserção de conteúdo (navega e clica, mas não verifica resultado)",
+    "causa": "Teste E2E que só navega e clica sem verificar resultado não detecta regressões no conteúdo ou estado da página.",
+    "remediacao": "Adicionar expect().toHaveText(), toBeVisible() ou equivalente. DoD: todo test() Playwright tem pelo menos uma asserção expect.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "\\btest\\s*\\(",
+    "pattern_mitigacao": "\\bexpect\\s*\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["tests", "e2e"],
+    "extensoes": [".spec.ts"]
+  }
+}

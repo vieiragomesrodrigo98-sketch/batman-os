@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SD-004",
+    "agente": "service-designer",
+    "severidade": "high",
+    "categoria": "dados-tempo-real",
+    "titulo": "Dado de mercado B3 exibido sem indicador de frescor/horário",
+    "causa": "Preços, scores e sinais são sensíveis ao tempo. Exibi-los sem 'Atualizado às HH:mm' induz o usuário a agir em dados obsoletos. Risco regulatório (Resolução CVM 20/2021) e de UX: decisão de compra baseada em preço de ontem.",
+    "remediacao": "Adicionar timestamp junto a cada bloco de preço/score. Para dados B3 fora do pregão, indicar 'Mercado fechado — dados de HH:mm'. DoD: nenhum bloco de preço/score sem indicador de quando foi atualizado.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "entry_price|target_price|stop_price|score_total|current_price|ibovespa_points|selic_pct|usdbrl",
+    "pattern_mitigacao": "Atualizado|updated_at|created_at|HH:mm|toLocaleTime|formatDate|formatPrazo|closed_at|mercado\\s+fechado",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

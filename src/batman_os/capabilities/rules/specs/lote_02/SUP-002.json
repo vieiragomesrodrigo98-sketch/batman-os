@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SUP-002",
+    "agente": "support",
+    "severidade": "low",
+    "categoria": "mensagens-de-erro",
+    "titulo": "HTTPException sem detail descritivo",
+    "causa": "HTTPException sem detail (ou com detail genérico) deixa o suporte sem contexto para diagnosticar o problema — o cliente só vê 'error' sem pista do motivo.",
+    "remediacao": "Passar detail com mensagem específica e acionável. DoD: toda HTTPException tem detail com ao menos 10 caracteres.",
+    "modo": "presenca",
+    "pattern": "HTTPException\\((?![\\s\\S]{0,200}detail\\s*=\\s*['\"][^'\"]{10,}['\"])"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

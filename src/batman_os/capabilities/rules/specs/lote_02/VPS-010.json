@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "VPS-010",
+    "agente": "vps-infra",
+    "severidade": "low",
+    "categoria": "observabilidade",
+    "titulo": "Deploy script sem notificação pós-deploy (audit trail)",
+    "causa": "Sem registro automático de quem e quando fez deploy, investigações de incidente dependem de memória humana. Um simples log ou notificação Telegram/e-mail cria um audit trail mínimo.",
+    "remediacao": "Adicionar ao final do deploy uma linha de notificação: curl Telegram, mail, ou ao menos echo com data/branch/commit para arquivo de log. DoD: scripts/deploy.sh registra deploy com timestamp e branch.",
+    "modo": "ausencia",
+    "pattern": "telegram|mail\\b|notify|log.*deploy|deploy.*log|date\\s+['+]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "scripts/deploy.sh"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "DEVOPS-005",
+    "agente": "devops-engineer",
+    "severidade": "medium",
+    "categoria": "containers",
+    "titulo": "Imagem Docker com tag :latest sem versão fixada",
+    "causa": ":latest é mutável — o mesmo Dockerfile pode produzir imagens diferentes em builds diferentes, causando reprodutibilidade zero.",
+    "remediacao": "Fixar versão: FROM python:3.12-slim em vez de FROM python:latest. DoD: nenhum FROM com :latest em Dockerfiles.",
+    "modo": "presenca",
+    "pattern": "(?m)^FROM\\s+(?:\\S+:latest\\b|[a-zA-Z0-9_/.-]+\\s*$)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "Dockerfile*",
+    "excluir_caminho_contem": [".venv", "node_modules"]
+  }
+}

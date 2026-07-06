@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "PM-002",
+    "agente": "product-manager",
+    "severidade": "low",
+    "categoria": "rastreabilidade",
+    "titulo": "TODO/FIXME sem referência a ticket rastreável em arquivo de lógica de negócio",
+    "causa": "TODO sem ticket nunca é resolvido — vira dívida técnica invisível que ninguém assume.",
+    "remediacao": "Referenciar ticket em todo TODO: # TODO(RADAR-123): ... DoD: nenhum TODO/FIXME sem referência a ticket.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*(?:#\\d+|[A-Z]+-\\d+|RADAR-\\d+|JIRA-\\d+)).*#\\s*(?:TODO|FIXME)\\b"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages", "frontend/src"],
+    "extensoes": [".py", ".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "FIN-003",
+    "agente": "financial-analyst",
+    "severidade": "high",
+    "categoria": "qualidade-dados",
+    "titulo": "Cálculo de retorno sem tratamento de NaN ou divisão por zero",
+    "causa": "pct_change() produz NaN no primeiro elemento e inf quando o preço anterior é zero — sem tratamento isso propaga silenciosamente para sinais e P&L.",
+    "remediacao": "Aplicar .fillna(0) ou .dropna() após .pct_change(). DoD: todo .pct_change() tem .fillna ou .dropna na mesma cadeia.",
+    "modo": "ausencia",
+    "pattern": "fillna|dropna",
+    "pattern_escopo": "\\.pct_change\\s*\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

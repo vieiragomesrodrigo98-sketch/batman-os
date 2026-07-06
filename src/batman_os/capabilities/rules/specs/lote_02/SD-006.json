@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SD-006",
+    "agente": "service-designer",
+    "severidade": "high",
+    "categoria": "feedback-usuario",
+    "titulo": "Ação destrutiva sem diálogo de confirmação",
+    "causa": "Botões de deletar/excluir/revogar/encerrar sem confirm() ou modal de confirmação podem ser acionados por toque acidental em mobile. Perda de dado simulado, revogação de consentimento ou encerramento de posição por acidente gera suporte e perda de confiança.",
+    "remediacao": "Adicionar modal de confirmação ou dialog com ação reversível antes de toda operação destrutiva. DoD: nenhum DELETE/close/revoke direto sem confirm.",
+    "modo": "presenca-sem-mitigacao",
+    "pattern": "(deletar|excluir|remover|revogar|encerrar|fechar\\s+posição|resetar|limpar|apagar)\\b[^{\\n]*onClick",
+    "pattern_mitigacao": "confirm\\(|window\\.confirm|<[A-Z]\\w*Modal|showConfirm|isConfirming|confirmDialog|setConfirm",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

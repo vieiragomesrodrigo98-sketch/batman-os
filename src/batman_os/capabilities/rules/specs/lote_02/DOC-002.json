@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "DOC-002",
+    "agente": "technical-writer",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "Repositório sem README",
+    "causa": "Sem README na raiz, quem chega no projeto (ou um agente) não tem ponto de entrada: como rodar, o que é, como contribuir.",
+    "remediacao": "Adicionar um README.md na raiz. DoD: existe README na raiz do repo.",
+    "modo": "arquivo-ausente"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "README.md",
+    "caminho_relatorio": ".",
+    "condicoes_adicionais": [
+      {"tipo": "arquivo_fixo", "caminho": "README.rst", "checar": "arquivo-ausente"},
+      {"tipo": "arquivo_fixo", "caminho": "README.txt", "checar": "arquivo-ausente"},
+      {"tipo": "arquivo_fixo", "caminho": "README", "checar": "arquivo-ausente"}
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PD-008",
+    "agente": "product-designer",
+    "severidade": "low",
+    "categoria": "completude",
+    "titulo": "Lista de dados sem paginação ou infinite scroll",
+    "causa": "Carregar todos os registros de uma vez (sem limit/offset/cursor) pode retornar centenas de itens: lentidão, scroll infinito real e crash de memória em mobile. Com 57 tickers e eventos diários, listas crescem.",
+    "remediacao": "Adicionar paginação (load more) ou limit explícito na query. DoD: toda lista que pode ter > 20 itens tem paginação ou limit.",
+    "modo": "ausencia",
+    "pattern": "limit|offset|page|cursor|loadMore|InfiniteScroll|hasMore|nextPage",
+    "pattern_escopo": "(?=[\\s\\S]*?(?:\\.(?:map|forEach)\\s*\\(|sinais\\.map|eventos\\.map))(?=[\\s\\S]*?(?:Api\\.|fetch\\(|useEffect))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

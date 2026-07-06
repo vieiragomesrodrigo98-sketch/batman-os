@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "CRO-005",
+    "agente": "cro-specialist",
+    "severidade": "medium",
+    "categoria": "formulario",
+    "titulo": "Campo aparentemente obrigatório sem atributo required",
+    "causa": "Asterisco (*) em label indica obrigatoriedade ao usuário mas sem required não há validação — o formulário pode ser submetido vazio.",
+    "remediacao": "Adicionar required em todo campo marcado como obrigatório. DoD: todo input com label contendo * tem required ou validação client-side.",
+    "modo": "presenca",
+    "pattern": "(?=[\\s\\S]*?(?:label[^>]*\\*|>\\s*[^<]*\\*\\s*<))(?=[\\s\\S]*?<[Ii]nput\\b(?![^>]*\\brequired\\b)[^>]*>)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_nome_contem_lower": ["admin.tsx", "admin.jsx"]
+  }
+}

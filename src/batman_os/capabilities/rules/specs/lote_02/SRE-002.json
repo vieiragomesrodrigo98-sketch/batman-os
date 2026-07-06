@@ -1,0 +1,33 @@
+{
+  "regra": {
+    "codigo": "SRE-002",
+    "agente": "sre",
+    "severidade": "low",
+    "categoria": "observabilidade",
+    "titulo": "Módulo sem uso de logger estruturado (só print)",
+    "causa": "print() não é capturado por sistemas de log (Datadog, Loki, CloudWatch) e não tem nível, contexto nem correlação. Em produção, logs com print somem.",
+    "remediacao": "Substituir print() por logging.getLogger(__name__) nos módulos de produção. DoD: nenhum print() em src/ e api/ fora de scripts e testes.",
+    "modo": "presenca",
+    "pattern": "(?m)\\A(?=[\\s\\S]*?^\\s*print\\()(?![\\s\\S]*(?:\\bgetLogger\\b|\\blogger\\s*=))"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": [
+      "api",
+      "src"
+    ],
+    "extensoes": [
+      ".py"
+    ],
+    "excluir_caminho_contem_lower": [
+      "test",
+      "script"
+    ],
+    "excluir_nome_contem_lower": [
+      "seed_admin.py",
+      "init_db.py",
+      "period_context.py",
+      "walk_forward.py"
+    ]
+  }
+}

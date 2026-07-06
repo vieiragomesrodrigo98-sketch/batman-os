@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "EH-008",
+    "agente": "ethical-hacker",
+    "severidade": "medium",
+    "categoria": "auth",
+    "titulo": "Comparação de credencial com == em vez de hmac.compare_digest (timing attack)",
+    "causa": "Comparar tokens ou hashes com == permite timing attack: o atacante mede tempo de resposta para adivinhar o valor correto byte a byte.",
+    "remediacao": "Usar hmac.compare_digest(a, b) para comparar tokens/hashes. DoD: sem comparação de credencial com == em handlers de auth.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?=.*\\bif\\s+(?:token|password|hash|secret|hmac|signature)\\s*==)(?!.*==\\s*(?:None\\b|\"\"|''\\s*[:\\n]))",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

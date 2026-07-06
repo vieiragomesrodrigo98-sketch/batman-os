@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "CLOUD-005",
+    "agente": "cloud-engineer",
+    "severidade": "medium",
+    "categoria": "containers",
+    "titulo": "Imagem Docker sem versão fixada (FROM service:latest)",
+    "causa": ":latest muda silenciosamente a cada rebuild — o mesmo Dockerfile pode gerar artefatos incompatíveis entre deploys.",
+    "remediacao": "Fixar versão: FROM python:3.12-slim. DoD: nenhum FROM com :latest em Dockerfiles.",
+    "modo": "presenca",
+    "pattern": "(?:^|\\n)FROM\\s+\\S+:latest",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "Dockerfile*",
+    "excluir_caminho_contem": [".venv", "node_modules"]
+  }
+}

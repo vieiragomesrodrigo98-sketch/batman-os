@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "IR-006",
+    "agente": "incident-response",
+    "severidade": "high",
+    "categoria": "monitoring",
+    "titulo": "Operação crítica (promoção admin, exclusão em massa) sem alerta ativo além do log",
+    "causa": "log_action registra a operação mas não alerta a equipe em tempo real — promoções não autorizadas e exclusões em massa podem passar despercebidas por horas.",
+    "remediacao": "Adicionar notificação ativa (email, webhook, Slack) em operações críticas além do log. DoD: funções críticas têm alerta além de log_action.",
+    "modo": "ausencia",
+    "pattern": "(send_email|send_alert|send_notification|webhook\\.send|notify|requests\\.post.*hook|httpx\\.post.*hook|smtplib|celery.*alert)",
+    "pattern_escopo": "def\\s+(promote.*admin|demote.*admin|mass_delete|bulk_delete|suspend_account|delete_all_\\w+|ban_user|revoke_all)",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}
