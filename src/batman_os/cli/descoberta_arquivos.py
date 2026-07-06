@@ -15,7 +15,10 @@ ausência de cache de `oracle.py`/`robin.py`), `toml_dependencias` (empacota
 `pyproject.toml` + `requirements.txt` + arquivos `.py` de `tests/`/`src/`
 como JSON — parsing real via `tomllib` acontece no handler, não aqui),
 `de003` (bespoke — empacota `init_db.py`/`tables.py` + `git log -p` sobre
-`tables.py` como JSON para a Capability DE-003).
+`tables.py` como JSON para a Capability DE-003), `ora004` (bespoke —
+empacota todos os `.py` de `scope_dirs` + `enums_path` como JSON para a
+Capability ORA-004, que agrega frequência de literais através de TODOS os
+arquivos).
 
 Handler da Capability (`capabilities/rules/regex_sobre_conteudo.py`, e as
 demais Skills desta migração) permanece puro — este módulo é o único que
@@ -44,6 +47,8 @@ from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
 )
+from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
+from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     CondicaoAdicional,
     EntradaRegexArquivo,
@@ -134,6 +139,29 @@ def entradas_dependencias_para_regra(
     ]
 
 
+def entradas_ora005_para_regra(
+    root: Path, regra: RegraOra005Spec, descoberta: dict[str, Any]
+) -> list[EntradaOra005]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke ORA-005 — reaproveita a descoberta `"arvore"` já existente (1
+    Missão por arquivo), só o handler é bespoke."""
+    return [
+        EntradaOra005(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_ora004_para_regra(
+    root: Path, regra: RegraOra004Spec, descoberta: dict[str, Any]
+) -> list[EntradaOra004]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke ORA-004."""
+    return [
+        EntradaOra004(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_de003_para_regra(
     root: Path, regra: RegraDe003Spec, descoberta: dict[str, Any]
 ) -> list[EntradaDe003]:
@@ -170,6 +198,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_de_dependencias(root, descoberta)
     if tipo == "de003":
         return _resultado_de003(root, descoberta)
+    if tipo == "ora004":
+        return _resultado_ora004(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -206,6 +236,32 @@ def _resultado_de003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, 
         "tables_src": _ler_texto(root / tables_path),
         "git_log": log,
     }
+    return [(caminho_relatorio, json.dumps(payload))]
+
+
+def _resultado_ora004(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    caminho_relatorio = descoberta.get("caminho_relatorio", ".")
+    enums_path = descoberta.get("enums_path")
+
+    descoberta_arvore = {
+        "scope_dirs": descoberta.get("scope_dirs", []),
+        "extensoes": [".py"],
+        # replica oracle.py: `any(part.startswith(("test","conftest")) for
+        # part in parts)` — qualquer segmento do caminho, não só o nome do
+        # arquivo (arquivo em si coberto por excluir_nome_prefixo). Legado
+        # não faz case-fold aqui, só o "tests"/"test_*" minúsculo real.
+        "excluir_caminho_contem": ["/test", "/conftest"],
+        "excluir_nome_prefixo": ["test", "conftest"],
+    }
+    arquivos = {
+        rel: (conteudo or "") for rel, conteudo in _arquivos_em_arvore(root, descoberta_arvore)
+    }
+
+    enums_src = None
+    if enums_path and (root / enums_path).exists():
+        enums_src = _ler_texto(root / enums_path)
+
+    payload: dict[str, Any] = {"arquivos": arquivos, "enums_src": enums_src}
     return [(caminho_relatorio, json.dumps(payload))]
 
 

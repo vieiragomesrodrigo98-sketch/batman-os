@@ -83,6 +83,16 @@ from batman_os.capabilities.rules.git_comando_interpretado_loader import (
 )
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
+from batman_os.capabilities.rules.ora004_loader import SpecOra004, carregar_especificacoes_ora004
+from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
+from batman_os.capabilities.rules.ora004_status_typo import (
+    construir_implementacao as construir_implementacao_ora004,
+)
+from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
+from batman_os.capabilities.rules.ora005_fallback_silencioso import (
+    construir_implementacao as construir_implementacao_ora005,
+)
+from batman_os.capabilities.rules.ora005_loader import SpecOra005, carregar_especificacoes_ora005
 from batman_os.capabilities.rules.regex_sobre_conteudo import EntradaRegexArquivo
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     construir_implementacao as construir_implementacao_regex,
@@ -105,6 +115,8 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_execucao_comando_para_regra,
     entradas_git_interpretado_para_regra,
     entradas_kwarg_ausente_para_regra,
+    entradas_ora004_para_regra,
+    entradas_ora005_para_regra,
     entradas_para_regra,
 )
 from batman_os.foundation.types import (
@@ -361,6 +373,24 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 "regra": {},
             },
         ),
+        (
+            construir_implementacao_ora005(),
+            {
+                "caminho": "src/x.py",
+                "conteudo": (
+                    "def f():\n    try:\n        x()\n    except Exception:\n        pass\n"
+                ),
+                "regra": {},
+            },
+        ),
+        (
+            construir_implementacao_ora004(),
+            {
+                "caminho": "src/radar/models/enums.py",
+                "conteudo": json.dumps({"arquivos": {}, "enums_src": None}),
+                "regra": {},
+            },
+        ),
     ]
 
 
@@ -409,6 +439,8 @@ _Especificacao = (
     | SpecDeRegraExecucaoComando
     | SpecDeRegraDependencias
     | SpecDe003
+    | SpecOra005
+    | SpecOra004
 )
 
 
@@ -422,6 +454,8 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_execucao_comando())
     especificacoes.extend(carregar_especificacoes_dependencias())
     especificacoes.extend(carregar_especificacoes_de003())
+    especificacoes.extend(carregar_especificacoes_ora005())
+    especificacoes.extend(carregar_especificacoes_ora004())
     return especificacoes
 
 
@@ -464,6 +498,8 @@ def executar_scan(
                 | EntradaExecucaoComando
                 | EntradaDependencias
                 | EntradaDe003
+                | EntradaOra005
+                | EntradaOra004
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -477,6 +513,10 @@ def executar_scan(
                 entradas = entradas_dependencias_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraDe003Spec):
                 entradas = entradas_de003_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraOra005Spec):
+                entradas = entradas_ora005_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraOra004Spec):
+                entradas = entradas_ora004_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

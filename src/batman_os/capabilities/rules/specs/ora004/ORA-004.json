@@ -1,0 +1,9 @@
+{
+  "regra": {},
+  "descoberta": {
+    "tipo": "ora004",
+    "scope_dirs": ["api", "src", "dashboard", "scripts"],
+    "enums_path": "src/radar/models/enums.py",
+    "caminho_relatorio": "src/radar/models/enums.py"
+  }
+}
