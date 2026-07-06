@@ -3,6 +3,8 @@ publish/subscribe/replay da secao 10.2-10.5 da especificacao."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from batman_os.foundation.types import EventId, MissionId, TenantId
 from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 
@@ -100,3 +102,52 @@ def test_cancelar_inscricao_para_de_receber_eventos() -> None:
     bus.publish(_evento("m-1", "Depois"))
 
     assert recebidos == ["Antes"]
+
+
+class TestMilestone5PersistenciaRealViaSqlite:
+    """Achado de revisão fechado na Milestone 5: o log deixa de viver só em
+    memória Python — precisa sobreviver a destruir e recriar o objeto
+    apontando para o MESMO arquivo, não só rodar em `:memory:`."""
+
+    def test_eventos_sobrevivem_a_destruir_e_recriar_o_eventbus(self, tmp_path: Path) -> None:
+        db_path = str(tmp_path / "eventos.db")
+
+        bus1 = EventBus(db_path=db_path)
+        bus1.publish(_evento("m-1", "MissionCreated"))
+        bus1.publish(_evento("m-1", "MissionCompleted"))
+        del bus1
+
+        bus2 = EventBus(db_path=db_path)
+        historia = bus2.replay(MissionId("m-1"))
+
+        assert [e.tipo for e in historia] == ["MissionCreated", "MissionCompleted"]
+
+    def test_dois_eventbus_memory_nao_compartilham_estado(self) -> None:
+        bus_a = EventBus()
+        bus_b = EventBus()
+
+        bus_a.publish(_evento("m-1", "SoNoA"))
+
+        assert [e.tipo for e in bus_a.replay(MissionId("m-1"))] == ["SoNoA"]
+        assert bus_b.replay(MissionId("m-1")) == []
+
+    def test_payload_e_metadados_sao_preservados_apos_reabrir(self, tmp_path: Path) -> None:
+        db_path = str(tmp_path / "eventos2.db")
+
+        bus1 = EventBus(db_path=db_path)
+        original = KernelEvent(
+            mission_id=MissionId("m-1"),
+            tenant_id=TenantId("tenant-x"),
+            tipo="MissionCreated",
+            payload={"chave": "valor", "numero": 42},
+            emitido_por=EmissorKernel.MISSION_RUNTIME,
+        )
+        bus1.publish(original)
+        del bus1
+
+        bus2 = EventBus(db_path=db_path)
+        recuperado = bus2.replay(MissionId("m-1"))[0]
+
+        assert recuperado.tenant_id == original.tenant_id
+        assert recuperado.payload == {"chave": "valor", "numero": 42}
+        assert recuperado.emitido_por == EmissorKernel.MISSION_RUNTIME

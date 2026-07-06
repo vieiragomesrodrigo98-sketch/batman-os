@@ -10,6 +10,7 @@ Fonte da verdade: docs/spec/02-kernel/06-event-bus-scheduler.md
 
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Callable
 from enum import StrEnum
 from typing import Any
@@ -80,21 +81,39 @@ class Subscription:
 class EventBus:
     """Vol.II Cap.10, secao 10.2.3.
 
-    Implementacao de referencia: log append-only em memoria. Persistencia real
-    (arquivo, banco, particionamento) e responsabilidade do Volume VIII —
-    Infrastructure, ainda nao escrito; este modulo especifica o *contrato*
-    (publish/subscribe/replay), nao a infraestrutura final de armazenamento.
-    """
+    `db_path` (Milestone 5 desta construção — escopo de persistência real):
+    log append-only via SQLite, não mais em memória Python — sobrevive a
+    destruir e recriar o processo apontando para o mesmo arquivo.
+    `":memory:"` (default) preserva o comportamento anterior (cada
+    `EventBus()` com seu próprio log isolado, nunca compartilhado entre
+    instâncias) — nenhum consumidor existente muda, `publish()`/
+    `subscribe()`/`replay()` mantêm a MESMA assinatura pública.
+    Assinantes (`subscribe`) continuam em memória Python: são construção
+    em tempo de execução, não fazem parte do log que precisa sobreviver a
+    reiniciar o processo."""
 
-    def __init__(self) -> None:
-        self._log: list[KernelEvent] = []
+    def __init__(self, db_path: str = ":memory:") -> None:
+        self._conn = sqlite3.connect(db_path)
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS events ("
+            "seq INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "mission_id TEXT NOT NULL, "
+            "payload_json TEXT NOT NULL"
+            ")"
+        )
+        self._conn.commit()
         self._assinantes: list[tuple[EventFilter, EventHandler]] = []
 
     def publish(self, event: KernelEvent) -> None:
         """Publica um evento. Ordenacao causal (Vol.II Cap.10, secao 10.2.1)
         e garantida por construcao: eventos da mesma missao sao sempre
-        appendados na ordem em que `publish()` e chamado."""
-        self._log.append(event)
+        appendados na ordem em que `publish()` e chamado (`seq` autoincrement
+        do SQLite preserva essa ordem para `replay()`)."""
+        self._conn.execute(
+            "INSERT INTO events (mission_id, payload_json) VALUES (?, ?)",
+            (str(event.mission_id), event.model_dump_json()),
+        )
+        self._conn.commit()
         for filtro, handler in list(self._assinantes):
             if filtro(event):
                 handler(event)
@@ -116,4 +135,8 @@ class EventBus:
         """Vol.II Cap.10, secao 10.2.3 — reconstrucao completa da historia de
         uma missao, na ordem de publicacao (AT-10.1). Retorna uma copia: o
         chamador nunca pode mutar o log interno atraves do valor retornado."""
-        return [e for e in self._log if e.mission_id == mission_id]
+        cursor = self._conn.execute(
+            "SELECT payload_json FROM events WHERE mission_id = ? ORDER BY seq ASC",
+            (str(mission_id),),
+        )
+        return [KernelEvent.model_validate_json(linha[0]) for linha in cursor.fetchall()]
