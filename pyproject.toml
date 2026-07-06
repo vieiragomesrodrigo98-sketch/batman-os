@@ -9,6 +9,8 @@ description = "Batman OS — Sistema Operacional Cognitivo Determinístico"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.6",
+    "anthropic>=0.40",
+    "tenacity>=8.2",
 ]
 
 [project.optional-dependencies]

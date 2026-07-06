@@ -7,3 +7,6 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+.env
+.batman-os/
+data/llm_cost*.jsonl
