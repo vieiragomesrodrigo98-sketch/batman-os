@@ -114,6 +114,21 @@ class ResultadoResolucao(BaseModel):
     escalonado_para: Literal["human"] | None = None
 
 
+class LLMEscalationPolicyComoAssinatura(Protocol):
+    """Forma mínima que o Decision Engine precisa de uma
+    `LLMEscalationPolicy` (Vol.VII Cap.29) para restringir a escalação a
+    LLM. Definido como Protocol (não importa `governance.llm_escalation`
+    diretamente) para não violar Vol.VIII Cap.32, secao 32.3: `kernel`
+    nunca depende de `governance` — mesmo raciocínio de
+    `DecisionPointComoAssinatura` em `learning/rule_evolution.py`."""
+
+    @property
+    def max_retries_per_decision_point(self) -> int: ...
+
+    @property
+    def requires_human_co_approval(self) -> Literal["always", "irreversible-only", "never"]: ...
+
+
 class DecisionEngine:
     """Vol.II Cap.8 — implementa o fluxograma da secao 8.2."""
 
@@ -122,10 +137,25 @@ class DecisionEngine:
         base_conhecimento: BaseConhecimento,
         llm_gateway: LlmGateway,
         validador: ValidadorContrato,
+        llm_escalation_policy: LLMEscalationPolicyComoAssinatura | None = None,
     ) -> None:
+        """`llm_escalation_policy` (Milestone 4 desta construção — achado de
+        revisão): antes, `max_llm_retries`/reversibilidade vinham só de
+        `EscalationPolicy` (por `DecisionPoint`/`MissionType`, Vol.V
+        Cap.20) — parâmetros "ad-hoc" do ponto de vista de governança, sem
+        nenhuma política formal do Cap.29 sendo de fato consultada. Quando
+        fornecida, a política SÓ pode RESTRINGIR além do que já existe
+        (nunca afrouxar AT-8.3 — decisão irreversível nunca aplicada via
+        LLM sem aprovação humana, que continua incondicional): o teto de
+        retries vira o mínimo entre os dois, e
+        `requires_human_co_approval="always"` passa a exigir escalação
+        humana mesmo para decisões reversíveis. `output_validation_level`/
+        `circuit_breaker_threshold` permanecem não consultados aqui — gap
+        de instrumentação documentado, não escopo desta mudança."""
         self._base_conhecimento = base_conhecimento
         self._llm_gateway = llm_gateway
         self._validador = validador
+        self._llm_escalation_policy = llm_escalation_policy
         self._decisoes: dict[DecisionId, Decision] = {}
         self._total_decisoes = 0
         self._decisoes_via_llm = 0
@@ -204,9 +234,26 @@ class DecisionEngine:
         """Vol.II Cap.8, secao 8.6 — ate `maxLlmRetries` tentativas; nunca
         insiste indefinidamente. Secao 8.7 — Gateway indisponivel escala
         direto para humano. AT-8.3 — decisao irreversivel nunca e aplicada
-        via LLM, mesmo validada, sem aprovacao humana intermediaria."""
+        via LLM, mesmo validada, sem aprovacao humana intermediaria.
+
+        Quando `llm_escalation_policy` (Cap.29) foi fornecida, ela só
+        RESTRINGE além do que `EscalationPolicy` já permite: o teto de
+        retries vira o menor entre os dois, e
+        `requires_human_co_approval="always"` exige escalação humana
+        mesmo para decisão reversível (AT-8.3 continua incondicional para
+        irreversível, com ou sem política de governança)."""
         politica = ponto.escalation_policy
-        for _ in range(politica.max_llm_retries):
+        max_retries = politica.max_llm_retries
+        exige_aprovacao_sempre = False
+        if self._llm_escalation_policy is not None:
+            max_retries = min(
+                max_retries, self._llm_escalation_policy.max_retries_per_decision_point
+            )
+            exige_aprovacao_sempre = (
+                self._llm_escalation_policy.requires_human_co_approval == "always"
+            )
+
+        for _ in range(max_retries):
             try:
                 resposta = self._llm_gateway.consultar(ponto)
             except LlmGatewayIndisponivel:
@@ -215,7 +262,7 @@ class DecisionEngine:
             if not self._validador.validar(ponto, resposta):
                 continue
 
-            if politica.reversibility == Reversibilidade.IRREVERSIVEL:
+            if politica.reversibility == Reversibilidade.IRREVERSIVEL or exige_aprovacao_sempre:
                 return None
 
             return self._registrar_decision(

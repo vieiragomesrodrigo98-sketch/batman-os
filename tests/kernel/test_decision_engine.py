@@ -13,6 +13,7 @@ from batman_os.foundation.types import (
     MissionId,
     Reversibilidade,
 )
+from batman_os.governance.llm_escalation import LLMEscalationPolicy, PolicyId, RatePolicy
 from batman_os.kernel.decision_engine import (
     DecisionEngine,
     EvidenciaObrigatoria,
@@ -81,11 +82,30 @@ def _engine(
     conhecimento: ResolucaoConhecimento | None = None,
     llm_respostas: list[RespostaLlmCandidata | Exception] | None = None,
     validador: ValidadorContrato | None = None,
+    llm_escalation_policy: LLMEscalationPolicy | None = None,
 ) -> DecisionEngine:
     return DecisionEngine(
         base_conhecimento=ConhecimentoFake(conhecimento),
         llm_gateway=LlmFake(llm_respostas or []),
         validador=validador or ValidadorSempreAprova(),
+        llm_escalation_policy=llm_escalation_policy,
+    )
+
+
+def _politica_llm(
+    max_retries_per_decision_point: int = 3,
+    requires_human_co_approval: Literal["always", "irreversible-only", "never"] = (
+        "irreversible-only"
+    ),
+) -> LLMEscalationPolicy:
+    return LLMEscalationPolicy(
+        id=PolicyId("policy-1"),
+        version="1.0.0",
+        scope="global",
+        max_retries_per_decision_point=max_retries_per_decision_point,
+        circuit_breaker_threshold=RatePolicy(taxa_maxima=0.5, tamanho_janela=100),
+        requires_human_co_approval=requires_human_co_approval,
+        output_validation_level="schema-only",
     )
 
 
@@ -228,3 +248,116 @@ class TestResolverComRespostaHumana:
                 opcao_escolhida=DecisionOption(id="a", descricao="A"),
                 evidencia=[],
             )
+
+
+class TestMilestone4LlmEscalationPolicyConsultadaDeVerdade:
+    """Achado de revisão fechado na Milestone 4: antes, `max_llm_retries`/
+    reversibilidade vinham só de `EscalationPolicy` (ad-hoc, por
+    DecisionPoint) — nenhuma `LLMEscalationPolicy` real (Cap.29) era
+    consultada. A política só pode RESTRINGIR, nunca afrouxar."""
+
+    def test_politica_reduz_o_teto_de_retries_abaixo_do_da_escalation_policy(self) -> None:
+        engine = _engine(
+            conhecimento=None,
+            llm_respostas=[
+                RespostaLlmCandidata(
+                    opcao=DecisionOption(id="a", descricao="A"), confidence=0.9, evidencia_bruta="x"
+                )
+                for _ in range(5)
+            ],
+            validador=ValidadorSempreReprova(),
+            llm_escalation_policy=_politica_llm(max_retries_per_decision_point=2),
+        )
+        resultado = engine.resolve(_ponto(preferred_escalation="llm", max_llm_retries=5), MISSAO)
+
+        assert resultado.decision is None
+        assert resultado.escalonado_para == "human"
+
+    def test_politica_nao_aumenta_o_teto_de_retries_alem_da_escalation_policy(self) -> None:
+        """`EscalationPolicy.max_llm_retries=1` continua sendo o teto real
+        mesmo se a politica de governanca permitisse mais - a politica so
+        restringe, nunca afrouxa."""
+        engine = _engine(
+            conhecimento=None,
+            llm_respostas=[
+                RespostaLlmCandidata(
+                    opcao=DecisionOption(id="a", descricao="A"), confidence=0.9, evidencia_bruta="x"
+                )
+            ],
+            validador=ValidadorSempreAprova(),
+            llm_escalation_policy=_politica_llm(max_retries_per_decision_point=10),
+        )
+        resultado = engine.resolve(_ponto(preferred_escalation="llm", max_llm_retries=1), MISSAO)
+
+        assert resultado.decision is not None
+        assert resultado.decision.resolved_by == "llm"
+
+    def test_requires_human_co_approval_always_escala_mesmo_decisao_reversivel(self) -> None:
+        engine = _engine(
+            conhecimento=None,
+            llm_respostas=[
+                RespostaLlmCandidata(
+                    opcao=DecisionOption(id="a", descricao="A"),
+                    confidence=0.95,
+                    evidencia_bruta="x",
+                )
+            ],
+            validador=ValidadorSempreAprova(),
+            llm_escalation_policy=_politica_llm(requires_human_co_approval="always"),
+        )
+        resultado = engine.resolve(
+            _ponto(
+                preferred_escalation="llm",
+                reversibility=Reversibilidade.REVERSIVEL,
+                max_llm_retries=1,
+            ),
+            MISSAO,
+        )
+
+        assert resultado.decision is None
+        assert resultado.escalonado_para == "human"
+
+    def test_sem_politica_de_governanca_comportamento_e_identico_ao_anterior(self) -> None:
+        engine = _engine(
+            conhecimento=None,
+            llm_respostas=[
+                RespostaLlmCandidata(
+                    opcao=DecisionOption(id="a", descricao="A"), confidence=0.9, evidencia_bruta="x"
+                )
+            ],
+            validador=ValidadorSempreAprova(),
+            llm_escalation_policy=None,
+        )
+        resultado = engine.resolve(_ponto(preferred_escalation="llm", max_llm_retries=1), MISSAO)
+
+        assert resultado.decision is not None
+        assert resultado.decision.resolved_by == "llm"
+
+    def test_irreversivel_continua_escalando_mesmo_com_requires_human_co_approval_never(
+        self,
+    ) -> None:
+        """AT-8.3 e incondicional - uma politica de governanca 'never' nao
+        pode afrouxar a garantia arquitetural ja existente."""
+        engine = _engine(
+            conhecimento=None,
+            llm_respostas=[
+                RespostaLlmCandidata(
+                    opcao=DecisionOption(id="a", descricao="A"),
+                    confidence=0.95,
+                    evidencia_bruta="x",
+                )
+            ],
+            validador=ValidadorSempreAprova(),
+            llm_escalation_policy=_politica_llm(requires_human_co_approval="never"),
+        )
+        resultado = engine.resolve(
+            _ponto(
+                preferred_escalation="llm",
+                reversibility=Reversibilidade.IRREVERSIVEL,
+                max_llm_retries=1,
+            ),
+            MISSAO,
+        )
+
+        assert resultado.decision is None
+        assert resultado.escalonado_para == "human"
