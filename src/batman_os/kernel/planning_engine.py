@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -34,12 +34,19 @@ from batman_os.kernel.mission_runtime import MissionIntent
 
 
 class DecisionPoint(BaseModel):
-    """Vol.II Cap.7, secao 7.3."""
+    """Vol.II Cap.7, secao 7.3.
+
+    `dados` (Milestone 4 desta construção — achado de revisão): payload
+    genérico do contexto da decisão. Sem ele, `RuleEvolution`
+    (`learning/rule_evolution_adapter.py`) só conseguia casar
+    `RuleDefinition`s com `condition` vazio, já que não havia nada além de
+    `pergunta` para avaliar `RuleCondition.satisfeita_por()`."""
 
     id: DecisionPointId = Field(default_factory=lambda: DecisionPointId(novo_uuid7()))
     pergunta: str
     opcoes: list[DecisionOption]
     escalation_policy: EscalationPolicy
+    dados: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlanStep(BaseModel):

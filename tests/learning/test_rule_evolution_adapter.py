@@ -20,6 +20,7 @@ from batman_os.kernel.decision_engine import DecisionEngine, RespostaLlmCandidat
 from batman_os.kernel.planning_engine import DecisionPoint
 from batman_os.learning.rule_evolution import (
     DecisionPointSignature,
+    RuleCondition,
     RuleDefinition,
     RulePromotion,
     StatusRegra,
@@ -136,3 +137,58 @@ class TestAdaptadorFechaOCicloDeAprendizado:
         )
 
         assert catalogo.consultar(ponto) is None
+
+
+class TestDecisionPointDadosMilestone4:
+    """Prova o fechamento da limitação documentada no adaptador: antes,
+    `dados={}` era hardcoded e só regras com `condition` vazio casavam.
+    Agora `DecisionPoint.dados` é repassado de verdade."""
+
+    def _regra_com_condition(self, pergunta: str) -> RuleDefinition:
+        return RuleDefinition(
+            id=RuleId("R-condicional"),
+            version="1.0.0",
+            applies_to=DecisionPointSignature(pergunta_padrao=pergunta),
+            condition=[RuleCondition(campo="ambiente", operador="eq", valor="staging")],
+            resolution=DecisionOption(id="opcao-staging", descricao="Opção de staging"),
+            confidence_base=0.9,
+            provenance=RulePromotion(
+                source_candidate_signature="sig-2", reviewed_by=HumanReviewRef("review-2")
+            ),
+            status=StatusRegra.ACTIVE,
+        )
+
+    def test_regra_com_condition_casa_quando_dados_do_ponto_satisfazem(self) -> None:
+        regra = self._regra_com_condition("qual ambiente?")
+        catalogo = CatalogoDeRegrasComoBaseConhecimento([regra])
+        ponto = DecisionPoint(
+            pergunta="qual ambiente?",
+            opcoes=[DecisionOption(id="opcao-staging", descricao="Opção de staging")],
+            escalation_policy=_politica(),
+            dados={"ambiente": "staging"},
+        )
+
+        resolucao = catalogo.consultar(ponto)
+
+        assert resolucao is not None
+        assert resolucao.opcao.id == "opcao-staging"
+
+    def test_regra_com_condition_nao_casa_quando_dados_do_ponto_nao_satisfazem(self) -> None:
+        regra = self._regra_com_condition("qual ambiente?")
+        catalogo = CatalogoDeRegrasComoBaseConhecimento([regra])
+        ponto = DecisionPoint(
+            pergunta="qual ambiente?",
+            opcoes=[DecisionOption(id="opcao-staging", descricao="Opção de staging")],
+            escalation_policy=_politica(),
+            dados={"ambiente": "producao"},
+        )
+
+        assert catalogo.consultar(ponto) is None
+
+    def test_ponto_sem_dados_usa_dict_vazio_por_padrao(self) -> None:
+        ponto = DecisionPoint(
+            pergunta="x",
+            opcoes=[DecisionOption(id="a", descricao="A")],
+            escalation_policy=_politica(),
+        )
+        assert ponto.dados == {}

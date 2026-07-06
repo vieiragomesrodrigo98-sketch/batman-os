@@ -15,13 +15,10 @@ desacoplado do kernel (usa `DecisionPointComoAssinatura`, um Protocol);
 só este adaptador, cuja unica razao de existir e a integracao, importa
 `kernel.decision_engine`/`kernel.planning_engine` diretamente.
 
-Limitacao documentada: `DecisionPoint` (Vol.II Cap.7) nao carrega um
-payload generico de dados (`dados: dict`) — `RuleCondition`s alem do
-casamento por `pergunta` (Cap.24, secao 24.2) nao podem ser avaliadas por
-este adaptador ainda; passa sempre `dados={}`, o que so casa regras com
-`condition` vazio. Fechar essa lacuna exigiria estender `DecisionPoint`
-com um payload generico — mudanca de modelagem do Cap.7, fora do escopo
-deste adaptador.
+Fechado na Milestone 4 desta construção: `DecisionPoint.dados` (Vol.II
+Cap.7) agora carrega um payload genérico — este adaptador repassa
+`ponto.dados` para `resolve_rule()`, permitindo `RuleCondition`s reais além
+do casamento por `pergunta` (Cap.24, secao 24.2).
 """
 
 from __future__ import annotations
@@ -43,7 +40,7 @@ class CatalogoDeRegrasComoBaseConhecimento:
         self._regras = regras
 
     def consultar(self, ponto: DecisionPoint) -> ResolucaoConhecimento | None:
-        regra = resolve_rule(ponto, dados={}, candidatos=self._regras)
+        regra = resolve_rule(ponto, dados=ponto.dados, candidatos=self._regras)
         if regra is None:
             return None
         return ResolucaoConhecimento(
