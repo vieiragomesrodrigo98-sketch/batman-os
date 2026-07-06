@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "DE-003",
+    "agente": "data-engineer",
+    "severidade": "high",
+    "categoria": "versionamento-schema",
+    "titulo": "Coluna SQLAlchemy adicionada sem entrada em _NEW_*_COLUMNS (init_db.py)",
+    "causa": "Adicionar mapped_column() com nullable=True ou default= a uma tabela existente sem registrar a coluna em _NEW_*_COLUMNS do init_db.py causa OperationalError em bancos existentes (staging/produção): a coluna existe no ORM mas não na tabela real, quebrando queries e endpoints que dependem dela.",
+    "remediacao": "1. Adicionar ('nome_col', 'TIPO SQL') à lista _NEW_*_COLUMNS correspondente em api/database/init_db.py (criar nova lista se a tabela não tiver cobertura). 2. Rodar: python scripts/init_staging_db.py --copy. 3. Verificar: data/migration_changelog.json registra a coluna. DoD: DE-003 some do relatório Batman após o commit que corrige."
+  },
+  "descoberta": {
+    "tipo": "de003",
+    "tables_path": "api/database/tables.py",
+    "init_db_path": "api/database/init_db.py",
+    "lookback": 15,
+    "caminho_relatorio": "api/database/tables.py"
+  }
+}

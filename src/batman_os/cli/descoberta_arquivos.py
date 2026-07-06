@@ -4,7 +4,7 @@ então este módulo lê do disco diretamente em vez de inventar uma abstração
 prematura).
 
 Interpreta a seção `descoberta` dos specs em `capabilities/rules/specs/
-lote_01/*.json` — 6 tipos: `arquivo_fixo` (um caminho único), `arvore`
+lote_01/*.json` — 7 tipos: `arquivo_fixo` (um caminho único), `arvore`
 (busca recursiva por extensão sob `scope_dirs`), `glob` (padrões glob
 relativos à raiz, ou um único padrão recursivo com exclusões), `git` (roda
 um comando `git` fixo uma vez, replicando `RepoContext.git()` do legado),
@@ -13,7 +13,9 @@ pytest/ruff — com cache por comando+root dentro da mesma execução de
 `executar_scan`, replicando/corrigindo `_find_python()` + `_ruff_cache`/
 ausência de cache de `oracle.py`/`robin.py`), `toml_dependencias` (empacota
 `pyproject.toml` + `requirements.txt` + arquivos `.py` de `tests/`/`src/`
-como JSON — parsing real via `tomllib` acontece no handler, não aqui).
+como JSON — parsing real via `tomllib` acontece no handler, não aqui),
+`de003` (bespoke — empacota `init_db.py`/`tables.py` + `git log -p` sobre
+`tables.py` como JSON para a Capability DE-003).
 
 Handler da Capability (`capabilities/rules/regex_sobre_conteudo.py`, e as
 demais Skills desta migração) permanece puro — este módulo é o único que
@@ -33,6 +35,7 @@ from batman_os.capabilities.rules.ast_kwarg_ausente import (
     RegraKwargAusenteSpec,
 )
 from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
+from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
@@ -131,6 +134,17 @@ def entradas_dependencias_para_regra(
     ]
 
 
+def entradas_de003_para_regra(
+    root: Path, regra: RegraDe003Spec, descoberta: dict[str, Any]
+) -> list[EntradaDe003]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke DE-003."""
+    return [
+        EntradaDe003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
     """Retorna `(caminho_relativo, conteudo_ou_None)` para cada arquivo
     relevante segundo `descoberta["tipo"]`."""
@@ -154,7 +168,45 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_de_subprocess(root, descoberta)
     if tipo == "toml_dependencias":
         return _resultado_de_dependencias(root, descoberta)
+    if tipo == "de003":
+        return _resultado_de003(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
+
+
+def _resultado_de003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    tables_path = descoberta.get("tables_path", "api/database/tables.py")
+    init_db_path = descoberta.get("init_db_path", "api/database/init_db.py")
+    lookback = descoberta.get("lookback", 15)
+    caminho_relatorio = descoberta.get("caminho_relatorio", tables_path)
+
+    if not (root / tables_path).exists() or not (root / init_db_path).exists():
+        payload: dict[str, Any] = {"aplica": False}
+        return [(caminho_relatorio, json.dumps(payload))]
+
+    args = (
+        "log",
+        f"-{lookback}",
+        "--pretty=format:COMMIT:%H",
+        "-p",
+        "--unified=30",
+        "--",
+        tables_path,
+    )
+    try:
+        resultado = subprocess.run(
+            ["git", *args], cwd=root, capture_output=True, text=True, timeout=30
+        )
+        log = resultado.stdout.strip()
+    except Exception:
+        log = ""
+
+    payload = {
+        "aplica": True,
+        "init_db_src": _ler_texto(root / init_db_path),
+        "tables_src": _ler_texto(root / tables_path),
+        "git_log": log,
+    }
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_de_dependencias(

@@ -54,6 +54,11 @@ from batman_os.capabilities.rules.ast_padrao_ausente_loader import (
     SpecDeRegraAst,
     carregar_especificacoes_ast,
 )
+from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
+from batman_os.capabilities.rules.de003_coluna_sem_migration import (
+    construir_implementacao as construir_implementacao_de003,
+)
+from batman_os.capabilities.rules.de003_loader import SpecDe003, carregar_especificacoes_de003
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
@@ -95,6 +100,7 @@ from batman_os.capabilities.rules.toml_dependencias_loader import (
 )
 from batman_os.cli.descoberta_arquivos import (
     entradas_ast_para_regra,
+    entradas_de003_para_regra,
     entradas_dependencias_para_regra,
     entradas_execucao_comando_para_regra,
     entradas_git_interpretado_para_regra,
@@ -347,6 +353,14 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_de003(),
+            {
+                "caminho": "api/database/tables.py",
+                "conteudo": json.dumps({"aplica": False}),
+                "regra": {},
+            },
+        ),
     ]
 
 
@@ -394,6 +408,7 @@ _Especificacao = (
     | SpecDeRegraGitInterpretado
     | SpecDeRegraExecucaoComando
     | SpecDeRegraDependencias
+    | SpecDe003
 )
 
 
@@ -406,6 +421,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_git_interpretado())
     especificacoes.extend(carregar_especificacoes_execucao_comando())
     especificacoes.extend(carregar_especificacoes_dependencias())
+    especificacoes.extend(carregar_especificacoes_de003())
     return especificacoes
 
 
@@ -418,7 +434,8 @@ def executar_scan(
     + `carregar_especificacoes_kwarg_ausente()` +
     `carregar_especificacoes_git_interpretado()` +
     `carregar_especificacoes_execucao_comando()` +
-    `carregar_especificacoes_dependencias()`)."""
+    `carregar_especificacoes_dependencias()` +
+    `carregar_especificacoes_de003()`)."""
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
 
     registry, operator = _preparar_capabilities()
@@ -446,6 +463,7 @@ def executar_scan(
                 | EntradaGitInterpretado
                 | EntradaExecucaoComando
                 | EntradaDependencias
+                | EntradaDe003
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -457,6 +475,8 @@ def executar_scan(
                 entradas = entradas_execucao_comando_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraDependenciasSpec):
                 entradas = entradas_dependencias_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraDe003Spec):
+                entradas = entradas_de003_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:
