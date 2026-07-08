@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "BA-005",
+    "agente": "business-analyst",
+    "severidade": "high",
+    "categoria": "financeiro",
+    "titulo": "Divisão por valor potencialmente zero sem guarda explícita em cálculo financeiro",
+    "causa": "Divisão por zero em cálculo financeiro causa ZeroDivisionError silencioso ou NaN que propaga para P&L e relatórios de risco.",
+    "remediacao": "Adicionar if denominator != 0 ou try/except ZeroDivisionError antes de divisões em contexto financeiro. DoD: toda divisão em módulos financeiros tem guarda."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
