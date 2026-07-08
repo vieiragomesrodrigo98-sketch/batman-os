@@ -65,7 +65,16 @@ class CondicaoAdicional(BaseModel):
 class RegraSpec(BaseModel):
     """Espelha o formato de `PatternRule` do Batman atual (`Batman/scan/
     pattern_rule.py`) — os mesmos campos de julgamento embutido (causa/
-    remediacao) que `Rule` carrega hoje como atributos de classe."""
+    remediacao) que `Rule` carrega hoje como atributos de classe.
+
+    `pattern_nome_arquivo_incluir`/`pattern_caminho_incluir` (achado da
+    continuação da migração — LEGAL-004/PD-003/RISK-005/UXR-005): filtro
+    de INCLUSÃO por nome de arquivo ou caminho relativo completo — a
+    camada de descoberta (`descoberta_arquivos.py`) só suporta EXCLUSÃO
+    por substring; esses códigos precisam do inverso ("só processa
+    arquivos cujo nome/caminho contém X"), então o filtro roda aqui, no
+    handler, sobre `dados.caminho` — sem precisar estender a camada de
+    descoberta genérica para um caso que só esses códigos usam."""
 
     codigo: str
     agente: str
@@ -78,6 +87,8 @@ class RegraSpec(BaseModel):
     pattern: str | None = None
     pattern_mitigacao: str | None = None
     pattern_escopo: str | None = None
+    pattern_nome_arquivo_incluir: str | None = None
+    pattern_caminho_incluir: str | None = None
     ignore_case: bool = False
 
 
@@ -182,6 +193,17 @@ def avaliar_regra_regex(entrada: Any, contexto: ExecutionContext) -> Any:
     regra = dados.regra
     ic = regra.ignore_case
     flags = re.IGNORECASE if ic else 0
+
+    if regra.pattern_nome_arquivo_incluir or regra.pattern_caminho_incluir:
+        nome_arquivo = dados.caminho.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        if regra.pattern_nome_arquivo_incluir and not re.search(
+            regra.pattern_nome_arquivo_incluir, nome_arquivo, flags
+        ):
+            return SaidaRegexArquivo(achados=[]).model_dump()
+        if regra.pattern_caminho_incluir and not re.search(
+            regra.pattern_caminho_incluir, dados.caminho, flags
+        ):
+            return SaidaRegexArquivo(achados=[]).model_dump()
 
     if regra.modo == ModoAvaliacao.PRESENCA_SEM_MITIGACAO:
         if dados.conteudo is None or not regra.pattern:

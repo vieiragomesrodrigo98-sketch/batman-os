@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "PD-003",
+    "agente": "product-designer",
+    "severidade": "high",
+    "categoria": "compliance-produto",
+    "titulo": "Dado simulado/fictício exibido sem disclaimer CVM obrigatório",
+    "causa": "Exibir P&L, retornos ou preços simulados sem deixar claro que são fictícios viola a Resolução CVM 20/2021. O usuário pode interpretar resultados simulados como histórico real e tomar decisões baseado nisso. Risco regulatório e de confiança.",
+    "remediacao": "Adicionar badge 'Simulação — valores fictícios' junto a qualquer exibição de resultado de trade simulado. DoD: toda tela de simulação tem disclaimer visível no viewport inicial.",
+    "modo": "ausencia",
+    "pattern": "fictício|simulad|disclaimer|não\\s+constituem|apenas\\s+informativ|CVM",
+    "pattern_escopo": "pnl_pct|resultado|retorno|capital_simulado|equity\\b",
+    "pattern_caminho_incluir": "simulac|simulad|sim|carteira",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

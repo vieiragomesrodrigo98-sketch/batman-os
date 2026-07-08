@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "LEGAL-004",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "compliance",
+    "titulo": "Componente do simulador sem disclaimer CVM no próprio arquivo",
+    "causa": "O simulador gratuito exibe sinais e operações simuladas. A CVM exige disclaimers explícitos informando que não são recomendações personalizadas (Res. CVM 20/2021). O disclaimer global do Layout.tsx não é suficiente — o simulador precisa de aviso específico e visível. Detectado em A-08-2 (P0) do plano de QA.",
+    "remediacao": "Adicionar ao menos 1 disclaimer/aviso CVM diretamente no componente do simulador (não apenas herdado do Layout). DoD: componente do simulador contém 'disclaimer' ou 'CVM' no próprio arquivo.",
+    "modo": "ausencia",
+    "pattern": "disclaimer|cvm|aviso.*legal|não.*recomendação|not.*recommendation",
+    "pattern_nome_arquivo_incluir": "simulador|freesim|free.sim|simulator",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".tsx"],
+    "excluir_caminho_contem_lower": ["admin"]
+  }
+}

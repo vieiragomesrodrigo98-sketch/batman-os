@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "RISK-005",
+    "agente": "risk-manager",
+    "severidade": "high",
+    "categoria": "drawdown",
+    "titulo": "Estratégia sem critério de drawdown máximo como condição de parada",
+    "causa": "Sem limite de drawdown a estratégia continua operando mesmo em sequência de perdas — pode zerar a conta antes de qualquer intervenção humana.",
+    "remediacao": "Implementar halt por max_drawdown como proteção. DoD: toda estratégia tem condição de parada por max_drawdown ou drawdown_limit.",
+    "modo": "ausencia",
+    "pattern": "max_drawdown|drawdown_limit|drawdown_pct",
+    "pattern_nome_arquivo_incluir": "strategy|backtest",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

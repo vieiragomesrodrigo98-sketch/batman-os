@@ -322,6 +322,67 @@ class TestEntradaInvalida:
             avaliar_regra_regex({"caminho": "a.py"}, _contexto())
 
 
+class TestFiltroDeInclusao:
+    """Achado da continuação da migração (LEGAL-004/PD-003/RISK-005/
+    UXR-005): filtro de INCLUSÃO por nome de arquivo ou caminho — a
+    camada de descoberta só suporta exclusão, então esse filtro roda no
+    próprio handler."""
+
+    def test_pattern_nome_arquivo_incluir_bloqueia_arquivo_sem_match(self) -> None:
+        entrada = {
+            "caminho": "frontend/src/pages/Home.tsx",
+            "conteudo": "sem disclaimer aqui",
+            "regra": _regra(
+                modo="ausencia",
+                pattern="disclaimer",
+                pattern_nome_arquivo_incluir="modal|dialog",
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_pattern_nome_arquivo_incluir_permite_arquivo_com_match(self) -> None:
+        entrada = {
+            "caminho": "frontend/src/components/ModalConfirm.tsx",
+            "conteudo": "nada relevante aqui",
+            "regra": _regra(
+                modo="ausencia",
+                pattern="disclaimer",
+                pattern_nome_arquivo_incluir="modal|dialog",
+                ignore_case=True,
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_pattern_caminho_incluir_bloqueia_caminho_sem_match(self) -> None:
+        entrada = {
+            "caminho": "frontend/src/pages/Dashboard.tsx",
+            "conteudo": "nada relevante aqui",
+            "regra": _regra(
+                modo="ausencia",
+                pattern="disclaimer",
+                pattern_caminho_incluir="simulac|carteira",
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_pattern_caminho_incluir_permite_caminho_com_match(self) -> None:
+        entrada = {
+            "caminho": "frontend/src/pages/Simulacao.tsx",
+            "conteudo": "nada relevante aqui",
+            "regra": _regra(
+                modo="ausencia",
+                pattern="disclaimer",
+                pattern_caminho_incluir="simulac|carteira",
+                ignore_case=True,
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+
 class TestCertificacao:
     def test_implementacao_real_passa_na_certificacao(self) -> None:
         impl = construir_implementacao()

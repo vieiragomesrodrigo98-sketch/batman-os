@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "UXR-005",
+    "agente": "ux-research",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "Modal ou dialog sem mecanismo de fechamento acessível",
+    "causa": "Modal sem botão de fechar com aria-label e sem handler de Esc prende usuários de teclado e screen reader na sobreposição.",
+    "remediacao": "Adicionar botão de fechar com aria-label='fechar' E handler onKeyDown para Escape. DoD: todo Modal/Dialog tem ambos.",
+    "modo": "ausencia",
+    "pattern": "\\A(?=[\\s\\S]*aria-label)(?=[\\s\\S]*Escape)",
+    "pattern_nome_arquivo_incluir": "modal|dialog|drawer",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}
