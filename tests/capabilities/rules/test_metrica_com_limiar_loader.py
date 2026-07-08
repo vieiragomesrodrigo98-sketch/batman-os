@@ -24,7 +24,7 @@ class TestCarregarEspecificacoesMetrica:
         for item in specs:
             assert isinstance(item["regra"], RegraMetricaSpec)
             assert item["regra"].metrica in MetricaTipo
-            assert item["regra"].operador in (">", ">=")
+            assert item["regra"].operador in (">", ">=", "<")
 
     def test_toda_descoberta_tem_tipo_reconhecido(self) -> None:
         specs = carregar_especificacoes_metrica()

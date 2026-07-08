@@ -23,16 +23,22 @@ Modos de métrica (`RegraMetricaSpec.metrica`):
   parâmetros (posonly+args+kwonly, excluindo self/cls) — replica REV-003.
 - `col_offset_maximo`: para cada `ast.stmt`, `node.col_offset` — replica
   REV-004 (profundidade de indentação, 4 espaços por nível).
+- `contagem_funcoes_nome`: quantas FunctionDef/AsyncFunctionDef têm nome
+  casando `pattern_nome_funcao` — replica QA-AUTO-002 (`operador="<"`,
+  `limiar=1`: dispara quando NENHUMA função `test_*` existe no arquivo).
 
-Nos 3 modos AST (`linhas_funcao`/`parametros_funcao`/`col_offset_maximo`),
-MÚLTIPLAS ocorrências no mesmo arquivo colapsam num único achado agregado
-(`chave` vazia, mesmo fingerprint independente de quantos nós excedem o
-limiar — mesma equivalência já estabelecida para BE-006/MOB-003/EH-009 no
-comparativo de fingerprint: o legado às vezes `yield`a por ocorrência, mas
-sem `chave` todas colapsam no mesmo fingerprint de qualquer forma).
+Nos 4 modos AST (`linhas_funcao`/`parametros_funcao`/`col_offset_maximo`/
+`contagem_funcoes_nome`), MÚLTIPLAS ocorrências no mesmo arquivo colapsam
+num único achado agregado (`chave` vazia, mesmo fingerprint independente
+de quantos nós excedem o limiar — mesma equivalência já estabelecida para
+BE-006/MOB-003/EH-009 no comparativo de fingerprint: o legado às vezes
+`yield`a por ocorrência, mas sem `chave` todas colapsam no mesmo
+fingerprint de qualquer forma).
 
-`operador` (`>` ou `>=`) — a maioria dos códigos usa "> limiar" (REV-001/
-002/003/004, UXR-001), CTO-005 usa ">= limiar" (>=6 domínios)."""
+`operador` (`>`, `>=` ou `<`) — a maioria dos códigos usa "> limiar"
+(REV-001/002/003/004, UXR-001), CTO-005 usa ">= limiar" (>=6 domínios),
+QA-AUTO-002 usa "< limiar" (ausência, não excesso — dispara quando a
+contagem fica ABAIXO do limiar)."""
 
 from __future__ import annotations
 
@@ -57,6 +63,7 @@ class MetricaTipo(StrEnum):
     LINHAS_ARQUIVO = "linhas_arquivo"
     CONTAGEM_OCORRENCIAS = "contagem_ocorrencias"
     CONTAGEM_PADROES_DISTINTOS = "contagem_padroes_distintos"
+    CONTAGEM_FUNCOES_NOME = "contagem_funcoes_nome"
     LINHAS_FUNCAO = "linhas_funcao"
     PARAMETROS_FUNCAO = "parametros_funcao"
     COL_OFFSET_MAXIMO = "col_offset_maximo"
@@ -72,11 +79,12 @@ class RegraMetricaSpec(BaseModel):
     remediacao: str
     metrica: MetricaTipo
     limiar: int
-    operador: Literal[">", ">="] = ">"
+    operador: Literal[">", ">=", "<"] = ">"
     pattern: str | None = None
     padroes: list[str] = Field(default_factory=list)
     pattern_filtro_linhas: str | None = None
     pattern_excecao_arquivo: str | None = None
+    pattern_nome_funcao: str | None = None
     ignore_case: bool = False
 
 
@@ -122,7 +130,11 @@ def _computar_fingerprint(agente: str, categoria: str, caminho: str, codigo: str
 
 
 def _dispara(valor: int, limiar: int, operador: str) -> bool:
-    return valor >= limiar if operador == ">=" else valor > limiar
+    if operador == ">=":
+        return valor >= limiar
+    if operador == "<":
+        return valor < limiar
+    return valor > limiar
 
 
 def _params_sem_self_cls(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
@@ -177,6 +189,15 @@ def _calcular_metrica(texto: str, regra: RegraMetricaSpec) -> int | None:
             if isinstance(node, ast.stmt):
                 maximo = max(maximo, node.col_offset)
         return maximo
+
+    if regra.metrica == MetricaTipo.CONTAGEM_FUNCOES_NOME:
+        nome_rx = re.compile(regra.pattern_nome_funcao or "", flags)
+        return sum(
+            1
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and nome_rx.search(node.name)
+        )
 
     return None
 

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "QA-AUTO-002",
+    "agente": "qa-automation",
+    "severidade": "low",
+    "categoria": "cobertura",
+    "titulo": "Arquivo de teste sem nenhuma função de teste",
+    "causa": "Arquivo test_*.py sem funções test_* dá falsa sensação de cobertura — o CI passa mas nenhum teste foi executado.",
+    "remediacao": "Adicionar ao menos um test_ ou marcar como skip explícito com justificativa. DoD: todo test_*.py tem ao menos uma função test_*.",
+    "metrica": "contagem_funcoes_nome",
+    "pattern_nome_funcao": "^test_",
+    "limiar": 1,
+    "operador": "<"
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padrao_recursivo": "tests/test_*.py",
+    "excluir_caminho_contem": [".venv", "node_modules"]
+  }
+}
