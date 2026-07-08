@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "CS-003",
+    "agente": "customer-success",
+    "severidade": "medium",
+    "categoria": "estabilidade",
+    "titulo": "Bloco except silencioso que engole exceções (pass ou só log)",
+    "causa": "Exceções capturadas e silenciadas (except: pass ou except com apenas log) ocultam falhas reais do usuário e do time de suporte, tornando problemas reproduzíveis em incidentes invisíveis.",
+    "remediacao": "Substituir por tratamento explícito: relançar com contexto, retornar erro estruturado ao usuário ou registrar e re-raise. DoD: nenhum bloco except com apenas pass ou log."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
