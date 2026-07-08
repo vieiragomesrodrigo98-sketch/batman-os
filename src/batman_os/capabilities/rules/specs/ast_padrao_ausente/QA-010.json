@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "QA-010",
+    "agente": "qa-analyst",
+    "severidade": "high",
+    "categoria": "tests",
+    "titulo": "Função de teste sem nenhuma asserção (teste sempre passa, nunca prova nada)",
+    "causa": "Teste sem assert nunca pode falhar — dá falsa confiança e não prova nenhum comportamento.",
+    "remediacao": "Adicionar asserção em todo teste. DoD: toda def test_* tem pelo menos um assert ou pytest.raises.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "test_",
+    "seletor_nome_funcao": "^test_",
+    "seletor_so_decorator": false,
+    "corpo_padrao": "assert\\b|\\.assert_(?:called|any_call|has_calls|not_called)\\w*\\(|pytest\\.raises"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["tests"],
+    "extensoes": [".py"]
+  }
+}
