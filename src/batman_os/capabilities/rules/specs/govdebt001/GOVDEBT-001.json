@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "GOVDEBT-001",
+    "agente": "governance-debt",
+    "severidade": "high",
+    "categoria": "governança",
+    "titulo": "Finding aberto sem decisão há 2+ sessões",
+    "causa": "Um finding detectado pelo Batman permanece 'open' por múltiplas sessões sem ser corrigido nem explicitamente deferido. Isso caracteriza débito técnico aceito passivamente — contradiz a política de zero tolerância a débito.",
+    "remediacao": "Escolha uma das duas ações: (A) Corrija o finding original — ele desaparecerá do ledger automaticamente. (B) Com autorização EXPLÍCITA do desenvolvedor, documente a decisão em Batman/config/deferred.json com 'reason', 'decidido_em' e 'revisao_sugerida' — deferimento é prerrogativa do DEV, nunca decisão autônoma de agente. Ignorar não é opção: GOVDEBT bloqueia o gate em HIGH."
+  },
+  "descoberta": {
+    "tipo": "govdebt001",
+    "ledger_path": "Batman/ledger.json",
+    "deferred_path": "Batman/config/deferred.json"
+  }
+}

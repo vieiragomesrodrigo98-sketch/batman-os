@@ -58,6 +58,10 @@ from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
 )
+from batman_os.capabilities.rules.govdebt001_finding_sem_decisao import (
+    EntradaGovdebt001,
+    RegraGovdebt001Spec,
+)
 from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, RegraJanelaSpec
 from batman_os.capabilities.rules.metrica_com_limiar import EntradaMetrica, RegraMetricaSpec
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
@@ -89,6 +93,10 @@ from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     EntradaSup001,
     RegraSup001Spec,
 )
+from batman_os.capabilities.rules.sweep001_cadencia_quebrada import (
+    EntradaSweep001,
+    RegraSweep001Spec,
+)
 from batman_os.capabilities.rules.toml_dependencias import (
     EntradaDependencias,
     RegraDependenciasSpec,
@@ -110,6 +118,29 @@ def entradas_a11y003_para_regra(
     existente (nenhuma função de descoberta nova precisa)."""
     return [
         EntradaA11y003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_govdebt001_para_regra(
+    root: Path, regra: RegraGovdebt001Spec, descoberta: dict[str, Any]
+) -> list[EntradaGovdebt001]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke GOVDEBT-001."""
+    return [
+        EntradaGovdebt001(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_sweep001_para_regra(
+    root: Path, regra: RegraSweep001Spec, descoberta: dict[str, Any]
+) -> list[EntradaSweep001]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke SWEEP-001 — reaproveita a descoberta genérica
+    `"arquivo_fixo"`."""
+    return [
+        EntradaSweep001(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -461,6 +492,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_pd011(root, descoberta)
     if tipo == "qaauto001":
         return _resultado_qaauto001(root, descoberta)
+    if tipo == "govdebt001":
+        return _resultado_govdebt001(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -526,6 +559,38 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_govdebt001(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: empacota `Batman/ledger.json` (parseado) + a lista
+    de códigos com deferimento explícito (`Batman/config/deferred.json`,
+    chaves de `deferred`) como JSON. Se `ledger.json` não existe ou é
+    ilegível, a Missão carrega `conteudo=None` (replica o `return`
+    antecipado do legado)."""
+    ledger_path = descoberta.get("ledger_path", "Batman/ledger.json")
+    deferred_path = descoberta.get("deferred_path", "Batman/config/deferred.json")
+    caminho_relatorio = descoberta.get("caminho_relatorio", ledger_path)
+
+    texto_ledger = _ler_ou_marcar_presente(root, ledger_path)
+    if not texto_ledger:
+        return [(caminho_relatorio, None)]
+
+    try:
+        ledger = json.loads(texto_ledger)
+    except json.JSONDecodeError:
+        return [(caminho_relatorio, None)]
+
+    deferred_codes: list[str] = []
+    texto_deferred = _ler_ou_marcar_presente(root, deferred_path)
+    if texto_deferred:
+        try:
+            deferred = json.loads(texto_deferred)
+            deferred_codes = sorted(deferred.get("deferred", {}).keys())
+        except json.JSONDecodeError:
+            pass
+
+    payload = {"ledger": ledger, "deferred_codes": deferred_codes}
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_be010(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

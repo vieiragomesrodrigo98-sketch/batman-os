@@ -127,6 +127,17 @@ from batman_os.capabilities.rules.git_comando_interpretado_loader import (
     SpecDeRegraGitInterpretado,
     carregar_especificacoes_git_interpretado,
 )
+from batman_os.capabilities.rules.govdebt001_finding_sem_decisao import (
+    EntradaGovdebt001,
+    RegraGovdebt001Spec,
+)
+from batman_os.capabilities.rules.govdebt001_finding_sem_decisao import (
+    construir_implementacao as construir_implementacao_govdebt001,
+)
+from batman_os.capabilities.rules.govdebt001_loader import (
+    SpecGovdebt001,
+    carregar_especificacoes_govdebt001,
+)
 from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, RegraJanelaSpec
 from batman_os.capabilities.rules.janela_contexto_regex import (
     construir_implementacao as construir_implementacao_janela,
@@ -220,6 +231,17 @@ from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     construir_implementacao as construir_implementacao_sup001,
 )
 from batman_os.capabilities.rules.sup001_loader import SpecSup001, carregar_especificacoes_sup001
+from batman_os.capabilities.rules.sweep001_cadencia_quebrada import (
+    EntradaSweep001,
+    RegraSweep001Spec,
+)
+from batman_os.capabilities.rules.sweep001_cadencia_quebrada import (
+    construir_implementacao as construir_implementacao_sweep001,
+)
+from batman_os.capabilities.rules.sweep001_loader import (
+    SpecSweep001,
+    carregar_especificacoes_sweep001,
+)
 from batman_os.capabilities.rules.toml_dependencias import (
     EntradaDependencias,
     RegraDependenciasSpec,
@@ -246,6 +268,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_fe001_para_regra,
     entradas_feapi_para_regra,
     entradas_git_interpretado_para_regra,
+    entradas_govdebt001_para_regra,
     entradas_janela_para_regra,
     entradas_kwarg_ausente_para_regra,
     entradas_metrica_para_regra,
@@ -260,6 +283,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_sec007_para_regra,
     entradas_sec009_para_regra,
     entradas_sup001_para_regra,
+    entradas_sweep001_para_regra,
 )
 from batman_os.foundation.types import (
     CapabilityId,
@@ -849,6 +873,47 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_govdebt001(),
+            {
+                "caminho": "Batman/ledger.json",
+                "conteudo": None,
+                "regra": {
+                    "codigo": "CERT-025",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
+        (
+            construir_implementacao_sweep001(),
+            {
+                "caminho": "Batman/config/sweep_state.json",
+                "conteudo": json.dumps(
+                    {
+                        "cadencia_dias": 7,
+                        "atual": {
+                            "papel": "security-engineer",
+                            "atribuido_em": "2026-01-01T00:00:00+00:00",
+                            "status": "pendente",
+                        },
+                    }
+                ),
+                "regra": {
+                    "codigo": "CERT-026",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -918,6 +983,8 @@ _Especificacao = (
     | SpecPd001
     | SpecSec009
     | SpecRev006
+    | SpecGovdebt001
+    | SpecSweep001
 )
 
 
@@ -953,6 +1020,8 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_pd001())
     especificacoes.extend(carregar_especificacoes_sec009())
     especificacoes.extend(carregar_especificacoes_rev006())
+    especificacoes.extend(carregar_especificacoes_govdebt001())
+    especificacoes.extend(carregar_especificacoes_sweep001())
     return especificacoes
 
 
@@ -1024,6 +1093,8 @@ def executar_scan(
                 | EntradaPd001
                 | EntradaSec009
                 | EntradaRev006
+                | EntradaGovdebt001
+                | EntradaSweep001
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1079,6 +1150,10 @@ def executar_scan(
                 entradas = entradas_sec009_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraRev006Spec):
                 entradas = entradas_rev006_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraGovdebt001Spec):
+                entradas = entradas_govdebt001_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraSweep001Spec):
+                entradas = entradas_sweep001_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

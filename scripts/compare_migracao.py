@@ -46,6 +46,9 @@ from batman_os.capabilities.rules.feapi_loader import carregar_especificacoes_fe
 from batman_os.capabilities.rules.git_comando_interpretado_loader import (  # noqa: E402
     carregar_especificacoes_git_interpretado,
 )
+from batman_os.capabilities.rules.govdebt001_loader import (  # noqa: E402
+    carregar_especificacoes_govdebt001,
+)
 from batman_os.capabilities.rules.janela_contexto_regex_loader import (  # noqa: E402
     carregar_especificacoes_janela,
 )
@@ -70,6 +73,9 @@ from batman_os.capabilities.rules.sec005_loader import carregar_especificacoes_s
 from batman_os.capabilities.rules.sec007_loader import carregar_especificacoes_sec007  # noqa: E402
 from batman_os.capabilities.rules.sec009_loader import carregar_especificacoes_sec009  # noqa: E402
 from batman_os.capabilities.rules.sup001_loader import carregar_especificacoes_sup001  # noqa: E402
+from batman_os.capabilities.rules.sweep001_loader import (  # noqa: E402
+    carregar_especificacoes_sweep001,
+)
 from batman_os.capabilities.rules.toml_dependencias_loader import (  # noqa: E402
     carregar_especificacoes_dependencias,
 )
@@ -109,6 +115,8 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_pd001()
     + carregar_especificacoes_sec009()
     + carregar_especificacoes_rev006()
+    + carregar_especificacoes_govdebt001()
+    + carregar_especificacoes_sweep001()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 

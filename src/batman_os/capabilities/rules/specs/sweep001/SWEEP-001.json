@@ -1,0 +1,15 @@
+{
+  "regra": {
+    "codigo": "SWEEP-001",
+    "agente": "skill-sweep",
+    "severidade": "medium",
+    "categoria": "governança",
+    "titulo": "Rodízio de sweeps por skill fora da cadência",
+    "causa": "As regras determinísticas do Batman só re-detectam classes de bug já conhecidas. Os bugs mais caros da história do projeto (auditoria jul/2026) eram de classes NOVAS — só revisão profunda com skill os encontra. Sem cadência, a varredura adaptativa 'acontece quando alguém lembra', que na prática é nunca.",
+    "remediacao": "Execute a missão atual: 'python -m Batman.cli.batman sweep start' gera o briefing; a sessão Claude Code varre o escopo com o subagente do papel; 'batman sweep close --achados N --fix N --regra N --deferido N' fecha e avança o rodízio. Pular exige decisão: 'batman sweep skip --reason'. DoD: scan sem SWEEP-001."
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "Batman/config/sweep_state.json"
+  }
+}
