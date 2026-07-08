@@ -47,6 +47,7 @@ from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
 )
+from batman_os.capabilities.rules.fe001_export_duplicado import EntradaFe001, RegraFe001Spec
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
@@ -188,6 +189,19 @@ def entradas_sec005_para_regra(
     bespoke SEC-005."""
     return [
         EntradaSec005(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_fe001_para_regra(
+    root: Path, regra: RegraFe001Spec, descoberta: dict[str, Any]
+) -> list[EntradaFe001]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke FE-001 — reaproveita a descoberta `"regex_agregado"` já
+    existente (empacota TODOS os arquivos como JSON numa única Missão),
+    só o handler (agregação com agrupamento por nome exportado) é novo."""
+    return [
+        EntradaFe001(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 

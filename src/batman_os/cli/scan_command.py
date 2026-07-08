@@ -90,6 +90,11 @@ from batman_os.capabilities.rules.execucao_comando_interpretada_loader import (
     SpecDeRegraExecucaoComando,
     carregar_especificacoes_execucao_comando,
 )
+from batman_os.capabilities.rules.fe001_export_duplicado import EntradaFe001, RegraFe001Spec
+from batman_os.capabilities.rules.fe001_export_duplicado import (
+    construir_implementacao as construir_implementacao_fe001,
+)
+from batman_os.capabilities.rules.fe001_loader import SpecFe001, carregar_especificacoes_fe001
 from batman_os.capabilities.rules.feapi_loader import SpecFeApi, carregar_especificacoes_feapi
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import (
@@ -186,6 +191,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_de003_para_regra,
     entradas_dependencias_para_regra,
     entradas_execucao_comando_para_regra,
+    entradas_fe001_para_regra,
     entradas_feapi_para_regra,
     entradas_git_interpretado_para_regra,
     entradas_janela_para_regra,
@@ -656,6 +662,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_fe001(),
+            {
+                "caminho": "frontend/src/api",
+                "conteudo": json.dumps({"arquivos": {}}),
+                "regra": {
+                    "codigo": "CERT-017",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -717,6 +739,7 @@ _Especificacao = (
     | SpecBa005
     | SpecArch003
     | SpecFeApi
+    | SpecFe001
 )
 
 
@@ -744,6 +767,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_ba005())
     especificacoes.extend(carregar_especificacoes_arch003())
     especificacoes.extend(carregar_especificacoes_feapi())
+    especificacoes.extend(carregar_especificacoes_fe001())
     return especificacoes
 
 
@@ -807,6 +831,7 @@ def executar_scan(
                 | EntradaBa005
                 | EntradaArch003
                 | EntradaFeApi
+                | EntradaFe001
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -846,6 +871,8 @@ def executar_scan(
                 entradas = entradas_arch003_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraFeApiSpec):
                 entradas = entradas_feapi_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraFe001Spec):
+                entradas = entradas_fe001_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

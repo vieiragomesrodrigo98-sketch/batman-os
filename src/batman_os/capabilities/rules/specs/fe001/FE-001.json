@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "FE-001",
+    "agente": "frontend-engineer",
+    "severidade": "high",
+    "categoria": "api",
+    "titulo": "Mesmo nome exportado por dois arquivos de API",
+    "causa": "Dois módulos exportando um símbolo de mesmo nome (ex.: adminApi) criam risco de shadowing no import: dependendo da ordem, o consumidor usa o objeto errado silenciosamente.",
+    "remediacao": "Renomear um dos exports ou consolidar em um único módulo. DoD: cada nome exportado em src/api é único no diretório."
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "caminho_relatorio": "frontend/src/api",
+    "scope_dirs": ["frontend/src/api"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}
