@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "AI-003",
+    "agente": "ai-engineer",
+    "severidade": "high",
+    "categoria": "controle-custo",
+    "titulo": "Circuit breaker de custo LLM ausente",
+    "causa": "Sem limite de custo diário, um bug de loop ou um pico de uso pode gerar centenas de dólares em chamadas de API antes de ser detectado.",
+    "remediacao": "Garantir que MAX_DAILY_LLM_COST_USD esteja configurado e verificado antes de cada chamada. DoD: grep por 'MAX_DAILY_LLM_COST' no código retorna resultado.",
+    "modo": "ausencia",
+    "pattern": "MAX_DAILY_LLM_COST|circuit.breaker|llm.*cost",
+    "ignore_case": true,
+    "caminho_relatado": "src/radar/llm"
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "PD-012",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "onboarding",
+    "titulo": "Produto sem fluxo de onboarding para primeiro acesso",
+    "causa": "Usuário novo chega na Home e vê Pulso do Mercado, sinais e regimes sem contexto. Não sabe o que é SELIC, VIX, trilha, score. Taxa de ativação (primeiro sinal aberto) cai quando não há guia de primeiros passos. Produto de investimentos tem alta curva de aprendizado.",
+    "remediacao": "Implementar onboarding de primeiro acesso: checklist de 3-5 passos (completar perfil, entender um sinal, simular a primeira posição). DoD: usuário novo tem pelo menos uma tela de boas-vindas com próximos passos.",
+    "modo": "ausencia",
+    "pattern": "onboarding|primeiro\\s+acesso|bem[- ]vindo|welcome|primeiros\\s+passos|checklist\\s+de\\s+início",
+    "ignore_case": true,
+    "caminho_relatado": "frontend/src/"
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

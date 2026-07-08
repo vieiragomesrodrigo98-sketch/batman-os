@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "SRE-001",
+    "agente": "sre",
+    "severidade": "medium",
+    "categoria": "disponibilidade",
+    "titulo": "Endpoint /health ausente na API",
+    "causa": "Sem /health, o load balancer e o monitoramento não têm como verificar se a instância está viva — falhas silenciosas ficam invisíveis até o usuário reclamar.",
+    "remediacao": "Adicionar GET /health que retorne 200 com status básico. DoD: grep por '/health' nos routers retorna ao menos um resultado.",
+    "modo": "ausencia",
+    "pattern": "['\"]/health['\"]",
+    "caminho_relatado": "api"
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

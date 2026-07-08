@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "VPS-012",
+    "agente": "vps-infra",
+    "severidade": "high",
+    "categoria": "resiliencia",
+    "titulo": "Scripts de produção sem configuração de backup automático do banco",
+    "causa": "Sem backup automático, falha de disco ou migração errada resulta em perda permanente de dados.",
+    "remediacao": "Configurar pg_dump/sqlite backup em cron. DoD: script de backup referenciado em cron ou setup de produção.",
+    "modo": "ausencia",
+    "pattern": "backup|pg_dump|sqlite3.*backup",
+    "ignore_case": true,
+    "caminho_relatado": "scripts/"
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "fontes": [
+      {"tipo": "glob", "padroes": ["scripts/*.sh"]}
+    ]
+  }
+}

@@ -286,19 +286,21 @@ def _resultado_regex_agregado(
     root: Path, descoberta: dict[str, Any]
 ) -> list[tuple[str, str | None]]:
     """Empacota o conteúdo de VÁRIOS arquivos (potencialmente de múltiplas
-    fontes distintas — ex.: LEGAL-002/UXR-003 concatenam `.py` E `.tsx` no
-    legado) como JSON para a Skill "regex agregado sobre múltiplos
+    fontes de tipos DIFERENTES — ex.: VPS-012 usa `glob` não-recursivo
+    `scripts/*.sh` porque o legado usa `Path.glob` (só filhos diretos), não
+    `Path.rglob`) como JSON para a Skill "regex agregado sobre múltiplos
     arquivos" (`regex_agregado_multi_arquivo.py`). `fontes` (opcional):
-    lista de descobertas `arvore` independentes, cada uma com seu próprio
-    `scope_dirs`/`extensoes`; sem `fontes`, a própria `descoberta` é usada
-    como fonte única (mesma convenção de `scope_dirs`/`extensoes` direto
-    no nível superior, como em `"arvore"`)."""
+    lista de descobertas independentes, cada uma com seu próprio `tipo`
+    (`arvore`/`glob`/`arquivo_fixo`, despachadas via `arquivos_para_regra`
+    — mesmo dispatcher genérico usado no nível superior); sem `fontes`, a
+    própria `descoberta` é usada como fonte única do tipo `arvore` (mesma
+    convenção de `scope_dirs`/`extensoes` direto no nível superior)."""
     caminho_relatorio = descoberta.get("caminho_relatorio", ".")
-    fontes = descoberta.get("fontes") or [descoberta]
+    fontes = descoberta.get("fontes") or [{**descoberta, "tipo": "arvore"}]
 
     arquivos: dict[str, str] = {}
     for fonte in fontes:
-        for rel, conteudo in _arquivos_em_arvore(root, fonte):
+        for rel, conteudo in arquivos_para_regra(root, fonte):
             if conteudo is not None:
                 arquivos[rel] = conteudo
 

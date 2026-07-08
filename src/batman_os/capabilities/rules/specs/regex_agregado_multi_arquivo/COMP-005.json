@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "COMP-005",
+    "agente": "compliance",
+    "severidade": "medium",
+    "categoria": "lgpd",
+    "titulo": "Ausência de mecanismo de revogação de consentimento (LGPD art. 18 inc. IX)",
+    "causa": "LGPD garante ao titular o direito de revogar consentimento a qualquer tempo — ausência do endpoint viola art. 18.",
+    "remediacao": "Implementar endpoint /consent/revoke ou equivalente. DoD: rota de revogação de consentimento presente e funcional.",
+    "modo": "ausencia",
+    "pattern": "consent.*revoke|revoke.*consent|revogar.*consentimento",
+    "ignore_case": true,
+    "caminho_relatado": "api"
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

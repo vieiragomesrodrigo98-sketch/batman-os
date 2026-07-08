@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "IR-004",
+    "agente": "incident-response",
+    "severidade": "high",
+    "categoria": "auth",
+    "titulo": "Ausência de endpoint de logout forçado de todas as sessões ativas",
+    "causa": "Sem revogação global de sessões, é impossível conter comprometimento de conta — tokens roubados continuam válidos até o TTL natural, estendendo a janela de ataque.",
+    "remediacao": "Implementar /auth/revoke-all-sessions ou equivalente de invalidação global de tokens. DoD: endpoint de revogação global presente no diretório API.",
+    "modo": "ausencia",
+    "pattern": "revoke.all.session|logout.all|invalidate.all.token|force.logout|revoke_all",
+    "ignore_case": true,
+    "caminho_relatado": "api"
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

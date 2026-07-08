@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "UXR-003",
+    "agente": "ux-research",
+    "severidade": "low",
+    "categoria": "feedback-usuario",
+    "titulo": "Projeto sem mecanismo de coleta de feedback de usuário",
+    "causa": "Sem endpoint ou componente de feedback (avaliação, NPS, thumbs up/down), o time de produto não tem evidência qualitativa sobre o que funciona, dependendo apenas de métricas quantitativas para priorização.",
+    "remediacao": "Adicionar ao menos um mecanismo de feedback (thumbs, rating, ou formulário de sugestão) nas funcionalidades core. DoD: ao menos um endpoint /feedback ou componente de avaliação existe.",
+    "modo": "ausencia",
+    "pattern": "feedback|rating|nps|avalia[cç]ao|thumbs",
+    "ignore_case": true,
+    "caminho_relatado": "."
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "fontes": [
+      {"tipo": "arvore", "scope_dirs": ["api", "src", "dashboard", "pages"], "extensoes": [".py"]},
+      {"tipo": "arvore", "scope_dirs": ["frontend/src"], "extensoes": [".ts", ".tsx"]}
+    ]
+  }
+}

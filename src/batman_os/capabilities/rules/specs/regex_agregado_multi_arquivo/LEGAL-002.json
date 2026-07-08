@@ -1,0 +1,23 @@
+{
+  "regra": {
+    "codigo": "LEGAL-002",
+    "agente": "legal-advisor",
+    "severidade": "high",
+    "categoria": "compliance",
+    "titulo": "Termos de uso ou política de privacidade ausentes",
+    "causa": "Produto SaaS sem termos de uso e política de privacidade viola a LGPD (art. 9) e expõe a empresa a sanções da ANPD. Obrigatório antes do lançamento.",
+    "remediacao": "Criar páginas ou rotas de /termos e /privacidade (ou equivalente). DoD: ambas as rotas existem e são acessíveis sem autenticação.",
+    "modo": "ausencia",
+    "pattern": "termos|terms.of.use|terms.of.service",
+    "pattern_2": "privacidade|privacy.policy|politica.de.privacidade",
+    "ignore_case": true,
+    "caminho_relatado": "."
+  },
+  "descoberta": {
+    "tipo": "regex_agregado",
+    "fontes": [
+      {"tipo": "arvore", "scope_dirs": ["api"], "extensoes": [".py"]},
+      {"tipo": "arvore", "scope_dirs": ["frontend/src"], "extensoes": [".ts", ".tsx"]}
+    ]
+  }
+}
