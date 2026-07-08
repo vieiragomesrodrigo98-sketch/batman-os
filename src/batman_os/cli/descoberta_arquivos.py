@@ -65,6 +65,10 @@ from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
 )
+from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
+    EntradaQaAuto001,
+    RegraQaAuto001Spec,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
     EntradaAgregada,
     RegraAgregadaSpec,
@@ -221,6 +225,17 @@ def entradas_pd011_para_regra(
     bespoke PD-011."""
     return [
         EntradaPd011(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_qaauto001_para_regra(
+    root: Path, regra: RegraQaAuto001Spec, descoberta: dict[str, Any]
+) -> list[EntradaQaAuto001]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke QA-AUTO-001."""
+    return [
+        EntradaQaAuto001(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -395,6 +410,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_be010(root, descoberta)
     if tipo == "pd011":
         return _resultado_pd011(root, descoberta)
+    if tipo == "qaauto001":
+        return _resultado_qaauto001(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -489,6 +506,33 @@ def _resultado_be010(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, 
         "arquivos": arquivos,
     }
     return [(caminho_relatorio, json.dumps(payload))]
+
+
+def _resultado_qaauto001(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 Missão por router candidato (`api/routers/*.py`), cada uma
+    carregando a MESMA lista agregada de stems de teste (`tests/**/
+    test_*.py`, prefixo `test_` removido — replica `p.stem.replace(
+    "test_", "")` do legado) como JSON. Se `tests/` não existe, nenhuma
+    Missão é gerada (replica o `return` antecipado do legado)."""
+    tests_dir = descoberta.get("tests_dir", "tests")
+    routers_dir = descoberta.get("routers_dir", "api/routers")
+
+    if not (root / tests_dir).is_dir():
+        return []
+
+    test_stems = sorted(
+        {
+            rel.replace("\\", "/").rsplit("/", 1)[-1].rsplit(".", 1)[0].replace("test_", "")
+            for rel, _ in _arquivos_em_arvore(
+                root, {"scope_dirs": [tests_dir], "extensoes": [".py"]}
+            )
+            if rel.replace("\\", "/").rsplit("/", 1)[-1].startswith("test_")
+        }
+    )
+    payload = json.dumps({"test_stems": test_stems})
+
+    routers_arvore = {"scope_dirs": [routers_dir], "extensoes": [".py"]}
+    return [(rel, payload) for rel, _ in _arquivos_em_arvore(root, routers_arvore)]
 
 
 def _resultado_arch003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

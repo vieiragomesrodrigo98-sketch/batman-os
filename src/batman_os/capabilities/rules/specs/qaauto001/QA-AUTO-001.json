@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "QA-AUTO-001",
+    "agente": "qa-automation",
+    "severidade": "medium",
+    "categoria": "cobertura",
+    "titulo": "Router sem arquivo de teste correspondente",
+    "causa": "Router sem teste deixa endpoints sem validação automatizada — regressões chegam em produção sem aviso.",
+    "remediacao": "Criar tests/integration/test_<router>.py para cada router. DoD: todo arquivo em api/routers/ tem correspondente em tests/."
+  },
+  "descoberta": {
+    "tipo": "qaauto001",
+    "tests_dir": "tests",
+    "routers_dir": "api/routers"
+  }
+}
