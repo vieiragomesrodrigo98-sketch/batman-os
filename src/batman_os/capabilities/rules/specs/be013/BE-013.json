@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "BE-013",
+    "agente": "backend-engineer",
+    "severidade": "high",
+    "categoria": "api",
+    "titulo": "Resposta HTTP 200 retornada em bloco de tratamento de exceção (erro mascarado)",
+    "causa": "Retornar status 200 dentro de except masca o erro do cliente e de sistemas de monitoramento: o caller acredita que tudo correu bem quando na verdade houve falha.",
+    "remediacao": "Retornar status de erro apropriado (4xx/5xx) nos blocos except. DoD: sem status_code=200 em blocos except."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

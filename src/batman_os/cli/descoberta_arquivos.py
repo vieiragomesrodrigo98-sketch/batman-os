@@ -38,6 +38,7 @@ from batman_os.capabilities.rules.ast_kwarg_ausente import (
     RegraKwargAusenteSpec,
 )
 from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
+from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
@@ -183,6 +184,17 @@ def entradas_sec005_para_regra(
     bespoke SEC-005."""
     return [
         EntradaSec005(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_be013_para_regra(
+    root: Path, regra: RegraBe013Spec, descoberta: dict[str, Any]
+) -> list[EntradaBe013]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke BE-013."""
+    return [
+        EntradaBe013(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
