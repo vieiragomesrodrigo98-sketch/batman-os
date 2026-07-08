@@ -70,6 +70,7 @@ from batman_os.capabilities.rules.metrica_com_limiar import EntradaMetrica, Regr
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
 from batman_os.capabilities.rules.pd001_empty_state_sem_cta import EntradaPd001, RegraPd001Spec
+from batman_os.capabilities.rules.pd009_rota_nao_descobrivel import EntradaPd009, RegraPd009Spec
 from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
@@ -328,6 +329,17 @@ def entradas_pd001_para_regra(
     ]
 
 
+def entradas_pd009_para_regra(
+    root: Path, regra: RegraPd009Spec, descoberta: dict[str, Any]
+) -> list[EntradaPd009]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke PD-009."""
+    return [
+        EntradaPd009(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_pd011_para_regra(
     root: Path, regra: RegraPd011Spec, descoberta: dict[str, Any]
 ) -> list[EntradaPd011]:
@@ -561,6 +573,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_qaauto003(root, descoberta)
     if tipo == "doc004":
         return _resultado_doc004(root, descoberta)
+    if tipo == "pd009":
+        return _resultado_pd009(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -626,6 +640,27 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_pd009(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: empacota o conteúdo de `App.tsx` (fonte das
+    ocorrências de rota) + os textos de uma LISTA FIXA de arquivos de nav
+    como JSON. Se `App.tsx` não existir, `conteudo=None` (replica o
+    `return` antecipado do legado)."""
+    app_path = descoberta.get("app_path", "frontend/src/App.tsx")
+    nav_paths: list[str] = descoberta.get(
+        "nav_paths",
+        ["frontend/src/components/Layout.tsx", "frontend/src/components/NotifBell.tsx"],
+    )
+    caminho_relatorio = descoberta.get("caminho_relatorio", app_path)
+
+    app_texto = _ler_ou_marcar_presente(root, app_path)
+    if app_texto is None:
+        return [(caminho_relatorio, None)]
+
+    nav_textos = [t for p in nav_paths if (t := _ler_ou_marcar_presente(root, p)) is not None]
+    payload = {"app_texto": app_texto, "nav_textos": nav_textos}
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_doc004(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
