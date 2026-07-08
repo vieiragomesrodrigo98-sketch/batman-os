@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "A11Y-007",
+    "agente": "ux-designer",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "Elemento raiz HTML sem atributo lang (screen readers não inferem idioma)",
+    "causa": "Sem lang no elemento HTML, screen readers podem usar idioma errado para pronúncia e dicionário — crítico para PT-BR.",
+    "remediacao": "Adicionar lang='pt-BR' no elemento <html> ou <Html>. DoD: todo _document.tsx e index.html tem lang=.",
+    "modo": "presenca",
+    "pattern": "<[Hh]tml\\b(?![^>]*\\blang=)[^>]*>"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

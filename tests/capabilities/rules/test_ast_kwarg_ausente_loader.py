@@ -12,7 +12,7 @@ from batman_os.capabilities.rules.lote_01 import carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
 
 _TIPOS_DESCOBERTA_VALIDOS = {"arquivo_fixo", "arvore", "glob"}
-_CODIGOS_ESPERADOS = {"CTO-001"}
+_CODIGOS_ESPERADOS = {"CTO-001", "CS-001"}
 
 
 class TestCarregarEspecificacoesKwargAusente:

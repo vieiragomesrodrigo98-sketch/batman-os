@@ -100,6 +100,47 @@ class TestFiltroObjeto:
         assert len(saida["achados"]) == 1
 
 
+class TestFuncNameDireto:
+    """`func_name_direto` (adicionado para CS-001) — `func` é `ast.Name`
+    direto (`HTTPException(...)`), não `ast.Attribute` num objeto."""
+
+    def test_dispara_quando_kwarg_ausente_em_call_direta(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "raise HTTPException(status_code=404)\n",
+            "regra": _regra(kwarg_obrigatorio="detail", func_name_direto="HTTPException"),
+        }
+        saida = avaliar_regra_kwarg_ausente(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_nao_dispara_quando_kwarg_presente_em_call_direta(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "raise HTTPException(status_code=404, detail='nao encontrado')\n",
+            "regra": _regra(kwarg_obrigatorio="detail", func_name_direto="HTTPException"),
+        }
+        saida = avaliar_regra_kwarg_ausente(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_nao_dispara_para_nome_de_funcao_diferente(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "raise OutraExcecao(status_code=404)\n",
+            "regra": _regra(kwarg_obrigatorio="detail", func_name_direto="HTTPException"),
+        }
+        saida = avaliar_regra_kwarg_ausente(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_ignora_calls_com_attribute_quando_func_name_direto_setado(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "requests.get('http://x')\n",
+            "regra": _regra(kwarg_obrigatorio="detail", func_name_direto="HTTPException"),
+        }
+        saida = avaliar_regra_kwarg_ausente(entrada, _contexto())
+        assert saida["achados"] == []
+
+
 class TestErroDeSintaxeEConteudoAusente:
     def test_conteudo_com_erro_de_sintaxe_retorna_vazio(self) -> None:
         entrada = {"caminho": "a.py", "conteudo": "def (:\n", "regra": _regra()}

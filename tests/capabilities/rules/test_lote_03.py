@@ -11,9 +11,10 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import ModoAvaliacao, Reg
 
 _TIPOS_DESCOBERTA_VALIDOS = {"arquivo_fixo", "arvore", "glob"}
 
-# NS-003, MOB-002 e MOB-003 têm múltiplas entradas (fontes/caminhos distintos
-# para o mesmo código, replicando o legado) — código legítimo repetido.
-_CODIGOS_COM_MULTIPLAS_ENTRADAS = {"NS-003", "MOB-002", "MOB-003"}
+# NS-003, MOB-002, MOB-003 e A11Y-007 têm múltiplas entradas (fontes/caminhos
+# distintos para o mesmo código, replicando o legado) — código legítimo
+# repetido.
+_CODIGOS_COM_MULTIPLAS_ENTRADAS = {"NS-003", "MOB-002", "MOB-003", "A11Y-007"}
 
 
 class TestCarregarLote03:

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "SEC-011",
+    "agente": "security-engineer",
+    "severidade": "high",
+    "categoria": "tls",
+    "titulo": "Verificacao de certificado TLS desativada (verify=False)",
+    "causa": "verify=False desativa a validacao de certificado TLS, abrindo caminho para man-in-the-middle. Trafego 'seguro' deixa de ser seguro.",
+    "remediacao": "Remover verify=False; usar o bundle de CA correto. DoD: nenhum verify=False em chamadas HTTP.",
+    "modo": "presenca",
+    "pattern": "verify\\s*=\\s*False"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

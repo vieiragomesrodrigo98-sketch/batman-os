@@ -12,7 +12,11 @@ PRÓPRIA chamada. Cobre CTO-001 (`ExternalCallWithoutTimeout`): toda chamada
 ambos vazios, qualquer objeto-base é aceito (nenhum código migrado precisa
 disso ainda, mas evita reescrever a Skill se aparecer um caso sem esse
 filtro).
-"""
+
+`func_name_direto` (adicionado para CS-001) cobre a outra forma de
+`ast.Call`: `func` é `ast.Name` direto (`HTTPException(...)`), não
+`ast.Attribute` num objeto (`requests.get(...)`) — quando setado,
+substitui inteiramente o filtro `metodos_call`/objeto-base."""
 
 from __future__ import annotations
 
@@ -40,10 +44,11 @@ class RegraKwargAusenteSpec(BaseModel):
     titulo: str
     causa: str
     remediacao: str
-    metodos_call: list[str]
+    metodos_call: list[str] = Field(default_factory=list)
     kwarg_obrigatorio: str
     objeto_attr_permitido: list[str] = Field(default_factory=list)
     objeto_name_permitido: list[str] = Field(default_factory=list)
+    func_name_direto: str | None = None
 
 
 class EntradaKwargAusente(BaseModel):
@@ -104,12 +109,16 @@ def _dispara(tree: ast.AST, regra: RegraKwargAusenteSpec) -> bool:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        if not isinstance(node.func, ast.Attribute):
-            continue
-        if node.func.attr not in regra.metodos_call:
-            continue
-        if not _objeto_bate(node.func.value, regra):
-            continue
+        if regra.func_name_direto is not None:
+            if not (isinstance(node.func, ast.Name) and node.func.id == regra.func_name_direto):
+                continue
+        else:
+            if not isinstance(node.func, ast.Attribute):
+                continue
+            if node.func.attr not in regra.metodos_call:
+                continue
+            if not _objeto_bate(node.func.value, regra):
+                continue
         kw_names = {kw.arg for kw in node.keywords}
         if regra.kwarg_obrigatorio not in kw_names:
             return True

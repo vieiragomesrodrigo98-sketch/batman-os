@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "CS-001",
+    "agente": "customer-success",
+    "severidade": "low",
+    "categoria": "feedback-usuario",
+    "titulo": "HTTPException levantada sem campo detail explicativo",
+    "causa": "HTTPException sem detail (ou com detail vazio) retorna erro opaco ao cliente, que não consegue entender o que fez de errado nem como corrigir, resultando em chamados de suporte e frustração.",
+    "remediacao": "Sempre informar detail= com mensagem orientada à ação do usuário (ex.: detail='Token expirado. Faça login novamente.'). DoD: nenhum HTTPException sem detail informativo.",
+    "kwarg_obrigatorio": "detail",
+    "func_name_direto": "HTTPException"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}
