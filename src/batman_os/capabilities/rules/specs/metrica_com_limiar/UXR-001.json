@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "UXR-001",
+    "agente": "ux-research",
+    "severidade": "low",
+    "categoria": "esforco-usuario",
+    "titulo": "Formulário com muitos campos sem agrupamento (> 7 inputs)",
+    "causa": "Formulários com mais de 7 campos sem seções ou agrupamento aumentam a carga cognitiva e a taxa de abandono. Pesquisas de UX indicam queda de conversão acima desse limiar sem estrutura visual de apoio.",
+    "remediacao": "Agrupar campos relacionados em seções com cabeçalho, ou dividir em múltiplas etapas (wizard). Questionar se todos os campos são necessários no momento do cadastro. DoD: nenhum formulário com > 7 campos sem agrupamento.",
+    "metrica": "contagem_ocorrencias",
+    "pattern": "<(?:input|Input|TextField|FormField)\\b",
+    "pattern_excecao_arquivo": "(?i:FormSection|fieldset|<section|<fieldset|accordion|Tab\\b)",
+    "limiar": 7,
+    "operador": ">"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

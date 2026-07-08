@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "REV-003",
+    "agente": "code-reviewer",
+    "severidade": "low",
+    "categoria": "manutenibilidade",
+    "titulo": "Função com parâmetros demais (> 6)",
+    "causa": "Muitos parâmetros indicam que a função tem responsabilidades demais ou que falta um objeto/dataclass agrupando os dados.",
+    "remediacao": "Agrupar parâmetros relacionados num objeto. DoD: funções com até ~6 parâmetros.",
+    "metrica": "parametros_funcao",
+    "limiar": 6,
+    "operador": ">"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

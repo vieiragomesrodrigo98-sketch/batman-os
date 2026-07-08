@@ -92,6 +92,14 @@ from batman_os.capabilities.rules.janela_contexto_regex_loader import (
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
 from batman_os.capabilities.rules.lote_03 import carregar_lote_03
+from batman_os.capabilities.rules.metrica_com_limiar import EntradaMetrica, RegraMetricaSpec
+from batman_os.capabilities.rules.metrica_com_limiar import (
+    construir_implementacao as construir_implementacao_metrica,
+)
+from batman_os.capabilities.rules.metrica_com_limiar_loader import (
+    SpecDeRegraMetrica,
+    carregar_especificacoes_metrica,
+)
 from batman_os.capabilities.rules.ora004_loader import SpecOra004, carregar_especificacoes_ora004
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora004_status_typo import (
@@ -137,6 +145,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_git_interpretado_para_regra,
     entradas_janela_para_regra,
     entradas_kwarg_ausente_para_regra,
+    entradas_metrica_para_regra,
     entradas_ora004_para_regra,
     entradas_ora005_para_regra,
     entradas_para_regra,
@@ -451,6 +460,24 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_metrica(),
+            {
+                "caminho": "a.py",
+                "conteudo": "linha\n",
+                "regra": {
+                    "codigo": "CERT-008",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "metrica": "linhas_arquivo",
+                    "limiar": 999999,
+                },
+            },
+        ),
     ]
 
 
@@ -503,6 +530,7 @@ _Especificacao = (
     | SpecOra004
     | SpecDeRegraAgregada
     | SpecDeRegraJanela
+    | SpecDeRegraMetrica
 )
 
 
@@ -521,6 +549,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_ora004())
     especificacoes.extend(carregar_especificacoes_agregadas())
     especificacoes.extend(carregar_especificacoes_janela())
+    especificacoes.extend(carregar_especificacoes_metrica())
     return especificacoes
 
 
@@ -575,6 +604,7 @@ def executar_scan(
                 | EntradaOra004
                 | EntradaAgregada
                 | EntradaJanela
+                | EntradaMetrica
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -596,6 +626,8 @@ def executar_scan(
                 entradas = entradas_agregadas_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraJanelaSpec):
                 entradas = entradas_janela_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraMetricaSpec):
+                entradas = entradas_metrica_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

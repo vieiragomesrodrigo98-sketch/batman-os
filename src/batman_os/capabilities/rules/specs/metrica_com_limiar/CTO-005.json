@@ -1,0 +1,31 @@
+{
+  "regra": {
+    "codigo": "CTO-005",
+    "agente": "cto",
+    "severidade": "low",
+    "categoria": "architecture",
+    "titulo": "Módulo com mais de 5 responsabilidades distintas importadas (god module)",
+    "causa": "Módulo com 5+ domínios distintos (db, auth, email, cache, external_api) viola Single Responsibility — difícil de manter, testar e trocar.",
+    "remediacao": "Dividir em módulos menores por responsabilidade. DoD: nenhum módulo importa de 6+ domínios distintos.",
+    "metrica": "contagem_padroes_distintos",
+    "padroes": [
+      "\\b(db|database|sqlalchemy|alembic)\\b",
+      "\\b(auth|jwt|oauth|permission|token)\\b",
+      "\\b(email|smtp|sendgrid|mailgun)\\b",
+      "\\b(cache|redis|memcache)\\b",
+      "\\bcelery\\b",
+      "\\b(requests|httpx|aiohttp)\\b",
+      "\\b(openai|anthropic|llm|langchain)\\b",
+      "\\bstripe\\b"
+    ],
+    "pattern_filtro_linhas": "^\\s*(import |from )",
+    "limiar": 6,
+    "operador": ">=",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

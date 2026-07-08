@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "REV-004",
+    "agente": "code-reviewer",
+    "severidade": "medium",
+    "categoria": "manutenibilidade",
+    "titulo": "Função com mais de 6 níveis de indentação (complexidade excessiva)",
+    "causa": "Código com 6+ níveis de aninhamento é difícil de ler, testar e manter — indicador claro de lógica que deve ser extraída.",
+    "remediacao": "Extrair lógica aninhada em funções auxiliares. DoD: nenhuma função com > 6 níveis de indentação.",
+    "metrica": "col_offset_maximo",
+    "limiar": 24,
+    "operador": ">="
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages", "frontend/src"],
+    "extensoes": [".py"]
+  }
+}

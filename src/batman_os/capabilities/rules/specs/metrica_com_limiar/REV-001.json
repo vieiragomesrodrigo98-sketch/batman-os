@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "REV-001",
+    "agente": "code-reviewer",
+    "severidade": "low",
+    "categoria": "manutenibilidade",
+    "titulo": "Arquivo muito longo (> 400 linhas)",
+    "causa": "Arquivo gigante concentra responsabilidades demais, dificulta review e vira ímã de conflito de merge.",
+    "remediacao": "Quebrar em módulos coesos. DoD: arquivos abaixo de ~400 linhas.",
+    "metrica": "linhas_arquivo",
+    "limiar": 400,
+    "operador": ">"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

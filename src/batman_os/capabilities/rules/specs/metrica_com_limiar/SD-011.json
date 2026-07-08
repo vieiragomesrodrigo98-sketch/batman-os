@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "SD-011",
+    "agente": "service-designer",
+    "severidade": "low",
+    "categoria": "jornada",
+    "titulo": "Múltiplos CTAs primários sem hierarquia visual clara",
+    "causa": "Ter 3+ botões com o mesmo peso visual na mesma tela fragmenta a atenção do usuário e aumenta a paralisia de decisão. Em mobile, botões grandes lado a lado competem pelo toque impreciso.",
+    "remediacao": "Definir hierarquia: 1 CTA primário (destaque), 1 secundário (neutro), N terciários (link/text-button). DoD: nenhuma tela tem 3+ botões com a mesma classe de destaque visual.",
+    "metrica": "contagem_ocorrencias",
+    "pattern": "<button[^>]*\\bclassName[^>]*bg-(?:blue|green|accent|emerald|violet|red|amber)-[4-9]00",
+    "limiar": 3,
+    "operador": ">="
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

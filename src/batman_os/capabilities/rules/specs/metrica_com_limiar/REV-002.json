@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "REV-002",
+    "agente": "code-reviewer",
+    "severidade": "low",
+    "categoria": "manutenibilidade",
+    "titulo": "Função muito longa (> 60 linhas)",
+    "causa": "Função longa costuma fazer coisas demais, é difícil de testar e de entender de uma vez.",
+    "remediacao": "Extrair sub-funções coesas. DoD: funções abaixo de ~60 linhas.",
+    "metrica": "linhas_funcao",
+    "limiar": 60,
+    "operador": ">"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
