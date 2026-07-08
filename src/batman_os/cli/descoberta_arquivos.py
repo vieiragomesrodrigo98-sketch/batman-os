@@ -47,6 +47,7 @@ from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
 )
+from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -187,6 +188,17 @@ def entradas_sec005_para_regra(
     bespoke SEC-005."""
     return [
         EntradaSec005(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_feapi_para_regra(
+    root: Path, regra: RegraFeApiSpec, descoberta: dict[str, Any]
+) -> list[EntradaFeApi]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke FE-API."""
+    return [
+        EntradaFeApi(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -333,7 +345,31 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_regex_agregado(root, descoberta)
     if tipo == "arch003":
         return _resultado_arch003(root, descoberta)
+    if tipo == "feapi":
+        return _resultado_feapi(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
+
+
+def _resultado_feapi(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 Missão por arquivo de rotas (`api/**/*.py`), cada uma carregando o
+    PRÓPRIO conteúdo (para extração de rotas via AST no handler) + o texto
+    agregado do frontend (`frontend/src/api/**/*.ts(x)`, lido uma única
+    vez) — empacotados como JSON. Replica `collect_fastapi_routes` +
+    `ctx.ts_files(ctx.frontend_api_dir)` do legado."""
+    scope_dirs_api = descoberta.get("scope_dirs", ["api"])
+    caminho_frontend_api = descoberta.get("caminho_frontend_api", "frontend/src/api")
+
+    frontend_arvore = {"scope_dirs": [caminho_frontend_api], "extensoes": [".ts", ".tsx"]}
+    frontend_text = " ".join(
+        conteudo or "" for _, conteudo in _arquivos_em_arvore(root, frontend_arvore)
+    )
+
+    api_arvore = {"scope_dirs": scope_dirs_api, "extensoes": [".py"]}
+    resultado: list[tuple[str, str | None]] = []
+    for rel, conteudo in _arquivos_em_arvore(root, api_arvore):
+        payload = {"api_src": conteudo or "", "frontend_text": frontend_text}
+        resultado.append((rel, json.dumps(payload)))
+    return resultado
 
 
 def _resultado_arch003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

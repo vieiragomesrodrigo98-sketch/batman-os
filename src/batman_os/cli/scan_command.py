@@ -90,6 +90,11 @@ from batman_os.capabilities.rules.execucao_comando_interpretada_loader import (
     SpecDeRegraExecucaoComando,
     carregar_especificacoes_execucao_comando,
 )
+from batman_os.capabilities.rules.feapi_loader import SpecFeApi, carregar_especificacoes_feapi
+from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
+from batman_os.capabilities.rules.feapi_rota_sem_frontend import (
+    construir_implementacao as construir_implementacao_feapi,
+)
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -181,6 +186,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_de003_para_regra,
     entradas_dependencias_para_regra,
     entradas_execucao_comando_para_regra,
+    entradas_feapi_para_regra,
     entradas_git_interpretado_para_regra,
     entradas_janela_para_regra,
     entradas_kwarg_ausente_para_regra,
@@ -633,6 +639,23 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_feapi(),
+            {
+                "caminho": "api/routers/a.py",
+                "conteudo": json.dumps({"api_src": "x = 1\n", "frontend_text": ""}),
+                "regra": {
+                    "codigo": "CERT-016",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "caminho_frontend_api": "frontend/src/api",
+                },
+            },
+        ),
     ]
 
 
@@ -693,6 +716,7 @@ _Especificacao = (
     | SpecBa004
     | SpecBa005
     | SpecArch003
+    | SpecFeApi
 )
 
 
@@ -719,6 +743,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_ba004())
     especificacoes.extend(carregar_especificacoes_ba005())
     especificacoes.extend(carregar_especificacoes_arch003())
+    especificacoes.extend(carregar_especificacoes_feapi())
     return especificacoes
 
 
@@ -781,6 +806,7 @@ def executar_scan(
                 | EntradaBa004
                 | EntradaBa005
                 | EntradaArch003
+                | EntradaFeApi
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -818,10 +844,12 @@ def executar_scan(
                 entradas = entradas_ba005_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraArch003Spec):
                 entradas = entradas_arch003_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraFeApiSpec):
+                entradas = entradas_feapi_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:
-                achado = _processar_entrada(
+                achados_da_entrada = _processar_entrada(
                     entrada.model_dump(),
                     runtime=runtime,
                     registry=registry,
@@ -830,8 +858,7 @@ def executar_scan(
                     adapter=adapter,
                     operator_ref=operator_ref,
                 )
-                if achado is not None:
-                    resultado.achados.append(achado)
+                resultado.achados.extend(achados_da_entrada)
     finally:
         execution_engine.fechar()
     return resultado
@@ -846,8 +873,14 @@ def _processar_entrada(
     execution_engine: ExecutionEngine,
     adapter: OperadorExecutavelAdapter,
     operator_ref: OperatorRef,
-) -> AchadoScan | None:
-    """Uma Missão real, do início ao fim, para um único (arquivo, regra)."""
+) -> list[AchadoScan]:
+    """Uma Missão real, do início ao fim, para um único (arquivo, regra).
+
+    Retorna TODOS os achados da Missão, não só o primeiro (achado da
+    validação de FE-API: uma Missão pode legitimamente produzir MÚLTIPLOS
+    achados — ex.: várias rotas ausentes no mesmo arquivo, cada uma com
+    `chave` distinta — `saida["achados"][0]` descartava silenciosamente
+    os demais)."""
     mission = runtime.create(MissionIntent(dados=entrada), TIPO_MISSAO, tenant_id=TENANT_PADRAO)
     runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
 
@@ -856,7 +889,7 @@ def _processar_entrada(
     )
     if not plano.steps:
         runtime.transition(mission.id, MissionEventType.PLAN_FAILED)
-        return None
+        return []
     runtime.transition(mission.id, MissionEventType.PLAN_READY)
 
     runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
@@ -885,10 +918,10 @@ def _processar_entrada(
 
     if workflow.get_run(run.id).estado != "completed":
         runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED)
-        return None
+        return []
 
     runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
     saida = workflow.get_run(run.id).completed_steps[0].output
     if not saida or not saida.get("achados"):
-        return None
-    return AchadoScan(**saida["achados"][0])
+        return []
+    return [AchadoScan(**item) for item in saida["achados"]]

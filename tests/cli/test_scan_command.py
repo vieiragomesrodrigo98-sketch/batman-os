@@ -113,6 +113,38 @@ class TestExecutarScanComTodosOsLotes:
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "exemplo.py").write_text("class Foo:\n    pass\n", encoding="utf-8")
 
-        resultado = executar_scan(tmp_path)  # nao deve levantar EntradaNaoRegistrada
+        executar_scan(tmp_path)  # nao deve levantar EntradaNaoRegistrada
+
+
+class TestMissaoComMultiplosAchados:
+    """Achado da validacao de FE-API: `_processar_entrada` so extraia
+    `saida["achados"][0]`, descartando silenciosamente achados extras da
+    MESMA Missao — uma rota ausente em analytics.py (a segunda do
+    arquivo) desaparecia do resultado final mesmo o handler retornando
+    corretamente as duas. Fixado para `_processar_entrada` retornar
+    `list[AchadoScan]` completa."""
+
+    def test_arquivo_com_duas_rotas_ausentes_produz_dois_achados(self, tmp_path: Path) -> None:
+        from batman_os.capabilities.rules.feapi_loader import carregar_especificacoes_feapi
+
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "rotas.py").write_text(
+            "@router.get('/primeira')\n"
+            "def primeira():\n"
+            "    pass\n"
+            "@router.get('/segunda')\n"
+            "def segunda():\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+
+        resultado = executar_scan(tmp_path, especificacoes=carregar_especificacoes_feapi())
+
+        achados_feapi = [a for a in resultado.achados if a.codigo == "FE-API"]
+        assert len(achados_feapi) == 2
+        chaves = {a.arquivo for a in achados_feapi}
+        assert chaves == {"api/rotas.py"}
+        fingerprints = {a.fingerprint for a in achados_feapi}
+        assert len(fingerprints) == 2
 
         assert resultado is not None

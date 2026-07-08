@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "FE-API",
+    "agente": "frontend-engineer",
+    "severidade": "medium",
+    "categoria": "api",
+    "titulo": "Endpoint do backend sem método correspondente no frontend",
+    "causa": "Rota existe na API mas nenhum módulo em src/api a consome. Ou é capacidade órfã (backend sem UI), ou é chamada feita 'na mão' com api.get cru, sem abstração tipada — divergência silenciosa entre contrato e cliente.",
+    "remediacao": "Criar o método correspondente no módulo de API do frontend (ou remover a rota se for morta). DoD: toda rota tem método tipado ou está marcada como interna.",
+    "caminho_frontend_api": "frontend/src/api"
+  },
+  "descoberta": {
+    "tipo": "feapi",
+    "scope_dirs": ["api"],
+    "caminho_frontend_api": "frontend/src/api"
+  }
+}
