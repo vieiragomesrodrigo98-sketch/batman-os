@@ -61,6 +61,7 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     ModoAvaliacao,
     RegraSpec,
 )
+from batman_os.capabilities.rules.sec005_fstring_sql import EntradaSec005, RegraSec005Spec
 from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     EntradaSup001,
     RegraSup001Spec,
@@ -170,6 +171,17 @@ def entradas_metrica_para_regra(
     por arquivo), só o handler ("métrica com limiar") é novo."""
     return [
         EntradaMetrica(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_sec005_para_regra(
+    root: Path, regra: RegraSec005Spec, descoberta: dict[str, Any]
+) -> list[EntradaSec005]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke SEC-005."""
+    return [
+        EntradaSec005(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 

@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "SEC-005",
+    "agente": "security-engineer",
+    "severidade": "medium",
+    "categoria": "sql",
+    "titulo": "SQL construído com f-string interpolando valores",
+    "causa": "Interpolar valores no SQL via f-string abre porta para SQL injection e quebra o cache de plano de query. Inputs 'confiáveis' hoje viram superfície exposta a qualquer mudança futura.",
+    "remediacao": "Usar queries parametrizadas (placeholders) ou o ORM; nunca passar f-string para .execute(). DoD: nenhuma chamada .execute(f\"...\") no projeto."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}
