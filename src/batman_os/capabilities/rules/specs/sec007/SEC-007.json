@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "SEC-007",
+    "agente": "security-engineer",
+    "severidade": "medium",
+    "categoria": "data",
+    "titulo": "Migração/DDL executada no import do módulo, sem tratamento de erro",
+    "causa": "ALTER/CREATE TABLE rodando em nível de módulo (durante o import), sem try/except, pode derrubar o boot inteiro se o banco estiver lockado. Migração não é responsabilidade do import.",
+    "remediacao": "Mover a migração para um passo explícito (script/comando), idempotente e com tratamento de erro, fora do caminho de import. DoD: nenhum DDL em nível de módulo."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

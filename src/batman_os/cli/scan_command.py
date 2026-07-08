@@ -130,6 +130,11 @@ from batman_os.capabilities.rules.sec005_fstring_sql import (
     construir_implementacao as construir_implementacao_sec005,
 )
 from batman_os.capabilities.rules.sec005_loader import SpecSec005, carregar_especificacoes_sec005
+from batman_os.capabilities.rules.sec007_ddl_no_import import EntradaSec007, RegraSec007Spec
+from batman_os.capabilities.rules.sec007_ddl_no_import import (
+    construir_implementacao as construir_implementacao_sec007,
+)
+from batman_os.capabilities.rules.sec007_loader import SpecSec007, carregar_especificacoes_sec007
 from batman_os.capabilities.rules.sup001_excecao_silenciada import EntradaSup001, RegraSup001Spec
 from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     construir_implementacao as construir_implementacao_sup001,
@@ -160,6 +165,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_ora005_para_regra,
     entradas_para_regra,
     entradas_sec005_para_regra,
+    entradas_sec007_para_regra,
     entradas_sup001_para_regra,
 )
 from batman_os.foundation.types import (
@@ -522,6 +528,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_sec007(),
+            {
+                "caminho": "a.py",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-011",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -577,6 +599,7 @@ _Especificacao = (
     | SpecDeRegraMetrica
     | SpecSup001
     | SpecSec005
+    | SpecSec007
 )
 
 
@@ -598,6 +621,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_metrica())
     especificacoes.extend(carregar_especificacoes_sup001())
     especificacoes.extend(carregar_especificacoes_sec005())
+    especificacoes.extend(carregar_especificacoes_sec007())
     return especificacoes
 
 
@@ -655,6 +679,7 @@ def executar_scan(
                 | EntradaMetrica
                 | EntradaSup001
                 | EntradaSec005
+                | EntradaSec007
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -682,6 +707,8 @@ def executar_scan(
                 entradas = entradas_sup001_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraSec005Spec):
                 entradas = entradas_sec005_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraSec007Spec):
+                entradas = entradas_sec007_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

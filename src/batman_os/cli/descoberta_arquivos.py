@@ -62,6 +62,7 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     RegraSpec,
 )
 from batman_os.capabilities.rules.sec005_fstring_sql import EntradaSec005, RegraSec005Spec
+from batman_os.capabilities.rules.sec007_ddl_no_import import EntradaSec007, RegraSec007Spec
 from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     EntradaSup001,
     RegraSup001Spec,
@@ -182,6 +183,17 @@ def entradas_sec005_para_regra(
     bespoke SEC-005."""
     return [
         EntradaSec005(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_sec007_para_regra(
+    root: Path, regra: RegraSec007Spec, descoberta: dict[str, Any]
+) -> list[EntradaSec007]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke SEC-007."""
+    return [
+        EntradaSec007(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
