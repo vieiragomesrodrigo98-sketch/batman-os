@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "SEC-009",
+    "agente": "security-engineer",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Script cria admin/super_admin via SQL direto ou ORM fora da API",
+    "causa": "Scripts que inserem roles admin/super_admin via SQL INSERT ou atribuição ORM contornam SEC_ROLE01 e criam super_admins sem trilha de auditoria. SEC_TERMINAL_ADMIN01 bloqueou create_prod_users.py; esta regra detecta qualquer script futuro que tente o mesmo padrão.",
+    "remediacao": "Remover o INSERT/atribuição de role e usar o portal admin (PATCH /admin/usuarios/{id}/role) autenticado como super_admin. DoD: nenhum INSERT ou .role='admin' em scripts/ fora da camada de API."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["scripts"],
+    "extensoes": [".py"]
+  }
+}
