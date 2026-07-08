@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "COMP-003",
+    "agente": "compliance",
+    "severidade": "critical",
+    "categoria": "lgpd",
+    "titulo": "Dado pessoal sensível armazenado sem criptografia declarada em repouso",
+    "causa": "LGPD exige proteção reforçada para dados sensíveis (saúde, biometria, religião) — armazenamento sem criptografia viola art. 46.",
+    "remediacao": "Adicionar campo criptografado ou encrypted=True. DoD: todo campo health/saude/biometria/religiao/etnia tem anotação de criptografia.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?!.*(?:encrypt|encrypted)).*(?:health|saude|biometria|religiao|etnia|raca)\\s*[=:]",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
