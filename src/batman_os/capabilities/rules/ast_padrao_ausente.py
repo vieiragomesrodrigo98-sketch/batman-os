@@ -9,7 +9,12 @@ achado dispara quando o CORPO/CONTEXTO desse nó não casa um padrão de
 
 Modos de seletor:
 - `classdef`: casa pelo NOME da classe (`seletor_include`/`seletor_exclude`,
-  regex). Corpo = `ast.get_source_segment(texto, node)`.
+  regex). Corpo = `ast.get_source_segment(texto, node)`. `seletor_bases_
+  exclude` (achado da continuação da migração — RISK-001), quando setado,
+  suprime o achado se QUALQUER classe-base (via `ast.Name`/`ast.Attribute.
+  attr`) casar o padrão — replica "Enums e subclasses de outro *Sinal*
+  herdam os campos do pai, não flagear" (RISK-001 exclui bases que casam
+  `Enum|IntEnum|StrEnum|Sinal`).
 - `functiondef`: `seletor_include` casa em QUALQUER decorator
   (`ast.unparse(d)`) OU no corpo (`ast.get_source_segment(texto, node)` —
   que NÃO inclui os decorators, por isso os dois lados são checados por
@@ -98,6 +103,7 @@ class RegraAstSpec(BaseModel):
     seletor_exclude: str | None = None
     seletor_so_decorator: bool = False
     seletor_nome_funcao: str | None = None
+    seletor_bases_exclude: str | None = None
     corpo_padrao: str
     corpo_escopo: str | None = None
     inverte_disparo: bool = False
@@ -185,10 +191,23 @@ def _tem_campo_estrutural(node: ast.ClassDef, nome_campo: str) -> bool:
     return False
 
 
+def _nomes_das_bases(node: ast.ClassDef) -> list[str]:
+    nomes: list[str] = []
+    for b in node.bases:
+        if isinstance(b, ast.Name):
+            nomes.append(b.id)
+        elif isinstance(b, ast.Attribute):
+            nomes.append(b.attr)
+    return nomes
+
+
 def _avaliar_classdef(tree: ast.AST, texto: str, regra: RegraAstSpec) -> bool:
     flags = re.IGNORECASE if regra.ignore_case else 0
     include_rx = re.compile(regra.seletor_include, flags)
     exclude_rx = re.compile(regra.seletor_exclude, flags) if regra.seletor_exclude else None
+    bases_exclude_rx = (
+        re.compile(regra.seletor_bases_exclude, flags) if regra.seletor_bases_exclude else None
+    )
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.ClassDef):
@@ -196,6 +215,10 @@ def _avaliar_classdef(tree: ast.AST, texto: str, regra: RegraAstSpec) -> bool:
         if exclude_rx and exclude_rx.search(node.name):
             continue
         if not include_rx.search(node.name):
+            continue
+        if bases_exclude_rx and any(
+            bases_exclude_rx.search(nome) for nome in _nomes_das_bases(node)
+        ):
             continue
         if regra.campo_estrutural:
             # inverso dos demais modos: aqui disparo = campo INDESEJADO

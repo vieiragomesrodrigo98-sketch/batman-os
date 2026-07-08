@@ -20,6 +20,7 @@ _CODIGOS_ESPERADOS = {
     "DE-006",
     "RISK-002",
     "QA-010",
+    "RISK-001",
 }
 
 

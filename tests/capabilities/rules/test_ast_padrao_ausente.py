@@ -119,6 +119,51 @@ class TestSeletorClassDef:
         assert len(saida["achados"]) == 1
 
 
+class TestSeletorBasesExclude:
+    """Achado de revisão da continuação da migração (RISK-001): suprime o
+    achado se QUALQUER classe-base casar o padrão — replica "Enums e
+    subclasses de outro *Sinal* herdam os campos do pai, não flagear"."""
+
+    def test_dispara_quando_classe_nao_tem_base_excluida(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class SinalCompra:\n    ticker: str\n",
+            "regra": _regra(
+                seletor_include=r"Sinal",
+                corpo_padrao="stop_loss|take_profit",
+                seletor_bases_exclude="Enum|IntEnum|StrEnum|Sinal",
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_nao_dispara_para_subclasse_de_enum(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class SinalTipo(Enum):\n    COMPRA = 1\n",
+            "regra": _regra(
+                seletor_include=r"Sinal",
+                corpo_padrao="stop_loss|take_profit",
+                seletor_bases_exclude="Enum|IntEnum|StrEnum|Sinal",
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_nao_dispara_para_subclasse_de_outro_sinal(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class SinalCompraDetalhado(SinalBase):\n    ticker: str\n",
+            "regra": _regra(
+                seletor_include=r"Sinal",
+                corpo_padrao="stop_loss|take_profit",
+                seletor_bases_exclude="Enum|IntEnum|StrEnum|Sinal",
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+
 class TestCorpoEscopo:
     """Replica COMP-001/COMP-002: gate positivo sobre o corpo antes de
     avaliar `corpo_padrao`."""

@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "RISK-001",
+    "agente": "risk-manager",
+    "severidade": "medium",
+    "categoria": "controle-de-risco",
+    "titulo": "Schema de sinal sem campos de risco (stop/alvo)",
+    "causa": "Sinal de operação sem stop_loss e take_profit deixa o gestor sem parâmetros mínimos para dimensionar risco — impede recalibração de stops e alvos.",
+    "remediacao": "Garantir que todo schema/modelo de sinal inclua stop_loss e take_profit (podem ser opcionais, mas devem existir). DoD: grep por 'class.*Sinal' mostra campos de risco em todos os schemas.",
+    "seletor_tipo": "classdef",
+    "seletor_include": "[Ss]inal",
+    "seletor_bases_exclude": "Enum|IntEnum|StrEnum|[Ss]inal",
+    "corpo_padrao": "stop_loss|take_profit|stop|target",
+    "precondicao_arquivo": "class\\s+\\w*[Ss]inal\\w*\\s*\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
