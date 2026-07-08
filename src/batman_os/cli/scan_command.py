@@ -126,6 +126,11 @@ from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, R
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import (
     construir_implementacao as construir_implementacao_feapi,
 )
+from batman_os.capabilities.rules.fin005_backtest_sem_oos import EntradaFin005, RegraFin005Spec
+from batman_os.capabilities.rules.fin005_backtest_sem_oos import (
+    construir_implementacao as construir_implementacao_fin005,
+)
+from batman_os.capabilities.rules.fin005_loader import SpecFin005, carregar_especificacoes_fin005
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -290,6 +295,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_execucao_comando_para_regra,
     entradas_fe001_para_regra,
     entradas_feapi_para_regra,
+    entradas_fin005_para_regra,
     entradas_git_interpretado_para_regra,
     entradas_govdebt001_para_regra,
     entradas_janela_para_regra,
@@ -986,6 +992,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_fin005(),
+            {
+                "caminho": "src/nada.py",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-030",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1060,6 +1082,7 @@ _Especificacao = (
     | SpecCs003
     | SpecQaAuto003
     | SpecDoc004
+    | SpecFin005
 )
 
 
@@ -1100,6 +1123,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_cs003())
     especificacoes.extend(carregar_especificacoes_qaauto003())
     especificacoes.extend(carregar_especificacoes_doc004())
+    especificacoes.extend(carregar_especificacoes_fin005())
     return especificacoes
 
 
@@ -1176,6 +1200,7 @@ def executar_scan(
                 | EntradaCs003
                 | EntradaQaAuto003
                 | EntradaDoc004
+                | EntradaFin005
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1241,6 +1266,8 @@ def executar_scan(
                 entradas = entradas_qaauto003_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraDoc004Spec):
                 entradas = entradas_doc004_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraFin005Spec):
+                entradas = entradas_fin005_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

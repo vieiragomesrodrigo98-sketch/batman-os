@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "FIN-005",
+    "agente": "financial-analyst",
+    "severidade": "high",
+    "categoria": "validacao",
+    "titulo": "Backtest sem período de validação out-of-sample separado",
+    "causa": "Backtest sem out-of-sample sofre de overfitting severo — métricas parecem ótimas mas o modelo falha em dados futuros reais.",
+    "remediacao": "Implementar split temporal explícito ou Walk-Forward. DoD: todo backtest tem split temporal documentado."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

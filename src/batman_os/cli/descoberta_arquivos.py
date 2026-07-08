@@ -56,6 +56,7 @@ from batman_os.capabilities.rules.execucao_comando_interpretada import (
 )
 from batman_os.capabilities.rules.fe001_export_duplicado import EntradaFe001, RegraFe001Spec
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
+from batman_os.capabilities.rules.fin005_backtest_sem_oos import EntradaFin005, RegraFin005Spec
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -333,6 +334,17 @@ def entradas_qaauto001_para_regra(
     bespoke QA-AUTO-001."""
     return [
         EntradaQaAuto001(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_fin005_para_regra(
+    root: Path, regra: RegraFin005Spec, descoberta: dict[str, Any]
+) -> list[EntradaFin005]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke FIN-005 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaFin005(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 

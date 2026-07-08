@@ -45,6 +45,7 @@ from batman_os.capabilities.rules.execucao_comando_interpretada_loader import ( 
 )
 from batman_os.capabilities.rules.fe001_loader import carregar_especificacoes_fe001  # noqa: E402
 from batman_os.capabilities.rules.feapi_loader import carregar_especificacoes_feapi  # noqa: E402
+from batman_os.capabilities.rules.fin005_loader import carregar_especificacoes_fin005  # noqa: E402
 from batman_os.capabilities.rules.git_comando_interpretado_loader import (  # noqa: E402
     carregar_especificacoes_git_interpretado,
 )
@@ -125,6 +126,7 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_cs003()
     + carregar_especificacoes_qaauto003()
     + carregar_especificacoes_doc004()
+    + carregar_especificacoes_fin005()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 
