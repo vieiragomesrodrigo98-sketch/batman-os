@@ -77,6 +77,7 @@ from batman_os.capabilities.rules.regex_agregado_multi_arquivo_loader import (  
 from batman_os.capabilities.rules.rev006_loader import carregar_especificacoes_rev006  # noqa: E402
 from batman_os.capabilities.rules.sec005_loader import carregar_especificacoes_sec005  # noqa: E402
 from batman_os.capabilities.rules.sec007_loader import carregar_especificacoes_sec007  # noqa: E402
+from batman_os.capabilities.rules.sec008_loader import carregar_especificacoes_sec008  # noqa: E402
 from batman_os.capabilities.rules.sec009_loader import carregar_especificacoes_sec009  # noqa: E402
 from batman_os.capabilities.rules.sup001_loader import carregar_especificacoes_sup001  # noqa: E402
 from batman_os.capabilities.rules.sweep001_loader import (  # noqa: E402
@@ -127,6 +128,7 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_qaauto003()
     + carregar_especificacoes_doc004()
     + carregar_especificacoes_fin005()
+    + carregar_especificacoes_sec008()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 

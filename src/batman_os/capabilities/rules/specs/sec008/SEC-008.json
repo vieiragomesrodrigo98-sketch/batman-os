@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "SEC-008",
+    "agente": "security-engineer",
+    "severidade": "high",
+    "categoria": "access-control",
+    "titulo": "Endpoint de alteração de role sem guarda super_admin",
+    "causa": "Endpoints PATCH/POST que alteram roles de usuário protegidos apenas por `require_admin` permitem que qualquer admin se auto-promova ou promova outros a admin/super_admin. SEC_ROLE01 corrigiu essa brecha: somente super_admin pode conceder roles de nível admin ou superior.",
+    "remediacao": "Adicionar verificação explícita `current.role != 'super_admin'` antes de conceder roles >= admin, ou usar `Depends(require_super_admin)` na assinatura. DoD: nenhum endpoint de role/usuario usa apenas `require_admin` sem checar o nível do role-alvo vs super_admin."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

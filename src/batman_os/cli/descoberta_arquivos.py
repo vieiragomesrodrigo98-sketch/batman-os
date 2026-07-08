@@ -95,6 +95,7 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
 from batman_os.capabilities.rules.rev006_variavel_nome_curto import EntradaRev006, RegraRev006Spec
 from batman_os.capabilities.rules.sec005_fstring_sql import EntradaSec005, RegraSec005Spec
 from batman_os.capabilities.rules.sec007_ddl_no_import import EntradaSec007, RegraSec007Spec
+from batman_os.capabilities.rules.sec008_role_sem_super_admin import EntradaSec008, RegraSec008Spec
 from batman_os.capabilities.rules.sec009_admin_role_script import EntradaSec009, RegraSec009Spec
 from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     EntradaSup001,
@@ -290,6 +291,17 @@ def entradas_rev006_para_regra(
     bespoke REV-006 — reaproveita a descoberta genérica `"arvore"`."""
     return [
         EntradaRev006(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_sec008_para_regra(
+    root: Path, regra: RegraSec008Spec, descoberta: dict[str, Any]
+) -> list[EntradaSec008]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke SEC-008 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaSec008(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
