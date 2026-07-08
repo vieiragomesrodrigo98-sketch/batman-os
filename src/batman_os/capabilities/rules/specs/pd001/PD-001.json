@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "PD-001",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "completude",
+    "titulo": "Empty state sem CTA (próxima ação para o usuário)",
+    "causa": "Quando não há dados (nenhum sinal, nenhuma posição, nenhuma notificação), exibir apenas 'Nenhum resultado' sem direcionar o usuário para a próxima ação gera dead-end de jornada. O usuário não sabe o que fazer — taxa de abandono aumenta. Comum em telas de portfólio vazio e lista de sinais.",
+    "remediacao": "Adicionar CTA contextual: 'Explorar Sinais →', 'Configurar alertas', etc. DoD: todo empty state tem pelo menos um link/botão de próxima ação."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

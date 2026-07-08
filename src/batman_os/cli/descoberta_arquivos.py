@@ -62,6 +62,7 @@ from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, Re
 from batman_os.capabilities.rules.metrica_com_limiar import EntradaMetrica, RegraMetricaSpec
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
+from batman_os.capabilities.rules.pd001_empty_state_sem_cta import EntradaPd001, RegraPd001Spec
 from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
@@ -227,6 +228,17 @@ def entradas_fe001_para_regra(
     só o handler (agregação com agrupamento por nome exportado) é novo."""
     return [
         EntradaFe001(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_pd001_para_regra(
+    root: Path, regra: RegraPd001Spec, descoberta: dict[str, Any]
+) -> list[EntradaPd001]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke PD-001 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaPd001(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
