@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "REV-006",
+    "agente": "code-reviewer",
+    "severidade": "low",
+    "categoria": "manutenibilidade",
+    "titulo": "Nome de variável com 1–2 caracteres fora de loops curtos e lambdas matemáticos",
+    "causa": "Variáveis de 1-2 chars sem contexto matemático tornam o código ilegível para manutenção.",
+    "remediacao": "Usar nomes descritivos. DoD: sem variável de 1-2 chars fora de for i/j/k e lambda matemático."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
