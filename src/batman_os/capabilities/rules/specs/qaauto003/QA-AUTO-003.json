@@ -1,0 +1,24 @@
+{
+  "regra": {
+    "codigo": "QA-AUTO-003",
+    "agente": "qa-automation",
+    "severidade": "medium",
+    "categoria": "cobertura",
+    "titulo": "Spec Playwright P0 ausente na suíte de smoke E2E",
+    "causa": "Os casos P0 do QA_TESTE_FULL.md têm alta frequência de regressão e custo de manutenção manual alto. Sem spec automatizado, cada deploy exige execução manual — risco de regressão não detectada antes de PRD.",
+    "remediacao": "Criar os specs de smoke Playwright listados no Apêndice do QA_TESTE_FULL.md. DoD: todos os 7 arquivos e2e/smoke/*.spec.ts existem e têm ao menos 1 test()."
+  },
+  "descoberta": {
+    "tipo": "qaauto003",
+    "caminho_relatorio": "e2e/smoke",
+    "required_paths": [
+      "e2e/smoke/position-sizing.spec.ts",
+      "e2e/smoke/simulador.spec.ts",
+      "e2e/smoke/authz-ui.spec.ts",
+      "e2e/smoke/authz-api.spec.ts",
+      "e2e/smoke/landing.spec.ts",
+      "e2e/smoke/governanca.spec.ts",
+      "e2e/smoke/i18n.spec.ts"
+    ]
+  }
+}

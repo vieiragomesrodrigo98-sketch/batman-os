@@ -196,6 +196,17 @@ from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
 from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
     construir_implementacao as construir_implementacao_qaauto001,
 )
+from batman_os.capabilities.rules.qaauto003_loader import (
+    SpecQaAuto003,
+    carregar_especificacoes_qaauto003,
+)
+from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
+    EntradaQaAuto003,
+    RegraQaAuto003Spec,
+)
+from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
+    construir_implementacao as construir_implementacao_qaauto003,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
     EntradaAgregada,
     RegraAgregadaSpec,
@@ -284,6 +295,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_pd001_para_regra,
     entradas_pd011_para_regra,
     entradas_qaauto001_para_regra,
+    entradas_qaauto003_para_regra,
     entradas_rev006_para_regra,
     entradas_sec005_para_regra,
     entradas_sec007_para_regra,
@@ -936,6 +948,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_qaauto003(),
+            {
+                "caminho": "e2e/smoke",
+                "conteudo": json.dumps({"missing": [], "total": 0}),
+                "regra": {
+                    "codigo": "CERT-028",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1008,6 +1036,7 @@ _Especificacao = (
     | SpecGovdebt001
     | SpecSweep001
     | SpecCs003
+    | SpecQaAuto003
 )
 
 
@@ -1046,6 +1075,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_govdebt001())
     especificacoes.extend(carregar_especificacoes_sweep001())
     especificacoes.extend(carregar_especificacoes_cs003())
+    especificacoes.extend(carregar_especificacoes_qaauto003())
     return especificacoes
 
 
@@ -1120,6 +1150,7 @@ def executar_scan(
                 | EntradaGovdebt001
                 | EntradaSweep001
                 | EntradaCs003
+                | EntradaQaAuto003
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1181,6 +1212,8 @@ def executar_scan(
                 entradas = entradas_sweep001_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraCs003Spec):
                 entradas = entradas_cs003_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraQaAuto003Spec):
+                entradas = entradas_qaauto003_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

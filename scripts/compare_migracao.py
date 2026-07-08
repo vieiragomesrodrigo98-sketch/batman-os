@@ -66,6 +66,9 @@ from batman_os.capabilities.rules.pd011_loader import carregar_especificacoes_pd
 from batman_os.capabilities.rules.qaauto001_loader import (  # noqa: E402
     carregar_especificacoes_qaauto001,
 )
+from batman_os.capabilities.rules.qaauto003_loader import (  # noqa: E402
+    carregar_especificacoes_qaauto003,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo_loader import (  # noqa: E402
     carregar_especificacoes_agregadas,
 )
@@ -119,6 +122,7 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_govdebt001()
     + carregar_especificacoes_sweep001()
     + carregar_especificacoes_cs003()
+    + carregar_especificacoes_qaauto003()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 

@@ -76,6 +76,10 @@ from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
     EntradaQaAuto001,
     RegraQaAuto001Spec,
 )
+from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
+    EntradaQaAuto003,
+    RegraQaAuto003Spec,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
     EntradaAgregada,
     RegraAgregadaSpec,
@@ -332,6 +336,17 @@ def entradas_qaauto001_para_regra(
     ]
 
 
+def entradas_qaauto003_para_regra(
+    root: Path, regra: RegraQaAuto003Spec, descoberta: dict[str, Any]
+) -> list[EntradaQaAuto003]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke QA-AUTO-003."""
+    return [
+        EntradaQaAuto003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_feapi_para_regra(
     root: Path, regra: RegraFeApiSpec, descoberta: dict[str, Any]
 ) -> list[EntradaFeApi]:
@@ -506,6 +521,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_qaauto001(root, descoberta)
     if tipo == "govdebt001":
         return _resultado_govdebt001(root, descoberta)
+    if tipo == "qaauto003":
+        return _resultado_qaauto003(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -571,6 +588,17 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_qaauto003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: checa a existência de cada path em `required_paths`
+    e empacota os AUSENTES (na mesma ordem da lista) como JSON."""
+    required_paths: list[str] = descoberta.get("required_paths", [])
+    caminho_relatorio = descoberta.get("caminho_relatorio", "e2e/smoke")
+
+    missing = [p for p in required_paths if not (root / p).exists()]
+    payload = {"missing": missing, "total": len(required_paths)}
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_govdebt001(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
