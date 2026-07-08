@@ -316,6 +316,69 @@ class TestSeletorFunctionDef:
         assert len(saida["achados"]) == 1
 
 
+class TestSeletorNomeFuncao:
+    """Achado de revisão da continuação da migração (RISK-002 divergiu
+    contra o `radar-preditivo` real): `seletor_include` casa contra o
+    corpo/contexto inteiro da função, não especificamente contra
+    `node.name` — uma função cujo CORPO apenas MENCIONA a palavra-chave
+    (chamada a outra função, comentário) dispara por engano, mesmo não
+    sendo ela própria a função-alvo. `seletor_nome_funcao` fecha essa
+    lacuna, selecionando SÓ pelo nome."""
+
+    def test_nao_dispara_quando_so_o_corpo_menciona_a_palavra_chave(self) -> None:
+        # Caso real que causou a divergencia: uma funcao chamada
+        # 'casos_similares' cujo corpo menciona 'backtest' (ex.: chama
+        # outra funcao relacionada) nao deveria disparar RISK-002 - so a
+        # funcao literalmente NOMEADA com 'backtest' deveria.
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": (
+                "def casos_similares():\n"
+                "    # usa dados de backtest para sugerir casos parecidos\n"
+                "    return buscar_historico()\n"
+            ),
+            "regra": _regra(
+                seletor_tipo="functiondef",
+                seletor_include="backtest",
+                seletor_nome_funcao="backtest",
+                corpo_padrao=r"cost|fee|spread",
+                ignore_case=True,
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_dispara_quando_o_nome_da_funcao_bate(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": ("def run_backtest():\n    return simular()\n"),
+            "regra": _regra(
+                seletor_tipo="functiondef",
+                seletor_include="backtest",
+                seletor_nome_funcao="backtest",
+                corpo_padrao=r"cost|fee|spread",
+                ignore_case=True,
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_nao_dispara_quando_nome_bate_mas_corpo_tem_o_padrao_protegido(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": ("def run_backtest():\n    return simular(fee=0.001)\n"),
+            "regra": _regra(
+                seletor_tipo="functiondef",
+                seletor_include="backtest",
+                seletor_nome_funcao="backtest",
+                corpo_padrao=r"cost|fee|spread",
+                ignore_case=True,
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+
 class TestSeletorCall:
     def test_dispara_quando_primeiro_arg_bate_e_janela_sem_padrao(self) -> None:
         entrada = {

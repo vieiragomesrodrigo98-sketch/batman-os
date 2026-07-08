@@ -19,7 +19,16 @@ Modos de seletor:
   sem essa restrição, uma chamada `.delete(` solta no CORPO de qualquer
   função dispararia por engano). `seletor_exclude`, se casar em QUALQUER
   decorator, suprime o achado (replica BT-002: decorators de método
-  read-only, ex. `@router.get`, excluem a regra).
+  read-only, ex. `@router.get`, excluem a regra). `seletor_nome_funcao`
+  (achado de revisão da continuação da migração — DE-006/RISK-002),
+  quando setado, seleciona SÓ pelo `node.name` (regex), substituindo
+  inteiramente o mecanismo decorator/corpo-substring de `seletor_include`:
+  necessário quando o legado seleciona a função pelo NOME
+  especificamente (`re.search(padrao, node.name)`), não por menção solta
+  em QUALQUER lugar do corpo — sem isso, uma função cujo corpo apenas
+  MENCIONA a palavra-chave (ex.: chama outra função de nome parecido, ou
+  tem um comentário) dispara por engano, mesmo não sendo ela própria a
+  função-alvo.
 - `call`: casa pelo PRIMEIRO ARGUMENTO literal de um `ast.Call` cujo
   `.func` é `Attribute` com nome em `metodos_call` (regex sobre o valor do
   literal). Corpo = janela de `janela_linhas` linhas após `node.lineno`
@@ -88,6 +97,7 @@ class RegraAstSpec(BaseModel):
     seletor_include: str
     seletor_exclude: str | None = None
     seletor_so_decorator: bool = False
+    seletor_nome_funcao: str | None = None
     corpo_padrao: str
     corpo_escopo: str | None = None
     inverte_disparo: bool = False
@@ -211,23 +221,32 @@ def _avaliar_functiondef(tree: ast.AST, texto: str, regra: RegraAstSpec) -> bool
     flags = re.IGNORECASE if regra.ignore_case else 0
     include_rx = re.compile(regra.seletor_include, flags)
     exclude_rx = re.compile(regra.seletor_exclude, flags) if regra.seletor_exclude else None
+    nome_rx = re.compile(regra.seletor_nome_funcao, flags) if regra.seletor_nome_funcao else None
 
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         decoradores = [_decorator_texto(d) for d in node.decorator_list]
         corpo = ast.get_source_segment(texto, node) or ""
-        # seletor_include casa no decorator OU no corpo por padrao (replica
-        # BT-002: `has_admin_dep` é decorator Call OU menção solta no corpo
-        # da funcao — `ast.get_source_segment` de FunctionDef NAO inclui os
-        # decorators, entao os dois lados precisam ser checados).
-        # `seletor_so_decorator=True` restringe so ao decorator (replica
-        # BT-001: `is_delete` so olha `node.decorator_list`, nunca o corpo —
-        # sem essa restricao, uma chamada `.delete(` solta no CORPO de
-        # qualquer funcao dispararia a regra por engano).
-        selecionado = any(include_rx.search(d) for d in decoradores)
-        if not selecionado and not regra.seletor_so_decorator:
-            selecionado = bool(include_rx.search(corpo))
+        if nome_rx is not None:
+            # seletor_nome_funcao: seleciona SO pelo node.name — substitui
+            # inteiramente o mecanismo decorator/corpo-substring abaixo
+            # (necessario quando o legado seleciona por nome de funcao
+            # especificamente, nao por mencao solta em qualquer lugar do
+            # corpo; ver DE-006/RISK-002).
+            selecionado = bool(nome_rx.search(node.name))
+        else:
+            # seletor_include casa no decorator OU no corpo por padrao (replica
+            # BT-002: `has_admin_dep` é decorator Call OU menção solta no corpo
+            # da funcao — `ast.get_source_segment` de FunctionDef NAO inclui os
+            # decorators, entao os dois lados precisam ser checados).
+            # `seletor_so_decorator=True` restringe so ao decorator (replica
+            # BT-001: `is_delete` so olha `node.decorator_list`, nunca o corpo —
+            # sem essa restricao, uma chamada `.delete(` solta no CORPO de
+            # qualquer funcao dispararia a regra por engano).
+            selecionado = any(include_rx.search(d) for d in decoradores)
+            if not selecionado and not regra.seletor_so_decorator:
+                selecionado = bool(include_rx.search(corpo))
         if not selecionado:
             continue
         if exclude_rx and any(exclude_rx.search(d) for d in decoradores):

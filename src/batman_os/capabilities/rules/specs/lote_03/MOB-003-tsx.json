@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "MOB-003",
+    "agente": "mobile-engineer",
+    "severidade": "low",
+    "categoria": "performance-mobile",
+    "titulo": "Imagem <img> sem loading='lazy'",
+    "causa": "Sem lazy loading, todas as imagens da página são baixadas na carga inicial, aumentando o tempo de first contentful paint (FCP) em conexões móveis lentas.",
+    "remediacao": "Adicionar loading='lazy' a toda <img> que não está above-the-fold. DoD: todas as imagens fora do viewport inicial têm loading='lazy'.",
+    "modo": "presenca",
+    "pattern": "(?m)^(?:(?!lazy)[^\\n])*<img\\b(?:(?!lazy)[^\\n])*$"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

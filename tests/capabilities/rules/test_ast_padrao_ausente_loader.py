@@ -1,5 +1,5 @@
 """Testes do loader dos specs da Skill AST (`ast_padrao_ausente_loader.py`,
-Milestone 3)."""
+Milestone 3 + continuação da migração)."""
 
 from __future__ import annotations
 
@@ -9,11 +9,21 @@ from batman_os.capabilities.rules.lote_01 import carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
 
 _TIPOS_DESCOBERTA_VALIDOS = {"arquivo_fixo", "arvore", "glob"}
-_CODIGOS_ESPERADOS = {"BT-001", "BT-002", "BT-003", "COMP-001", "COMP-002", "EH-004", "EH-006"}
+_CODIGOS_ESPERADOS = {
+    "BT-001",
+    "BT-002",
+    "BT-003",
+    "COMP-001",
+    "COMP-002",
+    "EH-004",
+    "EH-006",
+    "DE-006",
+    "RISK-002",
+}
 
 
 class TestCarregarEspecificacoesAst:
-    def test_carrega_os_7_codigos_confirmados(self) -> None:
+    def test_carrega_os_codigos_confirmados(self) -> None:
         specs = carregar_especificacoes_ast()
 
         codigos = {item["regra"].codigo for item in specs}

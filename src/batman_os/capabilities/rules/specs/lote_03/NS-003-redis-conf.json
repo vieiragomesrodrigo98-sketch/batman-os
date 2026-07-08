@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "NS-003",
+    "agente": "network-security",
+    "severidade": "critical",
+    "categoria": "auth",
+    "titulo": "Redis exposto sem autenticação (requirepass ausente)",
+    "causa": "Redis sem requirepass aceita qualquer conexão sem senha — permite leitura/escrita irrestrita de dados em cache, sessões e filas de tarefas.",
+    "remediacao": "Configurar requirepass em redis.conf ou REDIS_PASSWORD no docker-compose. DoD: toda instância Redis tem requirepass ou REDIS_PASSWORD configurado.",
+    "modo": "ausencia",
+    "pattern": "requirepass"
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "redis.conf"
+  }
+}

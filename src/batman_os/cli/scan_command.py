@@ -83,6 +83,7 @@ from batman_os.capabilities.rules.git_comando_interpretado_loader import (
 )
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
+from batman_os.capabilities.rules.lote_03 import carregar_lote_03
 from batman_os.capabilities.rules.ora004_loader import SpecOra004, carregar_especificacoes_ora004
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora004_status_typo import (
@@ -93,6 +94,17 @@ from batman_os.capabilities.rules.ora005_fallback_silencioso import (
     construir_implementacao as construir_implementacao_ora005,
 )
 from batman_os.capabilities.rules.ora005_loader import SpecOra005, carregar_especificacoes_ora005
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
+    EntradaAgregada,
+    RegraAgregadaSpec,
+)
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
+    construir_implementacao as construir_implementacao_agregada,
+)
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo_loader import (
+    SpecDeRegraAgregada,
+    carregar_especificacoes_agregadas,
+)
 from batman_os.capabilities.rules.regex_sobre_conteudo import EntradaRegexArquivo
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     construir_implementacao as construir_implementacao_regex,
@@ -109,6 +121,7 @@ from batman_os.capabilities.rules.toml_dependencias_loader import (
     carregar_especificacoes_dependencias,
 )
 from batman_os.cli.descoberta_arquivos import (
+    entradas_agregadas_para_regra,
     entradas_ast_para_regra,
     entradas_de003_para_regra,
     entradas_dependencias_para_regra,
@@ -391,6 +404,25 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 "regra": {},
             },
         ),
+        (
+            construir_implementacao_agregada(),
+            {
+                "caminho": "api",
+                "conteudo": json.dumps({"arquivos": {"api/a.py": "x"}}),
+                "regra": {
+                    "codigo": "CERT-006",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "modo": "ausencia",
+                    "pattern": "termo-que-nunca-aparece",
+                    "caminho_relatado": "api",
+                },
+            },
+        ),
     ]
 
 
@@ -441,6 +473,7 @@ _Especificacao = (
     | SpecDe003
     | SpecOra005
     | SpecOra004
+    | SpecDeRegraAgregada
 )
 
 
@@ -448,6 +481,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes: list[_Especificacao] = []
     especificacoes.extend(carregar_lote_01())
     especificacoes.extend(carregar_lote_02())
+    especificacoes.extend(carregar_lote_03())
     especificacoes.extend(carregar_especificacoes_ast())
     especificacoes.extend(carregar_especificacoes_kwarg_ausente())
     especificacoes.extend(carregar_especificacoes_git_interpretado())
@@ -456,6 +490,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_de003())
     especificacoes.extend(carregar_especificacoes_ora005())
     especificacoes.extend(carregar_especificacoes_ora004())
+    especificacoes.extend(carregar_especificacoes_agregadas())
     return especificacoes
 
 
@@ -508,6 +543,7 @@ def executar_scan(
                 | EntradaDe003
                 | EntradaOra005
                 | EntradaOra004
+                | EntradaAgregada
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -525,6 +561,8 @@ def executar_scan(
                 entradas = entradas_ora005_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraOra004Spec):
                 entradas = entradas_ora004_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraAgregadaSpec):
+                entradas = entradas_agregadas_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

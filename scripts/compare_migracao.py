@@ -36,6 +36,7 @@ from batman_os.capabilities.rules.git_comando_interpretado_loader import (  # no
 )
 from batman_os.capabilities.rules.lote_01 import carregar_lote_01  # noqa: E402
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02  # noqa: E402
+from batman_os.capabilities.rules.lote_03 import carregar_lote_03  # noqa: E402
 from batman_os.capabilities.rules.ora004_loader import carregar_especificacoes_ora004  # noqa: E402
 from batman_os.capabilities.rules.ora005_loader import carregar_especificacoes_ora005  # noqa: E402
 from batman_os.capabilities.rules.toml_dependencias_loader import (  # noqa: E402
@@ -49,6 +50,7 @@ from batman_os.cli.scan_command import executar_scan  # noqa: E402
 _TODOS_OS_ITENS = (
     carregar_lote_01()
     + carregar_lote_02()
+    + carregar_lote_03()
     + carregar_especificacoes_ast()
     + carregar_especificacoes_kwarg_ausente()
     + carregar_especificacoes_git_interpretado()

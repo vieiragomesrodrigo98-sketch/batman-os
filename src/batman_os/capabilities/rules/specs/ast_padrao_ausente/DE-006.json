@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "DE-006",
+    "agente": "data-engineer",
+    "severidade": "medium",
+    "categoria": "versionamento-schema",
+    "titulo": "Arquivo de migração Alembic com downgrade() contendo apenas pass",
+    "causa": "downgrade() com apenas pass torna a migração irreversível — um rollback de deploy vai falhar silenciosamente sem reverter as mudanças no banco.",
+    "remediacao": "Implementar a operação inversa em downgrade() ou documentar explicitamente por que é irreversível. DoD: sem downgrade() com apenas pass em migrations.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "def\\s+downgrade",
+    "seletor_nome_funcao": "^downgrade",
+    "seletor_so_decorator": false,
+    "corpo_escopo": "(?m)^\\s*pass\\s*$",
+    "corpo_padrao": "op\\."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["alembic/versions"],
+    "extensoes": [".py"]
+  }
+}

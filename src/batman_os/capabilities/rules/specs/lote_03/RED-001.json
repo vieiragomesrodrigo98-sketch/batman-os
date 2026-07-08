@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "RED-001",
+    "agente": "red-team",
+    "severidade": "critical",
+    "categoria": "injection",
+    "titulo": "eval()/exec() — sink de execução de código",
+    "causa": "eval/exec executam código arbitrário. Se qualquer parte da entrada chegar até eles a partir do usuário, vira execução remota de código (RCE).",
+    "remediacao": "Eliminar eval/exec. Para dados, usar parsing seguro (ast.literal_eval, json). DoD: nenhum eval/exec no código.",
+    "modo": "presenca",
+    "pattern": "(?<!\\.)\\b(?:eval|exec)\\("
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

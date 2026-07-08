@@ -1,0 +1,22 @@
+{
+  "regra": {
+    "codigo": "RISK-002",
+    "agente": "risk-manager",
+    "severidade": "medium",
+    "categoria": "backtest",
+    "titulo": "Backtest sem modelagem de custo (spread/corretagem)",
+    "causa": "Backtest sem custo de transação superestima retorno líquido, especialmente em estratégias de alta frequência. Resultados sem custo não são válidos para tomada de decisão.",
+    "remediacao": "Incluir custo de transação (spread, corretagem, slippage) no backtest. DoD: toda função de backtest referencia custo/fee/spread.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "backtest",
+    "seletor_nome_funcao": "backtest",
+    "seletor_so_decorator": false,
+    "corpo_padrao": "cost|fee|spread|slippage|corretagem|comissao|commission",
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}

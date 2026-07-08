@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "BE-012",
+    "agente": "backend-engineer",
+    "severidade": "high",
+    "categoria": "performance",
+    "titulo": "Operação bloqueante dentro de handler assíncrono",
+    "causa": "requests.get(), time.sleep() ou open() síncronos dentro de async def bloqueiam o event loop inteiro — equivalente a parar todos os workers simultâneos enquanto aguarda I/O.",
+    "remediacao": "Usar httpx.AsyncClient, asyncio.sleep() e aiofiles em handlers async. DoD: sem requests.get, time.sleep ou open() síncrono dentro de async def.",
+    "modo": "presenca",
+    "pattern": "\\A(?=[\\s\\S]*\\basync\\s+def\\b)(?=[\\s\\S]*(?:requests\\.(?:get|post|put|delete|head)\\s*\\(|time\\.sleep\\s*\\())"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

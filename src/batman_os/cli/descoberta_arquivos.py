@@ -49,6 +49,10 @@ from batman_os.capabilities.rules.git_comando_interpretado import (
 )
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
+    EntradaAgregada,
+    RegraAgregadaSpec,
+)
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     CondicaoAdicional,
     EntradaRegexArquivo,
@@ -162,6 +166,17 @@ def entradas_ora004_para_regra(
     ]
 
 
+def entradas_agregadas_para_regra(
+    root: Path, regra: RegraAgregadaSpec, descoberta: dict[str, Any]
+) -> list[EntradaAgregada]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Skill "regex
+    agregado sobre múltiplos arquivos"."""
+    return [
+        EntradaAgregada(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_de003_para_regra(
     root: Path, regra: RegraDe003Spec, descoberta: dict[str, Any]
 ) -> list[EntradaDe003]:
@@ -200,6 +215,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_de003(root, descoberta)
     if tipo == "ora004":
         return _resultado_ora004(root, descoberta)
+    if tipo == "regex_agregado":
+        return _resultado_regex_agregado(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -262,6 +279,30 @@ def _resultado_ora004(root: Path, descoberta: dict[str, Any]) -> list[tuple[str,
         enums_src = _ler_texto(root / enums_path)
 
     payload: dict[str, Any] = {"arquivos": arquivos, "enums_src": enums_src}
+    return [(caminho_relatorio, json.dumps(payload))]
+
+
+def _resultado_regex_agregado(
+    root: Path, descoberta: dict[str, Any]
+) -> list[tuple[str, str | None]]:
+    """Empacota o conteúdo de VÁRIOS arquivos (potencialmente de múltiplas
+    fontes distintas — ex.: LEGAL-002/UXR-003 concatenam `.py` E `.tsx` no
+    legado) como JSON para a Skill "regex agregado sobre múltiplos
+    arquivos" (`regex_agregado_multi_arquivo.py`). `fontes` (opcional):
+    lista de descobertas `arvore` independentes, cada uma com seu próprio
+    `scope_dirs`/`extensoes`; sem `fontes`, a própria `descoberta` é usada
+    como fonte única (mesma convenção de `scope_dirs`/`extensoes` direto
+    no nível superior, como em `"arvore"`)."""
+    caminho_relatorio = descoberta.get("caminho_relatorio", ".")
+    fontes = descoberta.get("fontes") or [descoberta]
+
+    arquivos: dict[str, str] = {}
+    for fonte in fontes:
+        for rel, conteudo in _arquivos_em_arvore(root, fonte):
+            if conteudo is not None:
+                arquivos[rel] = conteudo
+
+    payload: dict[str, Any] = {"arquivos": arquivos}
     return [(caminho_relatorio, json.dumps(payload))]
 
 

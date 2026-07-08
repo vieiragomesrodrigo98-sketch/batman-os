@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "EH-002",
+    "agente": "ethical-hacker",
+    "severidade": "high",
+    "categoria": "disclosure",
+    "titulo": "Traceback/stack trace retornado diretamente em resposta HTTP",
+    "causa": "Incluir traceback ou str(exception) em respostas da API revela estrutura de arquivos, nomes de módulos e versões de bibliotecas — informação usada por atacantes para identificar vulnerabilidades conhecidas.",
+    "remediacao": "Retornar mensagem genérica ao cliente e registrar o traceback apenas no log interno (logger.exception). DoD: nenhum traceback/str(exc) em HTTPResponse.",
+    "modo": "presenca",
+    "pattern": "traceback\\.(format_exc|print_exc)|str\\(e\\)|str\\(exc\\)|str\\(err\\)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

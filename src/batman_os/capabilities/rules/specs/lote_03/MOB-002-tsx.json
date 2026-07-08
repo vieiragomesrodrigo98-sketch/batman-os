@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "MOB-002",
+    "agente": "mobile-engineer",
+    "severidade": "low",
+    "categoria": "responsividade",
+    "titulo": "Largura fixa em pixels sem breakpoint responsivo (CSS/TSX)",
+    "causa": "Declarar width em pixels fixos > 480px sem media query garante que o layout quebre em telas menores, exigindo scroll horizontal e degradando a experiência em mobile.",
+    "remediacao": "Substituir larguras fixas por unidades relativas (%, vw, rem) ou flex/grid. Se mantiver px, emparelhar com @media max-width. DoD: sem width > 480px em pixels fixos sem breakpoint.",
+    "modo": "presenca",
+    "pattern": "(?<![-a-z])width\\s*:\\s*([5-9]\\d{2}|[1-9]\\d{3,})px\\b"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

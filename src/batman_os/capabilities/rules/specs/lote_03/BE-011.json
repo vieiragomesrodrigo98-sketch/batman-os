@@ -1,0 +1,19 @@
+{
+  "regra": {
+    "codigo": "BE-011",
+    "agente": "backend-engineer",
+    "severidade": "medium",
+    "categoria": "api",
+    "titulo": "Endpoint de listagem sem parâmetro de paginação (limit/offset/cursor)",
+    "causa": "Endpoints que retornam listas sem paginação podem retornar milhões de registros em produção, causando OOM, timeout e DDoS acidental.",
+    "remediacao": "Adicionar parâmetros limit e offset (ou cursor) em todos os endpoints GET que retornam listas. DoD: sem endpoint de lista sem paginação.",
+    "modo": "ausencia",
+    "pattern": "\\b(limit|offset|cursor)\\b",
+    "pattern_escopo": "\\A(?=[\\s\\S]*@router\\.get)(?=[\\s\\S]*[Ll]ist\\[)"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}
