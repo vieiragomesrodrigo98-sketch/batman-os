@@ -125,6 +125,11 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import EntradaRegexArquiv
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     construir_implementacao as construir_implementacao_regex,
 )
+from batman_os.capabilities.rules.sup001_excecao_silenciada import EntradaSup001, RegraSup001Spec
+from batman_os.capabilities.rules.sup001_excecao_silenciada import (
+    construir_implementacao as construir_implementacao_sup001,
+)
+from batman_os.capabilities.rules.sup001_loader import SpecSup001, carregar_especificacoes_sup001
 from batman_os.capabilities.rules.toml_dependencias import (
     EntradaDependencias,
     RegraDependenciasSpec,
@@ -149,6 +154,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_ora004_para_regra,
     entradas_ora005_para_regra,
     entradas_para_regra,
+    entradas_sup001_para_regra,
 )
 from batman_os.foundation.types import (
     CapabilityId,
@@ -478,6 +484,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_sup001(),
+            {
+                "caminho": "a.py",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-009",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -531,6 +553,7 @@ _Especificacao = (
     | SpecDeRegraAgregada
     | SpecDeRegraJanela
     | SpecDeRegraMetrica
+    | SpecSup001
 )
 
 
@@ -550,6 +573,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_agregadas())
     especificacoes.extend(carregar_especificacoes_janela())
     especificacoes.extend(carregar_especificacoes_metrica())
+    especificacoes.extend(carregar_especificacoes_sup001())
     return especificacoes
 
 
@@ -605,6 +629,7 @@ def executar_scan(
                 | EntradaAgregada
                 | EntradaJanela
                 | EntradaMetrica
+                | EntradaSup001
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -628,6 +653,8 @@ def executar_scan(
                 entradas = entradas_janela_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraMetricaSpec):
                 entradas = entradas_metrica_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraSup001Spec):
+                entradas = entradas_sup001_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

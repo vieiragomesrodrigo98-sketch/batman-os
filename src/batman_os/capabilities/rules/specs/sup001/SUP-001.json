@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "SUP-001",
+    "agente": "support",
+    "severidade": "medium",
+    "categoria": "tratamento-de-erros",
+    "titulo": "Exceção silenciada (except sem log nem re-raise)",
+    "causa": "except: pass ou except Exception: pass engole erros silenciosamente — falhas reais ficam invisíveis para o time de suporte e para o monitoramento.",
+    "remediacao": "Logar a exceção (logger.exception) ou fazer re-raise. Se o silêncio for intencional, documentar com comentário explicando por quê. DoD: nenhum except sem log ou re-raise."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["test"]
+  }
+}

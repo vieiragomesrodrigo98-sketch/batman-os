@@ -61,6 +61,10 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     ModoAvaliacao,
     RegraSpec,
 )
+from batman_os.capabilities.rules.sup001_excecao_silenciada import (
+    EntradaSup001,
+    RegraSup001Spec,
+)
 from batman_os.capabilities.rules.toml_dependencias import (
     EntradaDependencias,
     RegraDependenciasSpec,
@@ -166,6 +170,17 @@ def entradas_metrica_para_regra(
     por arquivo), só o handler ("métrica com limiar") é novo."""
     return [
         EntradaMetrica(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_sup001_para_regra(
+    root: Path, regra: RegraSup001Spec, descoberta: dict[str, Any]
+) -> list[EntradaSup001]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke SUP-001."""
+    return [
+        EntradaSup001(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
