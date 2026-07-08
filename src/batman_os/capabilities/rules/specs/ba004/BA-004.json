@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "BA-004",
+    "agente": "business-analyst",
+    "severidade": "medium",
+    "categoria": "arquitetura",
+    "titulo": "Lógica de negócio complexa implementada diretamente no router (sem camada de serviço)",
+    "causa": "Lógica de negócio no router mistura HTTP handling com domínio — impossível reutilizar ou testar isoladamente.",
+    "remediacao": "Mover cálculos de negócio para módulo de serviço. DoD: handlers de router delegam a service.* para toda lógica de negócio."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}
