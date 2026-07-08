@@ -49,6 +49,7 @@ from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
 from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
 from batman_os.capabilities.rules.cs003_except_pass import EntradaCs003, RegraCs003Spec
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
+from batman_os.capabilities.rules.doc004_changelog_sem_versao import EntradaDoc004, RegraDoc004Spec
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
@@ -336,6 +337,17 @@ def entradas_qaauto001_para_regra(
     ]
 
 
+def entradas_doc004_para_regra(
+    root: Path, regra: RegraDoc004Spec, descoberta: dict[str, Any]
+) -> list[EntradaDoc004]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke DOC-004."""
+    return [
+        EntradaDoc004(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_qaauto003_para_regra(
     root: Path, regra: RegraQaAuto003Spec, descoberta: dict[str, Any]
 ) -> list[EntradaQaAuto003]:
@@ -523,6 +535,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_govdebt001(root, descoberta)
     if tipo == "qaauto003":
         return _resultado_qaauto003(root, descoberta)
+    if tipo == "doc004":
+        return _resultado_doc004(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -588,6 +602,23 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_doc004(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: empacota `pyproject.toml` + `CHANGELOG.md` como
+    JSON. Se qualquer um dos dois não existir, `conteudo=None` (replica
+    o `return` antecipado do legado)."""
+    pyproject_path = descoberta.get("pyproject_path", "pyproject.toml")
+    changelog_path = descoberta.get("changelog_path", "CHANGELOG.md")
+    caminho_relatorio = descoberta.get("caminho_relatorio", changelog_path)
+
+    pyproject_texto = _ler_ou_marcar_presente(root, pyproject_path)
+    changelog_texto = _ler_ou_marcar_presente(root, changelog_path)
+    if pyproject_texto is None or changelog_texto is None:
+        return [(caminho_relatorio, None)]
+
+    payload = {"pyproject_texto": pyproject_texto, "changelog_texto": changelog_texto}
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_qaauto003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

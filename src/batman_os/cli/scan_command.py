@@ -100,6 +100,11 @@ from batman_os.capabilities.rules.de003_coluna_sem_migration import (
     construir_implementacao as construir_implementacao_de003,
 )
 from batman_os.capabilities.rules.de003_loader import SpecDe003, carregar_especificacoes_de003
+from batman_os.capabilities.rules.doc004_changelog_sem_versao import EntradaDoc004, RegraDoc004Spec
+from batman_os.capabilities.rules.doc004_changelog_sem_versao import (
+    construir_implementacao as construir_implementacao_doc004,
+)
+from batman_os.capabilities.rules.doc004_loader import SpecDoc004, carregar_especificacoes_doc004
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
@@ -281,6 +286,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_cs003_para_regra,
     entradas_de003_para_regra,
     entradas_dependencias_para_regra,
+    entradas_doc004_para_regra,
     entradas_execucao_comando_para_regra,
     entradas_fe001_para_regra,
     entradas_feapi_para_regra,
@@ -964,6 +970,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_doc004(),
+            {
+                "caminho": "CHANGELOG.md",
+                "conteudo": None,
+                "regra": {
+                    "codigo": "CERT-029",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1037,6 +1059,7 @@ _Especificacao = (
     | SpecSweep001
     | SpecCs003
     | SpecQaAuto003
+    | SpecDoc004
 )
 
 
@@ -1076,6 +1099,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_sweep001())
     especificacoes.extend(carregar_especificacoes_cs003())
     especificacoes.extend(carregar_especificacoes_qaauto003())
+    especificacoes.extend(carregar_especificacoes_doc004())
     return especificacoes
 
 
@@ -1151,6 +1175,7 @@ def executar_scan(
                 | EntradaSweep001
                 | EntradaCs003
                 | EntradaQaAuto003
+                | EntradaDoc004
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1214,6 +1239,8 @@ def executar_scan(
                 entradas = entradas_cs003_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraQaAuto003Spec):
                 entradas = entradas_qaauto003_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraDoc004Spec):
+                entradas = entradas_doc004_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

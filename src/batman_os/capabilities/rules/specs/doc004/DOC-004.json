@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "DOC-004",
+    "agente": "technical-writer",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "CHANGELOG.md sem entrada correspondente à versão atual de pyproject.toml",
+    "causa": "CHANGELOG desatualizado é indício de processo de release quebrado e dificulta comunicação de mudanças para clientes.",
+    "remediacao": "Atualizar CHANGELOG.md a cada release. DoD: versão em pyproject.toml tem entrada correspondente em CHANGELOG.md."
+  },
+  "descoberta": {
+    "tipo": "doc004",
+    "pyproject_path": "pyproject.toml",
+    "changelog_path": "CHANGELOG.md"
+  }
+}
