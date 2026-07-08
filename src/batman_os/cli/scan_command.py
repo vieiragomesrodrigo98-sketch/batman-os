@@ -69,6 +69,14 @@ from batman_os.capabilities.rules.ba005_divisao_sem_guarda import (
     construir_implementacao as construir_implementacao_ba005,
 )
 from batman_os.capabilities.rules.ba005_loader import SpecBa005, carregar_especificacoes_ba005
+from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
+    EntradaBe010,
+    RegraBe010Spec,
+)
+from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
+    construir_implementacao as construir_implementacao_be010,
+)
+from batman_os.capabilities.rules.be010_loader import SpecBe010, carregar_especificacoes_be010
 from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
 from batman_os.capabilities.rules.be013_http200_em_except import (
     construir_implementacao as construir_implementacao_be013,
@@ -187,6 +195,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_ast_para_regra,
     entradas_ba004_para_regra,
     entradas_ba005_para_regra,
+    entradas_be010_para_regra,
     entradas_be013_para_regra,
     entradas_de003_para_regra,
     entradas_dependencias_para_regra,
@@ -678,6 +687,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_be010(),
+            {
+                "caminho": "pyproject.toml",
+                "conteudo": None,
+                "regra": {
+                    "codigo": "CERT-018",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -740,6 +765,7 @@ _Especificacao = (
     | SpecArch003
     | SpecFeApi
     | SpecFe001
+    | SpecBe010
 )
 
 
@@ -768,6 +794,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_arch003())
     especificacoes.extend(carregar_especificacoes_feapi())
     especificacoes.extend(carregar_especificacoes_fe001())
+    especificacoes.extend(carregar_especificacoes_be010())
     return especificacoes
 
 
@@ -832,6 +859,7 @@ def executar_scan(
                 | EntradaArch003
                 | EntradaFeApi
                 | EntradaFe001
+                | EntradaBe010
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -873,6 +901,8 @@ def executar_scan(
                 entradas = entradas_feapi_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraFe001Spec):
                 entradas = entradas_fe001_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraBe010Spec):
+                entradas = entradas_be010_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

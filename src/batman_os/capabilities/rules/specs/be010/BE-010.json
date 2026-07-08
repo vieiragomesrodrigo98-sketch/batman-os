@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "BE-010",
+    "agente": "backend-engineer",
+    "severidade": "low",
+    "categoria": "imports",
+    "titulo": "Dependência importada mas não declarada em pyproject.toml",
+    "causa": "Import de pacote de terceiros que só funciona por estar instalado transitivamente. Em ambiente limpo (CI, deploy novo) o import quebra.",
+    "remediacao": "Declarar a dependência explicitamente em pyproject.toml (ou no requirements correspondente). DoD: todo import de terceiro tem declaração explícita."
+  },
+  "descoberta": {
+    "tipo": "be010",
+    "caminho_pyproject": "pyproject.toml",
+    "scope_dirs": ["api", "src", "dashboard", "pages"]
+  }
+}

@@ -41,6 +41,10 @@ from batman_os.capabilities.rules.ast_kwarg_ausente import (
 from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
 from batman_os.capabilities.rules.ba004_logica_negocio_router import EntradaBa004, RegraBa004Spec
 from batman_os.capabilities.rules.ba005_divisao_sem_guarda import EntradaBa005, RegraBa005Spec
+from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
+    EntradaBe010,
+    RegraBe010Spec,
+)
 from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
@@ -250,6 +254,17 @@ def entradas_ba005_para_regra(
     ]
 
 
+def entradas_be010_para_regra(
+    root: Path, regra: RegraBe010Spec, descoberta: dict[str, Any]
+) -> list[EntradaBe010]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke BE-010."""
+    return [
+        EntradaBe010(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_be013_para_regra(
     root: Path, regra: RegraBe013Spec, descoberta: dict[str, Any]
 ) -> list[EntradaBe013]:
@@ -361,6 +376,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_arch003(root, descoberta)
     if tipo == "feapi":
         return _resultado_feapi(root, descoberta)
+    if tipo == "be010":
+        return _resultado_be010(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -384,6 +401,54 @@ def _resultado_feapi(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, 
         payload = {"api_src": conteudo or "", "frontend_text": frontend_text}
         resultado.append((rel, json.dumps(payload)))
     return resultado
+
+
+def _local_module_names(root: Path) -> list[str]:
+    """Replica `RepoContext.local_module_names()`: nomes de topo (diretórios
+    e stems de `.py`) direto sob a raiz do repo, mais os nomes hardcoded
+    que o legado sempre inclui."""
+    nomes: set[str] = set()
+    try:
+        for p in root.iterdir():
+            if p.name.startswith("."):
+                continue
+            if p.is_dir():
+                nomes.add(p.name)
+            elif p.suffix == ".py":
+                nomes.add(p.stem)
+    except OSError:
+        pass
+    nomes.update({"src", "app", "core", "tests", "test"})
+    return sorted(nomes)
+
+
+def _resultado_be010(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: empacota `pyproject.toml` + nomes de módulo local
+    (listagem de diretório, não conteúdo de arquivo) + TODOS os `.py` de
+    `scope_dirs` (na ORDEM dada, preservando a ordem de inserção do dict
+    — replica `seen.setdefault` do legado, que reporta o PRIMEIRO arquivo
+    onde um import de terceiro aparece) como JSON."""
+    caminho_pyproject = descoberta.get("caminho_pyproject", "pyproject.toml")
+    caminho_relatorio = descoberta.get("caminho_relatorio", caminho_pyproject)
+    scope_dirs = descoberta.get("scope_dirs", ["api", "src", "dashboard", "pages"])
+
+    pyproject_texto = _ler_ou_marcar_presente(root, caminho_pyproject)
+    if pyproject_texto is None:
+        return [(caminho_relatorio, None)]
+
+    arquivos: dict[str, str] = {}
+    for escopo in scope_dirs:
+        arvore = {"scope_dirs": [escopo], "extensoes": [".py"]}
+        for rel, conteudo in _arquivos_em_arvore(root, arvore):
+            if conteudo is not None:
+                arquivos[rel] = conteudo
+
+    payload = {
+        "pyproject_texto": pyproject_texto,
+        "local_modules": _local_module_names(root),
+        "arquivos": arquivos,
+    }
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_arch003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
