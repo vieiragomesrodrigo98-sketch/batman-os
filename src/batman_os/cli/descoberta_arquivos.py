@@ -33,6 +33,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from batman_os.capabilities.rules.a11y003_input_sem_label import EntradaA11y003, RegraA11y003Spec
 from batman_os.capabilities.rules.arch003_pagina_orfa import EntradaArch003, RegraArch003Spec
 from batman_os.capabilities.rules.ast_kwarg_ausente import (
     EntradaKwargAusente,
@@ -96,6 +97,18 @@ _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
 class TipoDescobertaDesconhecido(Exception):
     """Levantada quando `descoberta["tipo"]` (ou o `tipo` de uma condição
     adicional) não é um dos reconhecidos por este módulo."""
+
+
+def entradas_a11y003_para_regra(
+    root: Path, regra: RegraA11y003Spec, descoberta: dict[str, Any]
+) -> list[EntradaA11y003]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke A11Y-003 — reaproveita a descoberta genérica `"arvore"` já
+    existente (nenhuma função de descoberta nova precisa)."""
+    return [
+        EntradaA11y003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
 
 
 def entradas_para_regra(

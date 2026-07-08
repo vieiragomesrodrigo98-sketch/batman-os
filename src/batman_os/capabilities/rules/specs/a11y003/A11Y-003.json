@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "A11Y-003",
+    "agente": "accessibility-specialist",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "<input> sem label associado",
+    "causa": "Input sem <label htmlFor> ou aria-label não é anunciado por leitor de tela — o usuário com deficiência visual não sabe o que o campo representa.",
+    "remediacao": "Associar cada <input> a um <label htmlFor> ou adicionar aria-label. DoD: todo <input> tem label ou aria-label."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}
