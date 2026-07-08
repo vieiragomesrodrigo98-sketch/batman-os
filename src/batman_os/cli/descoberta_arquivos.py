@@ -61,6 +61,10 @@ from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, Re
 from batman_os.capabilities.rules.metrica_com_limiar import EntradaMetrica, RegraMetricaSpec
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
+from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
+    EntradaPd011,
+    RegraPd011Spec,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
     EntradaAgregada,
     RegraAgregadaSpec,
@@ -206,6 +210,17 @@ def entradas_fe001_para_regra(
     só o handler (agregação com agrupamento por nome exportado) é novo."""
     return [
         EntradaFe001(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_pd011_para_regra(
+    root: Path, regra: RegraPd011Spec, descoberta: dict[str, Any]
+) -> list[EntradaPd011]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke PD-011."""
+    return [
+        EntradaPd011(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -378,7 +393,32 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_feapi(root, descoberta)
     if tipo == "be010":
         return _resultado_be010(root, descoberta)
+    if tipo == "pd011":
+        return _resultado_pd011(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
+
+
+def _resultado_pd011(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: agrega o texto de `frontend_dirs` (.ts/.tsx) e de
+    `src/` (recursivo, .py) SEPARADAMENTE — o handler precisa saber ONDE
+    o padrão aparece, não só SE aparece, então os dois textos não podem
+    ser misturados numa fonte só (diferente de `regex_agregado`)."""
+    caminho_relatorio = descoberta.get("caminho_relatorio", "frontend/src/")
+    frontend_dirs = descoberta.get("frontend_dirs", ["frontend/src"])
+    backend_dir = descoberta.get("backend_dir", "src")
+
+    frontend_arvore = {"scope_dirs": frontend_dirs, "extensoes": [".ts", ".tsx"]}
+    frontend_text = " ".join(
+        conteudo or "" for _, conteudo in _arquivos_em_arvore(root, frontend_arvore)
+    )
+
+    backend_arvore = {"scope_dirs": [backend_dir], "extensoes": [".py"]}
+    backend_text = " ".join(
+        conteudo or "" for _, conteudo in _arquivos_em_arvore(root, backend_arvore)
+    )
+
+    payload = {"frontend_text": frontend_text, "backend_text": backend_text}
+    return [(caminho_relatorio, json.dumps(payload))]
 
 
 def _resultado_feapi(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

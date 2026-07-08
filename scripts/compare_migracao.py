@@ -54,6 +54,7 @@ from batman_os.capabilities.rules.metrica_com_limiar_loader import (  # noqa: E4
 )
 from batman_os.capabilities.rules.ora004_loader import carregar_especificacoes_ora004  # noqa: E402
 from batman_os.capabilities.rules.ora005_loader import carregar_especificacoes_ora005  # noqa: E402
+from batman_os.capabilities.rules.pd011_loader import carregar_especificacoes_pd011  # noqa: E402
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo_loader import (  # noqa: E402
     carregar_especificacoes_agregadas,
 )
@@ -93,6 +94,7 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_feapi()
     + carregar_especificacoes_fe001()
     + carregar_especificacoes_be010()
+    + carregar_especificacoes_pd011()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 
