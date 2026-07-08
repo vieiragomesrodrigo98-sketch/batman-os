@@ -32,6 +32,11 @@ from batman_os.capabilities.operator import (
     SandboxPolicy,
     SideEffectScope,
 )
+from batman_os.capabilities.rules.arch003_loader import SpecArch003, carregar_especificacoes_arch003
+from batman_os.capabilities.rules.arch003_pagina_orfa import EntradaArch003, RegraArch003Spec
+from batman_os.capabilities.rules.arch003_pagina_orfa import (
+    construir_implementacao as construir_implementacao_arch003,
+)
 from batman_os.capabilities.rules.ast_kwarg_ausente import (
     EntradaKwargAusente,
     RegraKwargAusenteSpec,
@@ -168,6 +173,7 @@ from batman_os.capabilities.rules.toml_dependencias_loader import (
 )
 from batman_os.cli.descoberta_arquivos import (
     entradas_agregadas_para_regra,
+    entradas_arch003_para_regra,
     entradas_ast_para_regra,
     entradas_ba004_para_regra,
     entradas_ba005_para_regra,
@@ -610,6 +616,23 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_arch003(),
+            {
+                "caminho": "pages/a.py",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-015",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "caminho_agregador": "dashboard/app.py",
+                },
+            },
+        ),
     ]
 
 
@@ -669,6 +692,7 @@ _Especificacao = (
     | SpecBe013
     | SpecBa004
     | SpecBa005
+    | SpecArch003
 )
 
 
@@ -694,6 +718,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_be013())
     especificacoes.extend(carregar_especificacoes_ba004())
     especificacoes.extend(carregar_especificacoes_ba005())
+    especificacoes.extend(carregar_especificacoes_arch003())
     return especificacoes
 
 
@@ -755,6 +780,7 @@ def executar_scan(
                 | EntradaBe013
                 | EntradaBa004
                 | EntradaBa005
+                | EntradaArch003
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -790,6 +816,8 @@ def executar_scan(
                 entradas = entradas_ba004_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraBa005Spec):
                 entradas = entradas_ba005_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraArch003Spec):
+                entradas = entradas_arch003_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

@@ -33,6 +33,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from batman_os.capabilities.rules.arch003_pagina_orfa import EntradaArch003, RegraArch003Spec
 from batman_os.capabilities.rules.ast_kwarg_ausente import (
     EntradaKwargAusente,
     RegraKwargAusenteSpec,
@@ -190,6 +191,17 @@ def entradas_sec005_para_regra(
     ]
 
 
+def entradas_arch003_para_regra(
+    root: Path, regra: RegraArch003Spec, descoberta: dict[str, Any]
+) -> list[EntradaArch003]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke ARCH-003."""
+    return [
+        EntradaArch003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_ba004_para_regra(
     root: Path, regra: RegraBa004Spec, descoberta: dict[str, Any]
 ) -> list[EntradaBa004]:
@@ -319,7 +331,27 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_ora004(root, descoberta)
     if tipo == "regex_agregado":
         return _resultado_regex_agregado(root, descoberta)
+    if tipo == "arch003":
+        return _resultado_arch003(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
+
+
+def _resultado_arch003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 Missão por página candidata (`pages/*.py`), cada uma carregando o
+    MESMO conteúdo do agregador (`dashboard/app.py`) como `conteudo` — o
+    handler bespoke ARCH-003 só verifica se o próprio nome (stem) da
+    página aparece nesse texto compartilhado. Replica `RepoContext.
+    dashboard_app`/`pages_dir` do legado."""
+    caminho_agregador = descoberta.get("caminho_agregador", "dashboard/app.py")
+    scope_dirs = descoberta.get("scope_dirs", ["pages"])
+    conteudo_agregador = _ler_ou_marcar_presente(root, caminho_agregador)
+
+    descoberta_arvore = {
+        "scope_dirs": scope_dirs,
+        "extensoes": descoberta.get("extensoes", [".py"]),
+    }
+    paginas = _arquivos_em_arvore(root, descoberta_arvore)
+    return [(rel, conteudo_agregador) for rel, _ in paginas]
 
 
 def _resultado_de003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

@@ -1,0 +1,18 @@
+{
+  "regra": {
+    "codigo": "ARCH-003",
+    "agente": "software-architect",
+    "severidade": "medium",
+    "categoria": "navigation",
+    "titulo": "Página Streamlit órfã (não registrada na navegação)",
+    "causa": "Arquivo em pages/ não referenciado pelo app principal vira dead code navegável por URL direta, fora do controle de navegação e acesso previsto.",
+    "remediacao": "Registrar a página na navegação do app ou removê-la se for morta. DoD: toda página em pages/ está registrada ou foi removida.",
+    "caminho_agregador": "dashboard/app.py"
+  },
+  "descoberta": {
+    "tipo": "arch003",
+    "caminho_agregador": "dashboard/app.py",
+    "scope_dirs": ["pages"],
+    "extensoes": [".py"]
+  }
+}
