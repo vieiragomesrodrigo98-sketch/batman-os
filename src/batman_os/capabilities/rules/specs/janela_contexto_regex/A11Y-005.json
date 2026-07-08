@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "A11Y-005",
+    "agente": "accessibility-specialist",
+    "severidade": "medium",
+    "categoria": "acessibilidade",
+    "titulo": "outline removido em CSS (foco invisível)",
+    "causa": "outline: none/0 remove o indicador de foco padrão do browser — usuários que navegam por teclado perdem a referência de qual elemento está ativo.",
+    "remediacao": "Se remover o outline padrão, substituir por um estilo de foco customizado visível (ex.: box-shadow, border). DoD: nenhum outline:none sem :focus-visible customizado no mesmo seletor.",
+    "pattern_trigger": "outline:\\s*0|outline:\\s*none|focus.*outline.*none",
+    "pattern_mitigacao": "ring|box-shadow|focus.*border|border.*focus",
+    "janela_antes": 0,
+    "janela_depois": 7,
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src", "frontend/src/styles", "frontend/public"],
+    "extensoes": [".css", ".scss"]
+  }
+}

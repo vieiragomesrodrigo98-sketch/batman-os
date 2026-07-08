@@ -47,6 +47,7 @@ from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
 )
+from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, RegraJanelaSpec
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
@@ -139,6 +140,19 @@ def entradas_dependencias_para_regra(
     TOML real de pyproject.toml"."""
     return [
         EntradaDependencias(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_janela_para_regra(
+    root: Path, regra: RegraJanelaSpec, descoberta: dict[str, Any]
+) -> list[EntradaJanela]:
+    """Mesmo espírito de `entradas_ast_para_regra` — reaproveita a
+    descoberta `"arvore"`/`"glob"`/`"arquivo_fixo"` já existente (1 Missão
+    por arquivo), só o handler ("janela de contexto por ocorrência") é
+    novo."""
+    return [
+        EntradaJanela(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 

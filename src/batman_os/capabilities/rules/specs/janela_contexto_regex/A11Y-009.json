@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "A11Y-009",
+    "agente": "accessibility-specialist",
+    "severidade": "low",
+    "categoria": "acessibilidade",
+    "titulo": "Campo de senha sem autocomplete adequado",
+    "causa": "Sem autocomplete='current-password' ou 'new-password', gerenciadores de senha não conseguem preencher automaticamente, piorando UX e segurança.",
+    "remediacao": "Adicionar autocomplete='current-password' em login e 'new-password' em cadastro. DoD: todo type='password' tem autocomplete definido.",
+    "pattern_trigger": "type\\s*=\\s*['\"]password['\"]|type=\\{['\"]password['\"]\\}",
+    "pattern_mitigacao": "autocomplete",
+    "janela_antes": 1,
+    "janela_depois": 4,
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

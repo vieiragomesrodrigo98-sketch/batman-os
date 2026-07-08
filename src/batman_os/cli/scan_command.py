@@ -81,6 +81,14 @@ from batman_os.capabilities.rules.git_comando_interpretado_loader import (
     SpecDeRegraGitInterpretado,
     carregar_especificacoes_git_interpretado,
 )
+from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, RegraJanelaSpec
+from batman_os.capabilities.rules.janela_contexto_regex import (
+    construir_implementacao as construir_implementacao_janela,
+)
+from batman_os.capabilities.rules.janela_contexto_regex_loader import (
+    SpecDeRegraJanela,
+    carregar_especificacoes_janela,
+)
 from batman_os.capabilities.rules.lote_01 import SpecDeRegra, carregar_lote_01
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02
 from batman_os.capabilities.rules.lote_03 import carregar_lote_03
@@ -127,6 +135,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_dependencias_para_regra,
     entradas_execucao_comando_para_regra,
     entradas_git_interpretado_para_regra,
+    entradas_janela_para_regra,
     entradas_kwarg_ausente_para_regra,
     entradas_ora004_para_regra,
     entradas_ora005_para_regra,
@@ -423,6 +432,25 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_janela(),
+            {
+                "caminho": "a.tsx",
+                "conteudo": "sem trigger aqui\n",
+                "regra": {
+                    "codigo": "CERT-007",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "pattern_trigger": "termo-que-nunca-aparece",
+                    "janela_antes": 0,
+                    "janela_depois": 0,
+                },
+            },
+        ),
     ]
 
 
@@ -474,6 +502,7 @@ _Especificacao = (
     | SpecOra005
     | SpecOra004
     | SpecDeRegraAgregada
+    | SpecDeRegraJanela
 )
 
 
@@ -491,6 +520,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_ora005())
     especificacoes.extend(carregar_especificacoes_ora004())
     especificacoes.extend(carregar_especificacoes_agregadas())
+    especificacoes.extend(carregar_especificacoes_janela())
     return especificacoes
 
 
@@ -544,6 +574,7 @@ def executar_scan(
                 | EntradaOra005
                 | EntradaOra004
                 | EntradaAgregada
+                | EntradaJanela
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -563,6 +594,8 @@ def executar_scan(
                 entradas = entradas_ora004_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraAgregadaSpec):
                 entradas = entradas_agregadas_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraJanelaSpec):
+                entradas = entradas_janela_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

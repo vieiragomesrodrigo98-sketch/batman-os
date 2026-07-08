@@ -34,11 +34,17 @@ from batman_os.capabilities.rules.execucao_comando_interpretada_loader import ( 
 from batman_os.capabilities.rules.git_comando_interpretado_loader import (  # noqa: E402
     carregar_especificacoes_git_interpretado,
 )
+from batman_os.capabilities.rules.janela_contexto_regex_loader import (  # noqa: E402
+    carregar_especificacoes_janela,
+)
 from batman_os.capabilities.rules.lote_01 import carregar_lote_01  # noqa: E402
 from batman_os.capabilities.rules.lote_02 import carregar_lote_02  # noqa: E402
 from batman_os.capabilities.rules.lote_03 import carregar_lote_03  # noqa: E402
 from batman_os.capabilities.rules.ora004_loader import carregar_especificacoes_ora004  # noqa: E402
 from batman_os.capabilities.rules.ora005_loader import carregar_especificacoes_ora005  # noqa: E402
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo_loader import (  # noqa: E402
+    carregar_especificacoes_agregadas,
+)
 from batman_os.capabilities.rules.toml_dependencias_loader import (  # noqa: E402
     carregar_especificacoes_dependencias,
 )
@@ -59,6 +65,8 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_de003()
     + carregar_especificacoes_ora005()
     + carregar_especificacoes_ora004()
+    + carregar_especificacoes_agregadas()
+    + carregar_especificacoes_janela()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 

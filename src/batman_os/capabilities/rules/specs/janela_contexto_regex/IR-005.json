@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "IR-005",
+    "agente": "incident-response",
+    "severidade": "medium",
+    "categoria": "config",
+    "titulo": "API key sem política de rotação documentada em .env.example",
+    "causa": "Chaves sem TTL documentado nunca são rotacionadas — uma chave comprometida permanece válida indefinidamente até ser descoberta.",
+    "remediacao": "Adicionar comentário de rotação: '# rotate every 90 days'. DoD: toda API_KEY/WEBHOOK_SECRET/ACCESS_TOKEN tem comentário de rotação no .env.example.",
+    "pattern_trigger": "^(API_KEY|WEBHOOK_SECRET|ACCESS_TOKEN|SIGNING_SECRET)\\s*=",
+    "pattern_mitigacao": "#.*(rotate|rotation|expires?|expira|renov|TTL|days?)",
+    "janela_antes": 1,
+    "janela_depois": 1,
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "glob",
+    "padroes": [".env.example", ".env.*.example", ".env.production.example"]
+  }
+}

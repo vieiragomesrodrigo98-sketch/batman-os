@@ -1,0 +1,23 @@
+{
+  "regra": {
+    "codigo": "CRO-004",
+    "agente": "cro-specialist",
+    "severidade": "low",
+    "categoria": "formulario",
+    "titulo": "Input de formulário sem type semântico adequado",
+    "causa": "type='text' em campo de email/phone não aciona teclado semântico em mobile nem validação nativa do browser.",
+    "remediacao": "Usar type='email' para email, type='tel' para telefone, type='number' para número. DoD: todo input com name/id contendo email/phone/tel/cpf usa type semântico.",
+    "pattern_gate_arquivo": "\\A(?=[\\s\\S]*(?:email|phone|cel|cpf|telefone|e-mail))(?=[\\s\\S]*type=['\"]text['\"])",
+    "pattern_trigger": "type=['\"]text['\"]",
+    "pattern_mitigacao": "inputMode|inputmode",
+    "pattern_risco": "email|phone|cel|cpf|telefone|e-mail",
+    "janela_antes": 4,
+    "janela_depois": 4,
+    "ignore_case": true
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "EH-009",
+    "agente": "ethical-hacker",
+    "severidade": "medium",
+    "categoria": "auth",
+    "titulo": "JWT gerado sem campo exp no payload (sem expiração)",
+    "causa": "JWT sem exp é válido para sempre: token roubado nunca expira, permitindo acesso indefinido mesmo após logout ou comprometimento.",
+    "remediacao": "Incluir exp no payload JWT. DoD: todo jwt.encode() tem 'exp' no dict do payload.",
+    "pattern_trigger": "jwt\\.encode\\(",
+    "pattern_mitigacao": "'exp'|\"exp\"",
+    "janela_antes": 10,
+    "janela_depois": 4
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages"],
+    "extensoes": [".py"]
+  }
+}
