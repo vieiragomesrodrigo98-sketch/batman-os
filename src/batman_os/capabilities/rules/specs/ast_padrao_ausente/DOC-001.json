@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "DOC-001",
+    "agente": "technical-writer",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "Endpoint sem docstring/descrição",
+    "causa": "Rota sem docstring não gera descrição no OpenAPI/Swagger e não comunica intenção a quem consome a API — o contrato fica opaco.",
+    "remediacao": "Adicionar docstring à função da rota (vira a descrição no OpenAPI). DoD: todo handler de rota tem docstring.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "\\.(get|post|put|patch|delete)",
+    "seletor_so_decorator": true,
+    "exige_docstring": true,
+    "corpo_padrao": "docstring"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

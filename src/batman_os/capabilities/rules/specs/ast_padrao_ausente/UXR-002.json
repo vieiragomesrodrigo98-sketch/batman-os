@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "UXR-002",
+    "agente": "ux-research",
+    "severidade": "low",
+    "categoria": "rastreabilidade",
+    "titulo": "Endpoint sem critério de aceite documentado (docstring ausente)",
+    "causa": "Rotas de API sem documentação de critério de aceite dificultam validação pelo time de UX Research se a funcionalidade resolve de fato a necessidade do usuário, e bloqueiam testes de aceitação.",
+    "remediacao": "Documentar pré-condições, fluxo principal e resultado esperado do ponto de vista do usuário em docstring ou comentário. DoD: toda rota de funcionalidade de usuário tem ao menos uma linha de contexto.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "\\.(get|post|put|patch|delete)",
+    "seletor_so_decorator": true,
+    "exige_docstring": true,
+    "corpo_padrao": "docstring"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}

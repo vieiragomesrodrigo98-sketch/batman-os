@@ -1,0 +1,21 @@
+{
+  "regra": {
+    "codigo": "BA-002",
+    "agente": "business-analyst",
+    "severidade": "low",
+    "categoria": "documentacao",
+    "titulo": "Endpoint de negócio sem docstring de comportamento esperado",
+    "causa": "Rotas sem docstring não documentam pré-condições, pós-condições nem regras de negócio embutidas, dificultando QA, handoff e auditoria.",
+    "remediacao": "Adicionar docstring a cada função de rota descrevendo: o que faz, parâmetros críticos, regras de aceite e comportamentos de borda. DoD: toda função de rota tem docstring com pelo menos uma linha.",
+    "seletor_tipo": "functiondef",
+    "seletor_include": "\\.(get|post|put|patch|delete)",
+    "seletor_so_decorator": true,
+    "exige_docstring": true,
+    "corpo_padrao": "docstring"
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

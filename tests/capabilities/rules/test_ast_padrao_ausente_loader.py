@@ -21,6 +21,9 @@ _CODIGOS_ESPERADOS = {
     "RISK-002",
     "QA-010",
     "RISK-001",
+    "BA-002",
+    "DOC-001",
+    "UXR-002",
 }
 
 

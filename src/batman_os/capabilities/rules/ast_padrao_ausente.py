@@ -40,6 +40,15 @@ Modos de seletor:
   (replica EH-004, que olha as próximas linhas do handler, não o
   `get_source_segment` do Call em si — um Call não tem "corpo" próprio).
 
+`exige_docstring` (functiondef, achado da continuação da migração —
+BA-002/DOC-001/UXR-002: mesma checagem estrutural exata, 3 códigos
+distintos): modo estrutural puro, ignora `corpo_padrao` — dispara quando
+`ast.get_docstring(node)` é vazio para a função selecionada (tipicamente
+por decorator de rota HTTP via `seletor_include`+`seletor_so_decorator`).
+Docstring é conteúdo ARBITRÁRIO — regex sobre `corpo_padrao` não consegue
+expressar "é uma string literal de verdade" (mesmo motivo de
+`campo_estrutural` existir para classdef).
+
 Nos 3 modos de seletor acima, o corpo/contexto é comparado contra
 `corpo_padrao` (regex) — por padrão, dispara achado se o corpo NÃO casar
 esse padrão (ausência de proteção esperada). Campo opcional `corpo_escopo`
@@ -104,6 +113,7 @@ class RegraAstSpec(BaseModel):
     seletor_so_decorator: bool = False
     seletor_nome_funcao: str | None = None
     seletor_bases_exclude: str | None = None
+    exige_docstring: bool = False
     corpo_padrao: str
     corpo_escopo: str | None = None
     inverte_disparo: bool = False
@@ -273,6 +283,14 @@ def _avaliar_functiondef(tree: ast.AST, texto: str, regra: RegraAstSpec) -> bool
         if not selecionado:
             continue
         if exclude_rx and any(exclude_rx.search(d) for d in decoradores):
+            continue
+        if regra.exige_docstring:
+            # Modo estrutural puro (mesmo espirito de campo_estrutural para
+            # classdef): docstring e conteudo ARBITRARIO, regex sobre
+            # corpo/get_source_segment nao consegue expressar "e uma string
+            # literal de verdade" — usa ast.get_docstring diretamente.
+            if not ast.get_docstring(node):
+                return True
             continue
         if _dispara_por_corpo(corpo, regra):
             return True

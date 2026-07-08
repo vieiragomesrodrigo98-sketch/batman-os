@@ -424,6 +424,57 @@ class TestSeletorNomeFuncao:
         assert saida["achados"] == []
 
 
+class TestExigeDocstring:
+    """Achado da continuação da migração (BA-002/DOC-001/UXR-002 — mesma
+    checagem estrutural exata, 3 códigos distintos): docstring é conteúdo
+    ARBITRÁRIO, regex sobre `corpo_padrao` não expressa "é uma string
+    literal de verdade" — usa `ast.get_docstring` diretamente."""
+
+    def test_dispara_quando_rota_nao_tem_docstring(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "@router.get('/x')\ndef listar():\n    return []\n",
+            "regra": _regra(
+                seletor_tipo="functiondef",
+                seletor_include=r"router\.(get|post|put|patch|delete)",
+                seletor_so_decorator=True,
+                exige_docstring=True,
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_nao_dispara_quando_rota_tem_docstring(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": (
+                "@router.get('/x')\ndef listar():\n    '''Lista os itens.'''\n    return []\n"
+            ),
+            "regra": _regra(
+                seletor_tipo="functiondef",
+                seletor_include=r"router\.(get|post|put|patch|delete)",
+                seletor_so_decorator=True,
+                exige_docstring=True,
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_nao_dispara_para_funcao_que_nao_e_rota(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "def helper():\n    return 1\n",
+            "regra": _regra(
+                seletor_tipo="functiondef",
+                seletor_include=r"router\.(get|post|put|patch|delete)",
+                seletor_so_decorator=True,
+                exige_docstring=True,
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+
 class TestSeletorCall:
     def test_dispara_quando_primeiro_arg_bate_e_janela_sem_padrao(self) -> None:
         entrada = {
