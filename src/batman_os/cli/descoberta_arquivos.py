@@ -62,6 +62,11 @@ from batman_os.capabilities.rules.execucao_comando_interpretada import (
     RegraExecucaoComandoSpec,
 )
 from batman_os.capabilities.rules.fe001_export_duplicado import EntradaFe001, RegraFe001Spec
+from batman_os.capabilities.rules.fe002_tofixed_sem_null_safety import (
+    EntradaFe002,
+    RegraFe002Spec,
+)
+from batman_os.capabilities.rules.fe007_nav_lock import EntradaFe007, RegraFe007Spec
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
 from batman_os.capabilities.rules.fin005_backtest_sem_oos import EntradaFin005, RegraFin005Spec
 from batman_os.capabilities.rules.git_comando_interpretado import (
@@ -173,6 +178,28 @@ def entradas_cs003_para_regra(
     bespoke CS-003 — reaproveita a descoberta genérica `"arvore"`."""
     return [
         EntradaCs003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_fe007_para_regra(
+    root: Path, regra: RegraFe007Spec, descoberta: dict[str, Any]
+) -> list[EntradaFe007]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke FE-007 — reaproveita a descoberta genérica `"arquivo_fixo"`."""
+    return [
+        EntradaFe007(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_fe002_para_regra(
+    root: Path, regra: RegraFe002Spec, descoberta: dict[str, Any]
+) -> list[EntradaFe002]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke FE-002 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaFe002(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -1021,6 +1048,37 @@ def _resultado_de003(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, 
         "git_log": log,
     }
     return [(caminho_relatorio, json.dumps(payload))]
+
+
+def _resultado_rev005(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """Empacota até `_MAX_FILES` (20) arquivos candidatos — de `api/` depois
+    `src/radar/`, nessa ordem, cada diretório varrido em ordem alfabética
+    (`rglob` ordenado, replicando `ctx.py_files()`), excluindo caminhos com
+    "test"/"migration"/"alembic" e arquivos com menos de 50 linhas — como
+    JSON para a Capability bespoke REV-005, que roda o algoritmo de
+    detecção de bloco duplicado inteiro numa única invocação."""
+    caminho_relatorio = descoberta.get("caminho_relatorio", ".")
+    max_files = descoberta.get("max_files", 20)
+
+    arquivos: dict[str, str] = {}
+    for escopo in descoberta.get("scope_dirs", []):
+        base = root / escopo
+        if not base.exists():
+            continue
+        for caminho in sorted(base.rglob("*.py")):
+            rel = str(caminho.relative_to(root))
+            if "test" in rel or "migration" in rel or "alembic" in rel:
+                continue
+            conteudo = _ler_texto(caminho)
+            if len(conteudo.splitlines()) < 50:
+                continue
+            arquivos[rel] = conteudo
+            if len(arquivos) >= max_files:
+                break
+        if len(arquivos) >= max_files:
+            break
+
+    return [(caminho_relatorio, json.dumps({"arquivos": arquivos}))]
 
 
 def _resultado_ora004(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

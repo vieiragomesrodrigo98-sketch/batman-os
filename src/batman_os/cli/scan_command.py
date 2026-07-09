@@ -144,6 +144,19 @@ from batman_os.capabilities.rules.fe001_export_duplicado import (
     construir_implementacao as construir_implementacao_fe001,
 )
 from batman_os.capabilities.rules.fe001_loader import SpecFe001, carregar_especificacoes_fe001
+from batman_os.capabilities.rules.fe002_loader import SpecFe002, carregar_especificacoes_fe002
+from batman_os.capabilities.rules.fe002_tofixed_sem_null_safety import (
+    EntradaFe002,
+    RegraFe002Spec,
+)
+from batman_os.capabilities.rules.fe002_tofixed_sem_null_safety import (
+    construir_implementacao as construir_implementacao_fe002,
+)
+from batman_os.capabilities.rules.fe007_loader import SpecFe007, carregar_especificacoes_fe007
+from batman_os.capabilities.rules.fe007_nav_lock import EntradaFe007, RegraFe007Spec
+from batman_os.capabilities.rules.fe007_nav_lock import (
+    construir_implementacao as construir_implementacao_fe007,
+)
 from batman_os.capabilities.rules.feapi_loader import SpecFeApi, carregar_especificacoes_feapi
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import (
@@ -360,6 +373,8 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_doc004_para_regra,
     entradas_execucao_comando_para_regra,
     entradas_fe001_para_regra,
+    entradas_fe002_para_regra,
+    entradas_fe007_para_regra,
     entradas_feapi_para_regra,
     entradas_fin005_para_regra,
     entradas_git_interpretado_para_regra,
@@ -1241,6 +1256,38 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_fe002(),
+            {
+                "caminho": "frontend/src/Nada.tsx",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-041",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
+        (
+            construir_implementacao_fe007(),
+            {
+                "caminho": "frontend/src/components/Nada.tsx",
+                "conteudo": "x = 1\n",
+                "regra": {
+                    "codigo": "CERT-042",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1326,6 +1373,8 @@ _Especificacao = (
     | SpecPerf004
     | SpecA11y002
     | SpecUi002
+    | SpecFe002
+    | SpecFe007
 )
 
 
@@ -1377,6 +1426,8 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_perf004())
     especificacoes.extend(carregar_especificacoes_a11y002())
     especificacoes.extend(carregar_especificacoes_ui002())
+    especificacoes.extend(carregar_especificacoes_fe002())
+    especificacoes.extend(carregar_especificacoes_fe007())
     return especificacoes
 
 
@@ -1464,6 +1515,8 @@ def executar_scan(
                 | EntradaPerf004
                 | EntradaA11y002
                 | EntradaUi002
+                | EntradaFe002
+                | EntradaFe007
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1551,6 +1604,10 @@ def executar_scan(
                 entradas = entradas_a11y002_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraUi002Spec):
                 entradas = entradas_ui002_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraFe002Spec):
+                entradas = entradas_fe002_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraFe007Spec):
+                entradas = entradas_fe007_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

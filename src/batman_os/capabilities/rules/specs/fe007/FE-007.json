@@ -1,0 +1,15 @@
+{
+  "regra": {
+    "codigo": "FE-007",
+    "agente": "frontend-engineer",
+    "severidade": "high",
+    "categoria": "regressao",
+    "titulo": "Item canônico de NAV removido — apenas upgrades são permitidos",
+    "causa": "O mapa de navegação é contrato com o usuário. Remover uma rota sem aprovação explícita do desenvolvedor é downgrade. Adições e renomeações de label são permitidas.",
+    "remediacao": "Restaurar o item removido ou obter aprovação explícita e atualizar o snapshot canônico nesta regra. DoD: todos os itens do snapshot canônico presentes em Layout.tsx."
+  },
+  "descoberta": {
+    "tipo": "arquivo_fixo",
+    "caminho": "frontend/src/components/Layout.tsx"
+  }
+}

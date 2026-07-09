@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "FE-002",
+    "agente": "frontend-engineer",
+    "severidade": "medium",
+    "categoria": "robustez",
+    "titulo": "Uso de .toFixed() sem optional chaining — risco de TypeError em valor nulo",
+    "causa": "Chamar .toFixed() em valor que pode ser null ou undefined lança TypeError em runtime e exibe tela branca. Campos vindos de API ou cálculos de position sizing podem ser undefined antes do dado carregar. Detectado em D-03, D-04 e A-05 do plano de QA.",
+    "remediacao": "Usar optional chaining: value?.toFixed(2), ou garantir fallback: (value ?? 0).toFixed(2). DoD: nenhum .toFixed() sem null-safety em componentes de produto."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".tsx"]
+  }
+}
