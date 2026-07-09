@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "PERF-004",
+    "agente": "performance-engineer",
+    "severidade": "medium",
+    "categoria": "memoria",
+    "titulo": "Arquivo carregado completamente em memória sem streaming",
+    "causa": "pd.read_csv(upload) e file.read() em handlers de upload carregam todo o arquivo na memória do worker — uploads grandes causam OOM.",
+    "remediacao": "Usar chunking: pd.read_csv(f, chunksize=N) ou processar linha a linha. DoD: sem file.read() em handlers de upload de arquivo."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

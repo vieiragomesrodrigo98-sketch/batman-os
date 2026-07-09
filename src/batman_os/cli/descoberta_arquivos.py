@@ -79,6 +79,10 @@ from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
 )
+from batman_os.capabilities.rules.perf004_arquivo_sem_streaming import (
+    EntradaPerf004,
+    RegraPerf004Spec,
+)
 from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
     EntradaQaAuto001,
     RegraQaAuto001Spec,
@@ -396,6 +400,17 @@ def entradas_pd010_para_regra(
     bespoke PD-010."""
     return [
         EntradaPd010(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_perf004_para_regra(
+    root: Path, regra: RegraPerf004Spec, descoberta: dict[str, Any]
+) -> list[EntradaPerf004]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke PERF-004 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaPerf004(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
