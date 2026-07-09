@@ -71,6 +71,7 @@ from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, Regra
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
 from batman_os.capabilities.rules.pd001_empty_state_sem_cta import EntradaPd001, RegraPd001Spec
 from batman_os.capabilities.rules.pd009_rota_nao_descobrivel import EntradaPd009, RegraPd009Spec
+from batman_os.capabilities.rules.pd010_simulador_sem_piso import EntradaPd010, RegraPd010Spec
 from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
@@ -340,6 +341,17 @@ def entradas_pd009_para_regra(
     ]
 
 
+def entradas_pd010_para_regra(
+    root: Path, regra: RegraPd010Spec, descoberta: dict[str, Any]
+) -> list[EntradaPd010]:
+    """Mesmo espírito de `entradas_ast_para_regra`, para a Capability
+    bespoke PD-010."""
+    return [
+        EntradaPd010(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_pd011_para_regra(
     root: Path, regra: RegraPd011Spec, descoberta: dict[str, Any]
 ) -> list[EntradaPd011]:
@@ -575,6 +587,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_doc004(root, descoberta)
     if tipo == "pd009":
         return _resultado_pd009(root, descoberta)
+    if tipo == "pd010":
+        return _resultado_pd010(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -640,6 +654,30 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_pd010(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """Combina 1 Missão para o arquivo backend fixo (`api/routers/
+    sim.py`, se existir) + 1 Missão por arquivo frontend cujo stem
+    contém "sim" (case-insensitive) ou "SimuladorFree" (case-sensitive,
+    replica o `and` do legado: `"SimuladorFree" not in p.stem and "sim"
+    not in p.stem.lower()`)."""
+    sim_router_path = descoberta.get("sim_router_path", "api/routers/sim.py")
+    frontend_dirs: list[str] = descoberta.get("frontend_dirs", ["frontend/src"])
+
+    resultado: list[tuple[str, str | None]] = []
+    texto_backend = _ler_ou_marcar_presente(root, sim_router_path)
+    if texto_backend is not None:
+        resultado.append((sim_router_path, texto_backend))
+
+    frontend_arvore = {"scope_dirs": frontend_dirs, "extensoes": [".ts", ".tsx"]}
+    for rel, conteudo in _arquivos_em_arvore(root, frontend_arvore):
+        stem = rel.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        if "SimuladorFree" not in stem and "sim" not in stem.lower():
+            continue
+        resultado.append((rel, conteudo))
+
+    return resultado
 
 
 def _resultado_pd009(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

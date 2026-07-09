@@ -192,6 +192,11 @@ from batman_os.capabilities.rules.pd009_rota_nao_descobrivel import EntradaPd009
 from batman_os.capabilities.rules.pd009_rota_nao_descobrivel import (
     construir_implementacao as construir_implementacao_pd009,
 )
+from batman_os.capabilities.rules.pd010_loader import SpecPd010, carregar_especificacoes_pd010
+from batman_os.capabilities.rules.pd010_simulador_sem_piso import EntradaPd010, RegraPd010Spec
+from batman_os.capabilities.rules.pd010_simulador_sem_piso import (
+    construir_implementacao as construir_implementacao_pd010,
+)
 from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
@@ -319,6 +324,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_para_regra,
     entradas_pd001_para_regra,
     entradas_pd009_para_regra,
+    entradas_pd010_para_regra,
     entradas_pd011_para_regra,
     entradas_qaauto001_para_regra,
     entradas_qaauto003_para_regra,
@@ -1055,6 +1061,23 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_pd010(),
+            {
+                "caminho": "api/routers/sim.py",
+                "conteudo": "MIN_TRADE_CAPITAL = 10\n",
+                "regra": {
+                    "codigo": "CERT-033",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                    "sim_router_path": "api/routers/sim.py",
+                },
+            },
+        ),
     ]
 
 
@@ -1132,6 +1155,7 @@ _Especificacao = (
     | SpecFin005
     | SpecSec008
     | SpecPd009
+    | SpecPd010
 )
 
 
@@ -1175,6 +1199,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_fin005())
     especificacoes.extend(carregar_especificacoes_sec008())
     especificacoes.extend(carregar_especificacoes_pd009())
+    especificacoes.extend(carregar_especificacoes_pd010())
     return especificacoes
 
 
@@ -1254,6 +1279,7 @@ def executar_scan(
                 | EntradaFin005
                 | EntradaSec008
                 | EntradaPd009
+                | EntradaPd010
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1325,6 +1351,8 @@ def executar_scan(
                 entradas = entradas_sec008_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraPd009Spec):
                 entradas = entradas_pd009_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraPd010Spec):
+                entradas = entradas_pd010_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

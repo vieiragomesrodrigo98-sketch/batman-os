@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "PD-010",
+    "agente": "product-designer",
+    "severidade": "medium",
+    "categoria": "regra-de-negocio",
+    "titulo": "Simulador de carteira sem bloqueio de saldo mínimo",
+    "causa": "Sem piso de saldo mínimo (ex: R$10), o simulador permite abrir posições infinitamente pequenas — o usuário vai a R$0,01 de saldo mas continua operando. A UI não comunica que 'acabou o dinheiro'. Desonesto com o usuário e inconsistente com a experiência de trading real.",
+    "remediacao": "Definir MIN_TRADE_CAPITAL no backend (sim.py) e refletir na UI: exibir mensagem 'Saldo insuficiente — mínimo R$10' e desabilitar o botão. DoD: sim.py tem piso e frontend desabilita CTA quando saldo < mínimo.",
+    "sim_router_path": "api/routers/sim.py"
+  },
+  "descoberta": {
+    "tipo": "pd010",
+    "sim_router_path": "api/routers/sim.py",
+    "frontend_dirs": ["frontend/src"]
+  }
+}
