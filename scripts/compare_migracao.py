@@ -98,6 +98,7 @@ from batman_os.capabilities.rules.sweep001_loader import (  # noqa: E402
 from batman_os.capabilities.rules.toml_dependencias_loader import (  # noqa: E402
     carregar_especificacoes_dependencias,
 )
+from batman_os.capabilities.rules.ui002_loader import carregar_especificacoes_ui002  # noqa: E402
 from batman_os.cli.scan_command import executar_scan  # noqa: E402
 
 # Toda vez que um novo lote/Skill for migrado (Milestone 2+), adicionar seu
@@ -149,6 +150,7 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_cto004()
     + carregar_especificacoes_perf004()
     + carregar_especificacoes_a11y002()
+    + carregar_especificacoes_ui002()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 

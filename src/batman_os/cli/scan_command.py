@@ -336,6 +336,11 @@ from batman_os.capabilities.rules.toml_dependencias_loader import (
     SpecDeRegraDependencias,
     carregar_especificacoes_dependencias,
 )
+from batman_os.capabilities.rules.ui002_inline_style_estatico import EntradaUi002, RegraUi002Spec
+from batman_os.capabilities.rules.ui002_inline_style_estatico import (
+    construir_implementacao as construir_implementacao_ui002,
+)
+from batman_os.capabilities.rules.ui002_loader import SpecUi002, carregar_especificacoes_ui002
 from batman_os.cli.descoberta_arquivos import (
     entradas_a11y002_para_regra,
     entradas_a11y003_para_regra,
@@ -380,6 +385,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_sre006_para_regra,
     entradas_sup001_para_regra,
     entradas_sweep001_para_regra,
+    entradas_ui002_para_regra,
 )
 from batman_os.foundation.types import (
     CapabilityId,
@@ -1219,6 +1225,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_ui002(),
+            {
+                "caminho": "frontend/src/Nada.tsx",
+                "conteudo": "<div>nada aqui</div>\n",
+                "regra": {
+                    "codigo": "CERT-040",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1303,6 +1325,7 @@ _Especificacao = (
     | SpecCto004
     | SpecPerf004
     | SpecA11y002
+    | SpecUi002
 )
 
 
@@ -1353,6 +1376,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_cto004())
     especificacoes.extend(carregar_especificacoes_perf004())
     especificacoes.extend(carregar_especificacoes_a11y002())
+    especificacoes.extend(carregar_especificacoes_ui002())
     return especificacoes
 
 
@@ -1439,6 +1463,7 @@ def executar_scan(
                 | EntradaCto004
                 | EntradaPerf004
                 | EntradaA11y002
+                | EntradaUi002
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1524,6 +1549,8 @@ def executar_scan(
                 entradas = entradas_perf004_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraA11y002Spec):
                 entradas = entradas_a11y002_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraUi002Spec):
+                entradas = entradas_ui002_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

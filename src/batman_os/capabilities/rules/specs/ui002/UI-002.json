@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "UI-002",
+    "agente": "ui-designer",
+    "severidade": "low",
+    "categoria": "design-system",
+    "titulo": "style={{}} inline estático em componente React",
+    "causa": "Estilos inline com valores literais (strings/números fixos) ignoram o design system, não respondem a temas (dark mode) e dificultam manutenção. Estilos com valores calculados em runtime (funções, variáveis) são exceção válida.",
+    "remediacao": "Mover para classes CSS, Tailwind, styled-components ou tokens do tema. DoD: nenhum style={{}} com valores estáticos nos componentes."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

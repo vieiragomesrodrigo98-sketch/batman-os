@@ -123,6 +123,7 @@ from batman_os.capabilities.rules.toml_dependencias import (
     EntradaDependencias,
     RegraDependenciasSpec,
 )
+from batman_os.capabilities.rules.ui002_inline_style_estatico import EntradaUi002, RegraUi002Spec
 
 _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
 
@@ -172,6 +173,17 @@ def entradas_cs003_para_regra(
     bespoke CS-003 — reaproveita a descoberta genérica `"arvore"`."""
     return [
         EntradaCs003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_ui002_para_regra(
+    root: Path, regra: RegraUi002Spec, descoberta: dict[str, Any]
+) -> list[EntradaUi002]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke UI-002 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaUi002(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
