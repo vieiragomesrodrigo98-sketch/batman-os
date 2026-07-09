@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "CTO-002",
+    "agente": "cto",
+    "severidade": "medium",
+    "categoria": "api-design",
+    "titulo": "Rota de API sem prefixo de versão (/v1/, /v2/)",
+    "causa": "Rotas sem versionamento tornam impossível evoluir a API sem quebrar clientes existentes, forçando breaking changes e coordination overhead em todo o ecossistema que consome a plataforma.",
+    "remediacao": "Adicionar prefixo /v1/ a todos os routers (ex.: APIRouter(prefix='/v1/...')). DoD: toda rota exposta começa com /v{n}/."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api"],
+    "extensoes": [".py"]
+  }
+}

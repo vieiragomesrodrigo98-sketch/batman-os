@@ -49,6 +49,7 @@ from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
 from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
 from batman_os.capabilities.rules.cs003_except_pass import EntradaCs003, RegraCs003Spec
 from batman_os.capabilities.rules.cs005_erro_sem_request_id import EntradaCs005, RegraCs005Spec
+from batman_os.capabilities.rules.cto002_rota_sem_versao import EntradaCto002, RegraCto002Spec
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
 from batman_os.capabilities.rules.doc004_changelog_sem_versao import EntradaDoc004, RegraDoc004Spec
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
@@ -120,6 +121,17 @@ _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
 class TipoDescobertaDesconhecido(Exception):
     """Levantada quando `descoberta["tipo"]` (ou o `tipo` de uma condição
     adicional) não é um dos reconhecidos por este módulo."""
+
+
+def entradas_cto002_para_regra(
+    root: Path, regra: RegraCto002Spec, descoberta: dict[str, Any]
+) -> list[EntradaCto002]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke CTO-002 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaCto002(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
 
 
 def entradas_cs005_para_regra(
