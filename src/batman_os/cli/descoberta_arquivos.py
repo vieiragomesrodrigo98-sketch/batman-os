@@ -48,6 +48,7 @@ from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
 )
 from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
 from batman_os.capabilities.rules.cs003_except_pass import EntradaCs003, RegraCs003Spec
+from batman_os.capabilities.rules.cs005_erro_sem_request_id import EntradaCs005, RegraCs005Spec
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
 from batman_os.capabilities.rules.doc004_changelog_sem_versao import EntradaDoc004, RegraDoc004Spec
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
@@ -119,6 +120,17 @@ _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
 class TipoDescobertaDesconhecido(Exception):
     """Levantada quando `descoberta["tipo"]` (ou o `tipo` de uma condição
     adicional) não é um dos reconhecidos por este módulo."""
+
+
+def entradas_cs005_para_regra(
+    root: Path, regra: RegraCs005Spec, descoberta: dict[str, Any]
+) -> list[EntradaCs005]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke CS-005."""
+    return [
+        EntradaCs005(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
 
 
 def entradas_cs003_para_regra(
@@ -603,6 +615,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_pd010(root, descoberta)
     if tipo == "sre006":
         return _resultado_sre006(root, descoberta)
+    if tipo == "cs005":
+        return _resultado_cs005(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -668,6 +682,38 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_cs005(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 Missão por arquivo candidato (`api_dir/**/*.py`), cada uma
+    carregando o PRÓPRIO conteúdo + o texto agregado do "gate global"
+    (`api/middleware/*.py` + `main.py`/`app.py` na raiz e em `api_dir`,
+    lido uma única vez) como JSON — replica o `return` antecipado do
+    legado quando qualquer candidato do gate já resolve correlation/
+    request/trace id globalmente."""
+    api_dir = descoberta.get("api_dir", "api")
+    middleware_dir_rel = descoberta.get("middleware_dir", "api/middleware")
+
+    textos_gate: list[str] = []
+    middleware_dir = root / middleware_dir_rel
+    if middleware_dir.exists():
+        for mf in sorted(middleware_dir.glob("*.py")):
+            textos_gate.append(_ler_texto(mf))
+    for nome in ("main.py", "app.py"):
+        for base_rel in ("", api_dir):
+            caminho_rel = f"{base_rel}/{nome}" if base_rel else nome
+            texto = _ler_ou_marcar_presente(root, caminho_rel)
+            if texto is not None:
+                textos_gate.append(texto)
+
+    middleware_global_texto = " ".join(textos_gate)
+
+    api_arvore = {"scope_dirs": [api_dir], "extensoes": [".py"]}
+    resultado: list[tuple[str, str | None]] = []
+    for rel, conteudo in _arquivos_em_arvore(root, api_arvore):
+        payload = {"api_src": conteudo or "", "middleware_global_texto": middleware_global_texto}
+        resultado.append((rel, json.dumps(payload)))
+    return resultado
 
 
 def _resultado_sre006(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:

@@ -95,6 +95,11 @@ from batman_os.capabilities.rules.cs003_except_pass import (
     construir_implementacao as construir_implementacao_cs003,
 )
 from batman_os.capabilities.rules.cs003_loader import SpecCs003, carregar_especificacoes_cs003
+from batman_os.capabilities.rules.cs005_erro_sem_request_id import EntradaCs005, RegraCs005Spec
+from batman_os.capabilities.rules.cs005_erro_sem_request_id import (
+    construir_implementacao as construir_implementacao_cs005,
+)
+from batman_os.capabilities.rules.cs005_loader import SpecCs005, carregar_especificacoes_cs005
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
 from batman_os.capabilities.rules.de003_coluna_sem_migration import (
     construir_implementacao as construir_implementacao_de003,
@@ -312,6 +317,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_be010_para_regra,
     entradas_be013_para_regra,
     entradas_cs003_para_regra,
+    entradas_cs005_para_regra,
     entradas_de003_para_regra,
     entradas_dependencias_para_regra,
     entradas_doc004_para_regra,
@@ -1100,6 +1106,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_cs005(),
+            {
+                "caminho": "api/routers/nada.py",
+                "conteudo": json.dumps({"api_src": "x = 1\n", "middleware_global_texto": ""}),
+                "regra": {
+                    "codigo": "CERT-035",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1179,6 +1201,7 @@ _Especificacao = (
     | SpecPd009
     | SpecPd010
     | SpecSre006
+    | SpecCs005
 )
 
 
@@ -1224,6 +1247,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_pd009())
     especificacoes.extend(carregar_especificacoes_pd010())
     especificacoes.extend(carregar_especificacoes_sre006())
+    especificacoes.extend(carregar_especificacoes_cs005())
     return especificacoes
 
 
@@ -1305,6 +1329,7 @@ def executar_scan(
                 | EntradaPd009
                 | EntradaPd010
                 | EntradaSre006
+                | EntradaCs005
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1380,6 +1405,8 @@ def executar_scan(
                 entradas = entradas_pd010_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraSre006Spec):
                 entradas = entradas_sre006_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraCs005Spec):
+                entradas = entradas_cs005_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

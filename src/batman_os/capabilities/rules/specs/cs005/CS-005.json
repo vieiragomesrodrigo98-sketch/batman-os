@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "CS-005",
+    "agente": "customer-success",
+    "severidade": "medium",
+    "categoria": "rastreabilidade",
+    "titulo": "Resposta de erro sem request_id ou correlation_id",
+    "causa": "Sem request_id no erro, suporte não consegue correlacionar reclamação do usuário com log do servidor.",
+    "remediacao": "Incluir request_id em todas as respostas de erro. DoD: todo handler de exceção retorna request_id ou correlation_id."
+  },
+  "descoberta": {
+    "tipo": "cs005",
+    "api_dir": "api",
+    "middleware_dir": "api/middleware"
+  }
+}
