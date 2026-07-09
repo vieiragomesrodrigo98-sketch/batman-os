@@ -32,6 +32,14 @@ from batman_os.capabilities.operator import (
     SandboxPolicy,
     SideEffectScope,
 )
+from batman_os.capabilities.rules.a11y002_loader import SpecA11y002, carregar_especificacoes_a11y002
+from batman_os.capabilities.rules.a11y002_onclick_sem_teclado import (
+    EntradaA11y002,
+    RegraA11y002Spec,
+)
+from batman_os.capabilities.rules.a11y002_onclick_sem_teclado import (
+    construir_implementacao as construir_implementacao_a11y002,
+)
 from batman_os.capabilities.rules.a11y003_input_sem_label import EntradaA11y003, RegraA11y003Spec
 from batman_os.capabilities.rules.a11y003_input_sem_label import (
     construir_implementacao as construir_implementacao_a11y003,
@@ -329,6 +337,7 @@ from batman_os.capabilities.rules.toml_dependencias_loader import (
     carregar_especificacoes_dependencias,
 )
 from batman_os.cli.descoberta_arquivos import (
+    entradas_a11y002_para_regra,
     entradas_a11y003_para_regra,
     entradas_agregadas_para_regra,
     entradas_arch003_para_regra,
@@ -1194,6 +1203,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_a11y002(),
+            {
+                "caminho": "frontend/src/Nada.tsx",
+                "conteudo": "<div>nada aqui</div>\n",
+                "regra": {
+                    "codigo": "CERT-039",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1277,6 +1302,7 @@ _Especificacao = (
     | SpecCto002
     | SpecCto004
     | SpecPerf004
+    | SpecA11y002
 )
 
 
@@ -1326,6 +1352,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_cto002())
     especificacoes.extend(carregar_especificacoes_cto004())
     especificacoes.extend(carregar_especificacoes_perf004())
+    especificacoes.extend(carregar_especificacoes_a11y002())
     return especificacoes
 
 
@@ -1411,6 +1438,7 @@ def executar_scan(
                 | EntradaCto002
                 | EntradaCto004
                 | EntradaPerf004
+                | EntradaA11y002
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1494,6 +1522,8 @@ def executar_scan(
                 entradas = entradas_cto004_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraPerf004Spec):
                 entradas = entradas_perf004_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraA11y002Spec):
+                entradas = entradas_a11y002_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

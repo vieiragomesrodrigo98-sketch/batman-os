@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "A11Y-002",
+    "agente": "ux-designer",
+    "severidade": "low",
+    "categoria": "acessibilidade",
+    "titulo": "onClick em elemento não-interativo (div/span) sem suporte a teclado",
+    "causa": "div/span com onClick mas sem role e sem handler de teclado não é alcançável por quem navega via teclado/leitor de tela — a ação fica invisível pra eles.",
+    "remediacao": "Usar <button>, ou adicionar role e onKeyDown ao elemento. DoD: todo clique em div/span tem equivalente de teclado."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"]
+  }
+}

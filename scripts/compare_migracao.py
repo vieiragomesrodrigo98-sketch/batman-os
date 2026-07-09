@@ -21,6 +21,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from batman_os.capabilities.rules.a11y002_loader import (  # noqa: E402
+    carregar_especificacoes_a11y002,
+)
 from batman_os.capabilities.rules.a11y003_loader import (  # noqa: E402
     carregar_especificacoes_a11y003,
 )
@@ -145,6 +148,7 @@ _TODOS_OS_ITENS = (
     + carregar_especificacoes_cto002()
     + carregar_especificacoes_cto004()
     + carregar_especificacoes_perf004()
+    + carregar_especificacoes_a11y002()
 )
 _CODIGOS_MIGRADOS = sorted(item["regra"].codigo for item in _TODOS_OS_ITENS)
 

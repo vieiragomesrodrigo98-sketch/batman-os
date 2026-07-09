@@ -33,6 +33,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from batman_os.capabilities.rules.a11y002_onclick_sem_teclado import (
+    EntradaA11y002,
+    RegraA11y002Spec,
+)
 from batman_os.capabilities.rules.a11y003_input_sem_label import EntradaA11y003, RegraA11y003Spec
 from batman_os.capabilities.rules.arch003_pagina_orfa import EntradaArch003, RegraArch003Spec
 from batman_os.capabilities.rules.ast_kwarg_ausente import (
@@ -168,6 +172,17 @@ def entradas_cs003_para_regra(
     bespoke CS-003 — reaproveita a descoberta genérica `"arvore"`."""
     return [
         EntradaCs003(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_a11y002_para_regra(
+    root: Path, regra: RegraA11y002Spec, descoberta: dict[str, Any]
+) -> list[EntradaA11y002]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke A11Y-002 — reaproveita a descoberta genérica `"arvore"`."""
+    return [
+        EntradaA11y002(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
