@@ -1235,6 +1235,27 @@ def _rodar_subprocess_cacheado(
     return valor
 
 
+def _relativizar_filenames_ruff(root: Path, stdout: str) -> str:
+    """Ruff (`--output-format json`) reporta `filename` como caminho
+    ABSOLUTO — o legado (`_rel()` em `oracle.py`) relativiza contra `root`
+    (com fallback para o caminho bruto normalizado se `relative_to`
+    falhar) antes de usar no fingerprint. Sem isso, o "rel" usado pelo
+    handler (`execucao_comando_interpretada.py`) diverge do legado
+    (caminho absoluto vs relativo) — achado real: ORA-002 divergia por
+    esse motivo. Aplicado na descoberta para manter o handler puro."""
+    try:
+        itens = json.loads(stdout or "[]")
+    except json.JSONDecodeError:
+        return stdout
+    for item in itens:
+        bruto = item.get("filename", "")
+        try:
+            item["filename"] = str(Path(bruto).relative_to(root)).replace("\\", "/")
+        except ValueError:
+            item["filename"] = bruto.replace("\\", "/")
+    return json.dumps(itens)
+
+
 def _resultado_de_subprocess(
     root: Path, descoberta: dict[str, Any]
 ) -> list[tuple[str, str | None]]:
@@ -1275,6 +1296,8 @@ def _resultado_de_subprocess(
     python = _python_do_venv(root)
     comando = (python, "-m", descoberta["modulo"], *args)
     rc, stdout, stderr = _rodar_subprocess_cacheado(comando, root, descoberta.get("timeout", 60))
+    if descoberta["modulo"] == "ruff" and rc == 0:
+        stdout = _relativizar_filenames_ruff(root, stdout)
 
     payload: dict[str, Any] = {
         "returncode": rc,
