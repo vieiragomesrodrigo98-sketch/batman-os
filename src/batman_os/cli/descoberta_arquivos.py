@@ -110,6 +110,7 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     ModoAvaliacao,
     RegraSpec,
 )
+from batman_os.capabilities.rules.rev005_bloco_duplicado import EntradaRev005, RegraRev005Spec
 from batman_os.capabilities.rules.rev006_variavel_nome_curto import EntradaRev006, RegraRev006Spec
 from batman_os.capabilities.rules.sec005_fstring_sql import EntradaSec005, RegraSec005Spec
 from batman_os.capabilities.rules.sec007_ddl_no_import import EntradaSec007, RegraSec007Spec
@@ -189,6 +190,17 @@ def entradas_fe007_para_regra(
     bespoke FE-007 — reaproveita a descoberta genérica `"arquivo_fixo"`."""
     return [
         EntradaFe007(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_rev005_para_regra(
+    root: Path, regra: RegraRev005Spec, descoberta: dict[str, Any]
+) -> list[EntradaRev005]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke REV-005 — reaproveita a descoberta bespoke `"rev005"`."""
+    return [
+        EntradaRev005(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -710,6 +722,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_sre006(root, descoberta)
     if tipo == "cs005":
         return _resultado_cs005(root, descoberta)
+    if tipo == "rev005":
+        return _resultado_rev005(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 

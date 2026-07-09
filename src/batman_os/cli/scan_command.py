@@ -289,6 +289,11 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import EntradaRegexArquiv
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     construir_implementacao as construir_implementacao_regex,
 )
+from batman_os.capabilities.rules.rev005_bloco_duplicado import EntradaRev005, RegraRev005Spec
+from batman_os.capabilities.rules.rev005_bloco_duplicado import (
+    construir_implementacao as construir_implementacao_rev005,
+)
+from batman_os.capabilities.rules.rev005_loader import SpecRev005, carregar_especificacoes_rev005
 from batman_os.capabilities.rules.rev006_loader import SpecRev006, carregar_especificacoes_rev006
 from batman_os.capabilities.rules.rev006_variavel_nome_curto import EntradaRev006, RegraRev006Spec
 from batman_os.capabilities.rules.rev006_variavel_nome_curto import (
@@ -392,6 +397,7 @@ from batman_os.cli.descoberta_arquivos import (
     entradas_perf004_para_regra,
     entradas_qaauto001_para_regra,
     entradas_qaauto003_para_regra,
+    entradas_rev005_para_regra,
     entradas_rev006_para_regra,
     entradas_sec005_para_regra,
     entradas_sec007_para_regra,
@@ -1288,6 +1294,22 @@ def _capabilities_a_registrar() -> list[tuple[CapabilityImplementation, dict[str
                 },
             },
         ),
+        (
+            construir_implementacao_rev005(),
+            {
+                "caminho": ".",
+                "conteudo": json.dumps({"arquivos": {}}),
+                "regra": {
+                    "codigo": "CERT-043",
+                    "agente": "sistema",
+                    "severidade": "low",
+                    "categoria": "certificacao",
+                    "titulo": "t",
+                    "causa": "c",
+                    "remediacao": "r",
+                },
+            },
+        ),
     ]
 
 
@@ -1375,6 +1397,7 @@ _Especificacao = (
     | SpecUi002
     | SpecFe002
     | SpecFe007
+    | SpecRev005
 )
 
 
@@ -1428,6 +1451,7 @@ def _todas_especificacoes() -> list[_Especificacao]:
     especificacoes.extend(carregar_especificacoes_ui002())
     especificacoes.extend(carregar_especificacoes_fe002())
     especificacoes.extend(carregar_especificacoes_fe007())
+    especificacoes.extend(carregar_especificacoes_rev005())
     return especificacoes
 
 
@@ -1517,6 +1541,7 @@ def executar_scan(
                 | EntradaUi002
                 | EntradaFe002
                 | EntradaFe007
+                | EntradaRev005
             ]
             if isinstance(regra, RegraAstSpec):
                 entradas = entradas_ast_para_regra(root, regra, item["descoberta"])
@@ -1608,6 +1633,8 @@ def executar_scan(
                 entradas = entradas_fe002_para_regra(root, regra, item["descoberta"])
             elif isinstance(regra, RegraFe007Spec):
                 entradas = entradas_fe007_para_regra(root, regra, item["descoberta"])
+            elif isinstance(regra, RegraRev005Spec):
+                entradas = entradas_rev005_para_regra(root, regra, item["descoberta"])
             else:
                 entradas = entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:

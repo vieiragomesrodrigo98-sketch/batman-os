@@ -1,0 +1,17 @@
+{
+  "regra": {
+    "codigo": "REV-005",
+    "agente": "code-reviewer",
+    "severidade": "low",
+    "categoria": "manutenibilidade",
+    "titulo": "Bloco de código duplicado (mais de 8 linhas idênticas em dois arquivos distintos)",
+    "causa": "Duplicação é dívida técnica silenciosa: bug corrigido em um lugar fica no outro.",
+    "remediacao": "Extrair em função/módulo compartilhado. DoD: sem bloco de 8+ linhas duplicadas entre arquivos de produção."
+  },
+  "descoberta": {
+    "tipo": "rev005",
+    "scope_dirs": ["api", "src/radar"],
+    "caminho_relatorio": ".",
+    "max_files": 20
+  }
+}
