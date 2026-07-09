@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "SRE-006",
+    "agente": "sre",
+    "severidade": "high",
+    "categoria": "resiliencia",
+    "titulo": "Endpoint crítico sem timeout de request no servidor",
+    "causa": "Workers sem timeout ficam presos em requests lentos — um cliente mal-configurado pode travar todos os workers e derrubar o serviço.",
+    "remediacao": "Configurar timeout em gunicorn.conf.py ou uvicorn --timeout-keep-alive. DoD: timeout configurado no entrypoint de produção."
+  },
+  "descoberta": {
+    "tipo": "sre006",
+    "gunicorn_conf_path": "gunicorn.conf.py",
+    "scripts_dir": "scripts"
+  }
+}

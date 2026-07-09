@@ -99,6 +99,7 @@ from batman_os.capabilities.rules.sec005_fstring_sql import EntradaSec005, Regra
 from batman_os.capabilities.rules.sec007_ddl_no_import import EntradaSec007, RegraSec007Spec
 from batman_os.capabilities.rules.sec008_role_sem_super_admin import EntradaSec008, RegraSec008Spec
 from batman_os.capabilities.rules.sec009_admin_role_script import EntradaSec009, RegraSec009Spec
+from batman_os.capabilities.rules.sre006_timeout_ausente import EntradaSre006, RegraSre006Spec
 from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     EntradaSup001,
     RegraSup001Spec,
@@ -304,6 +305,17 @@ def entradas_sec008_para_regra(
     bespoke SEC-008 — reaproveita a descoberta genérica `"arvore"`."""
     return [
         EntradaSec008(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_sre006_para_regra(
+    root: Path, regra: RegraSre006Spec, descoberta: dict[str, Any]
+) -> list[EntradaSre006]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke SRE-006."""
+    return [
+        EntradaSre006(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -589,6 +601,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_pd009(root, descoberta)
     if tipo == "pd010":
         return _resultado_pd010(root, descoberta)
+    if tipo == "sre006":
+        return _resultado_sre006(root, descoberta)
     raise TipoDescobertaDesconhecido(tipo)
 
 
@@ -654,6 +668,32 @@ def _local_module_names(root: Path) -> list[str]:
         pass
     nomes.update({"src", "app", "core", "tests", "test"})
     return sorted(nomes)
+
+
+def _resultado_sre006(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """1 única Missão: se `gunicorn.conf.py` existe, empacota SÓ ele
+    (prioridade — replica o `return` incondicional do legado após checar
+    esse arquivo). Senão, empacota `scripts/*.sh` + `scripts/*.py` (nessa
+    ordem, cada grupo ordenado) como JSON."""
+    gunicorn_conf_path = descoberta.get("gunicorn_conf_path", "gunicorn.conf.py")
+    scripts_dir_rel = descoberta.get("scripts_dir", "scripts")
+    caminho_relatorio = descoberta.get("caminho_relatorio", gunicorn_conf_path)
+
+    texto_gunicorn = _ler_ou_marcar_presente(root, gunicorn_conf_path)
+    if texto_gunicorn is not None:
+        payload = {"gunicorn_conf_texto": texto_gunicorn}
+        return [(caminho_relatorio, json.dumps(payload))]
+
+    scripts_dir = root / scripts_dir_rel
+    if not scripts_dir.exists():
+        return [(caminho_relatorio, None)]
+
+    scripts: list[list[str]] = []
+    for caminho in sorted(scripts_dir.glob("*.sh")) + sorted(scripts_dir.glob("*.py")):
+        scripts.append([_rel_posix(root, caminho), _ler_texto(caminho)])
+
+    payload_scripts: dict[str, Any] = {"scripts": scripts}
+    return [(caminho_relatorio, json.dumps(payload_scripts))]
 
 
 def _resultado_pd010(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
