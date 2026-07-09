@@ -1,0 +1,16 @@
+{
+  "regra": {
+    "codigo": "CTO-004",
+    "agente": "cto",
+    "severidade": "low",
+    "categoria": "api-design",
+    "titulo": "Endpoint sem docstring nem response_model declarado (sem contrato de API documentado)",
+    "causa": "Endpoint sem docstring e sem response_model não aparece documentado no Swagger/OpenAPI — clientes da API não sabem o contrato e integrações são frágeis.",
+    "remediacao": "Adicionar docstring OU response_model em todos os endpoints. DoD: todo endpoint tem ao menos um dos dois."
+  },
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api/routers"],
+    "extensoes": [".py"]
+  }
+}
