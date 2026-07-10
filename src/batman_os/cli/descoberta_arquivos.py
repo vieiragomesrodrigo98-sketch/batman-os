@@ -33,76 +33,228 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from batman_os.capabilities.registry_sdk import registrar
+from batman_os.capabilities.rules.a11y002_loader import carregar_especificacoes_a11y002
 from batman_os.capabilities.rules.a11y002_onclick_sem_teclado import (
     EntradaA11y002,
     RegraA11y002Spec,
 )
+from batman_os.capabilities.rules.a11y002_onclick_sem_teclado import (
+    construir_implementacao as construir_implementacao_a11y002,
+)
 from batman_os.capabilities.rules.a11y003_input_sem_label import EntradaA11y003, RegraA11y003Spec
+from batman_os.capabilities.rules.a11y003_input_sem_label import (
+    construir_implementacao as construir_implementacao_a11y003,
+)
+from batman_os.capabilities.rules.a11y003_loader import carregar_especificacoes_a11y003
+from batman_os.capabilities.rules.arch003_loader import carregar_especificacoes_arch003
 from batman_os.capabilities.rules.arch003_pagina_orfa import EntradaArch003, RegraArch003Spec
+from batman_os.capabilities.rules.arch003_pagina_orfa import (
+    construir_implementacao as construir_implementacao_arch003,
+)
 from batman_os.capabilities.rules.ast_kwarg_ausente import (
     EntradaKwargAusente,
     RegraKwargAusenteSpec,
 )
+from batman_os.capabilities.rules.ast_kwarg_ausente import (
+    construir_implementacao as construir_implementacao_kwarg_ausente,
+)
+from batman_os.capabilities.rules.ast_kwarg_ausente_loader import (
+    carregar_especificacoes_kwarg_ausente,
+)
 from batman_os.capabilities.rules.ast_padrao_ausente import EntradaAst, RegraAstSpec
+from batman_os.capabilities.rules.ast_padrao_ausente import (
+    construir_implementacao as construir_implementacao_ast,
+)
+from batman_os.capabilities.rules.ast_padrao_ausente_loader import carregar_especificacoes_ast
+from batman_os.capabilities.rules.ba004_loader import carregar_especificacoes_ba004
 from batman_os.capabilities.rules.ba004_logica_negocio_router import EntradaBa004, RegraBa004Spec
+from batman_os.capabilities.rules.ba004_logica_negocio_router import (
+    construir_implementacao as construir_implementacao_ba004,
+)
 from batman_os.capabilities.rules.ba005_divisao_sem_guarda import EntradaBa005, RegraBa005Spec
+from batman_os.capabilities.rules.ba005_divisao_sem_guarda import (
+    construir_implementacao as construir_implementacao_ba005,
+)
+from batman_os.capabilities.rules.ba005_loader import carregar_especificacoes_ba005
 from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
     EntradaBe010,
     RegraBe010Spec,
 )
+from batman_os.capabilities.rules.be010_dependencia_nao_declarada import (
+    construir_implementacao as construir_implementacao_be010,
+)
+from batman_os.capabilities.rules.be010_loader import carregar_especificacoes_be010
 from batman_os.capabilities.rules.be013_http200_em_except import EntradaBe013, RegraBe013Spec
+from batman_os.capabilities.rules.be013_http200_em_except import (
+    construir_implementacao as construir_implementacao_be013,
+)
+from batman_os.capabilities.rules.be013_loader import carregar_especificacoes_be013
 from batman_os.capabilities.rules.cs003_except_pass import EntradaCs003, RegraCs003Spec
+from batman_os.capabilities.rules.cs003_except_pass import (
+    construir_implementacao as construir_implementacao_cs003,
+)
+from batman_os.capabilities.rules.cs003_loader import carregar_especificacoes_cs003
 from batman_os.capabilities.rules.cs005_erro_sem_request_id import EntradaCs005, RegraCs005Spec
+from batman_os.capabilities.rules.cs005_erro_sem_request_id import (
+    construir_implementacao as construir_implementacao_cs005,
+)
+from batman_os.capabilities.rules.cs005_loader import carregar_especificacoes_cs005
+from batman_os.capabilities.rules.cto002_loader import carregar_especificacoes_cto002
 from batman_os.capabilities.rules.cto002_rota_sem_versao import EntradaCto002, RegraCto002Spec
+from batman_os.capabilities.rules.cto002_rota_sem_versao import (
+    construir_implementacao as construir_implementacao_cto002,
+)
 from batman_os.capabilities.rules.cto004_endpoint_sem_doc import EntradaCto004, RegraCto004Spec
+from batman_os.capabilities.rules.cto004_endpoint_sem_doc import (
+    construir_implementacao as construir_implementacao_cto004,
+)
+from batman_os.capabilities.rules.cto004_loader import carregar_especificacoes_cto004
 from batman_os.capabilities.rules.de003_coluna_sem_migration import EntradaDe003, RegraDe003Spec
+from batman_os.capabilities.rules.de003_coluna_sem_migration import (
+    construir_implementacao as construir_implementacao_de003,
+)
+from batman_os.capabilities.rules.de003_loader import carregar_especificacoes_de003
 from batman_os.capabilities.rules.doc004_changelog_sem_versao import EntradaDoc004, RegraDoc004Spec
+from batman_os.capabilities.rules.doc004_changelog_sem_versao import (
+    construir_implementacao as construir_implementacao_doc004,
+)
+from batman_os.capabilities.rules.doc004_loader import carregar_especificacoes_doc004
 from batman_os.capabilities.rules.execucao_comando_interpretada import (
     EntradaExecucaoComando,
     RegraExecucaoComandoSpec,
 )
+from batman_os.capabilities.rules.execucao_comando_interpretada import (
+    construir_implementacao as construir_implementacao_execucao_comando,
+)
+from batman_os.capabilities.rules.execucao_comando_interpretada_loader import (
+    carregar_especificacoes_execucao_comando,
+)
 from batman_os.capabilities.rules.fe001_export_duplicado import EntradaFe001, RegraFe001Spec
+from batman_os.capabilities.rules.fe001_export_duplicado import (
+    construir_implementacao as construir_implementacao_fe001,
+)
+from batman_os.capabilities.rules.fe001_loader import carregar_especificacoes_fe001
+from batman_os.capabilities.rules.fe002_loader import carregar_especificacoes_fe002
 from batman_os.capabilities.rules.fe002_tofixed_sem_null_safety import (
     EntradaFe002,
     RegraFe002Spec,
 )
+from batman_os.capabilities.rules.fe002_tofixed_sem_null_safety import (
+    construir_implementacao as construir_implementacao_fe002,
+)
+from batman_os.capabilities.rules.fe007_loader import carregar_especificacoes_fe007
 from batman_os.capabilities.rules.fe007_nav_lock import EntradaFe007, RegraFe007Spec
+from batman_os.capabilities.rules.fe007_nav_lock import (
+    construir_implementacao as construir_implementacao_fe007,
+)
+from batman_os.capabilities.rules.feapi_loader import carregar_especificacoes_feapi
 from batman_os.capabilities.rules.feapi_rota_sem_frontend import EntradaFeApi, RegraFeApiSpec
+from batman_os.capabilities.rules.feapi_rota_sem_frontend import (
+    construir_implementacao as construir_implementacao_feapi,
+)
 from batman_os.capabilities.rules.fin005_backtest_sem_oos import EntradaFin005, RegraFin005Spec
+from batman_os.capabilities.rules.fin005_backtest_sem_oos import (
+    construir_implementacao as construir_implementacao_fin005,
+)
+from batman_os.capabilities.rules.fin005_loader import carregar_especificacoes_fin005
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
+)
+from batman_os.capabilities.rules.git_comando_interpretado import (
+    construir_implementacao as construir_implementacao_git_interpretado,
+)
+from batman_os.capabilities.rules.git_comando_interpretado_loader import (
+    carregar_especificacoes_git_interpretado,
 )
 from batman_os.capabilities.rules.govdebt001_finding_sem_decisao import (
     EntradaGovdebt001,
     RegraGovdebt001Spec,
 )
+from batman_os.capabilities.rules.govdebt001_finding_sem_decisao import (
+    construir_implementacao as construir_implementacao_govdebt001,
+)
+from batman_os.capabilities.rules.govdebt001_loader import carregar_especificacoes_govdebt001
 from batman_os.capabilities.rules.janela_contexto_regex import EntradaJanela, RegraJanelaSpec
+from batman_os.capabilities.rules.janela_contexto_regex import (
+    construir_implementacao as construir_implementacao_janela,
+)
+from batman_os.capabilities.rules.janela_contexto_regex_loader import carregar_especificacoes_janela
+from batman_os.capabilities.rules.lote_01 import carregar_lote_01
+from batman_os.capabilities.rules.lote_02 import carregar_lote_02
+from batman_os.capabilities.rules.lote_03 import carregar_lote_03
 from batman_os.capabilities.rules.metrica_com_limiar import EntradaMetrica, RegraMetricaSpec
+from batman_os.capabilities.rules.metrica_com_limiar import (
+    construir_implementacao as construir_implementacao_metrica,
+)
+from batman_os.capabilities.rules.metrica_com_limiar_loader import carregar_especificacoes_metrica
+from batman_os.capabilities.rules.ora004_loader import carregar_especificacoes_ora004
 from batman_os.capabilities.rules.ora004_status_typo import EntradaOra004, RegraOra004Spec
+from batman_os.capabilities.rules.ora004_status_typo import (
+    construir_implementacao as construir_implementacao_ora004,
+)
 from batman_os.capabilities.rules.ora005_fallback_silencioso import EntradaOra005, RegraOra005Spec
+from batman_os.capabilities.rules.ora005_fallback_silencioso import (
+    construir_implementacao as construir_implementacao_ora005,
+)
+from batman_os.capabilities.rules.ora005_loader import carregar_especificacoes_ora005
 from batman_os.capabilities.rules.pd001_empty_state_sem_cta import EntradaPd001, RegraPd001Spec
+from batman_os.capabilities.rules.pd001_empty_state_sem_cta import (
+    construir_implementacao as construir_implementacao_pd001,
+)
+from batman_os.capabilities.rules.pd001_loader import carregar_especificacoes_pd001
+from batman_os.capabilities.rules.pd009_loader import carregar_especificacoes_pd009
 from batman_os.capabilities.rules.pd009_rota_nao_descobrivel import EntradaPd009, RegraPd009Spec
+from batman_os.capabilities.rules.pd009_rota_nao_descobrivel import (
+    construir_implementacao as construir_implementacao_pd009,
+)
+from batman_os.capabilities.rules.pd010_loader import carregar_especificacoes_pd010
 from batman_os.capabilities.rules.pd010_simulador_sem_piso import EntradaPd010, RegraPd010Spec
+from batman_os.capabilities.rules.pd010_simulador_sem_piso import (
+    construir_implementacao as construir_implementacao_pd010,
+)
 from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
     EntradaPd011,
     RegraPd011Spec,
 )
+from batman_os.capabilities.rules.pd011_diversificacao_nao_comunicada import (
+    construir_implementacao as construir_implementacao_pd011,
+)
+from batman_os.capabilities.rules.pd011_loader import carregar_especificacoes_pd011
 from batman_os.capabilities.rules.perf004_arquivo_sem_streaming import (
     EntradaPerf004,
     RegraPerf004Spec,
 )
+from batman_os.capabilities.rules.perf004_arquivo_sem_streaming import (
+    construir_implementacao as construir_implementacao_perf004,
+)
+from batman_os.capabilities.rules.perf004_loader import carregar_especificacoes_perf004
+from batman_os.capabilities.rules.qaauto001_loader import carregar_especificacoes_qaauto001
 from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
     EntradaQaAuto001,
     RegraQaAuto001Spec,
 )
+from batman_os.capabilities.rules.qaauto001_router_sem_teste import (
+    construir_implementacao as construir_implementacao_qaauto001,
+)
+from batman_os.capabilities.rules.qaauto003_loader import carregar_especificacoes_qaauto003
 from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
     EntradaQaAuto003,
     RegraQaAuto003Spec,
 )
+from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
+    construir_implementacao as construir_implementacao_qaauto003,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
     EntradaAgregada,
     RegraAgregadaSpec,
+)
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
+    construir_implementacao as construir_implementacao_agregadas,
+)
+from batman_os.capabilities.rules.regex_agregado_multi_arquivo_loader import (
+    carregar_especificacoes_agregadas,
 )
 from batman_os.capabilities.rules.regex_sobre_conteudo import (
     CondicaoAdicional,
@@ -110,26 +262,75 @@ from batman_os.capabilities.rules.regex_sobre_conteudo import (
     ModoAvaliacao,
     RegraSpec,
 )
+from batman_os.capabilities.rules.regex_sobre_conteudo import (
+    construir_implementacao as construir_implementacao_regex,
+)
 from batman_os.capabilities.rules.rev005_bloco_duplicado import EntradaRev005, RegraRev005Spec
+from batman_os.capabilities.rules.rev005_bloco_duplicado import (
+    construir_implementacao as construir_implementacao_rev005,
+)
+from batman_os.capabilities.rules.rev005_loader import carregar_especificacoes_rev005
+from batman_os.capabilities.rules.rev006_loader import carregar_especificacoes_rev006
 from batman_os.capabilities.rules.rev006_variavel_nome_curto import EntradaRev006, RegraRev006Spec
+from batman_os.capabilities.rules.rev006_variavel_nome_curto import (
+    construir_implementacao as construir_implementacao_rev006,
+)
 from batman_os.capabilities.rules.sec005_fstring_sql import EntradaSec005, RegraSec005Spec
+from batman_os.capabilities.rules.sec005_fstring_sql import (
+    construir_implementacao as construir_implementacao_sec005,
+)
+from batman_os.capabilities.rules.sec005_loader import carregar_especificacoes_sec005
 from batman_os.capabilities.rules.sec007_ddl_no_import import EntradaSec007, RegraSec007Spec
+from batman_os.capabilities.rules.sec007_ddl_no_import import (
+    construir_implementacao as construir_implementacao_sec007,
+)
+from batman_os.capabilities.rules.sec007_loader import carregar_especificacoes_sec007
+from batman_os.capabilities.rules.sec008_loader import carregar_especificacoes_sec008
 from batman_os.capabilities.rules.sec008_role_sem_super_admin import EntradaSec008, RegraSec008Spec
+from batman_os.capabilities.rules.sec008_role_sem_super_admin import (
+    construir_implementacao as construir_implementacao_sec008,
+)
 from batman_os.capabilities.rules.sec009_admin_role_script import EntradaSec009, RegraSec009Spec
+from batman_os.capabilities.rules.sec009_admin_role_script import (
+    construir_implementacao as construir_implementacao_sec009,
+)
+from batman_os.capabilities.rules.sec009_loader import carregar_especificacoes_sec009
+from batman_os.capabilities.rules.sre006_loader import carregar_especificacoes_sre006
 from batman_os.capabilities.rules.sre006_timeout_ausente import EntradaSre006, RegraSre006Spec
+from batman_os.capabilities.rules.sre006_timeout_ausente import (
+    construir_implementacao as construir_implementacao_sre006,
+)
 from batman_os.capabilities.rules.sup001_excecao_silenciada import (
     EntradaSup001,
     RegraSup001Spec,
 )
+from batman_os.capabilities.rules.sup001_excecao_silenciada import (
+    construir_implementacao as construir_implementacao_sup001,
+)
+from batman_os.capabilities.rules.sup001_loader import carregar_especificacoes_sup001
 from batman_os.capabilities.rules.sweep001_cadencia_quebrada import (
     EntradaSweep001,
     RegraSweep001Spec,
 )
+from batman_os.capabilities.rules.sweep001_cadencia_quebrada import (
+    construir_implementacao as construir_implementacao_sweep001,
+)
+from batman_os.capabilities.rules.sweep001_loader import carregar_especificacoes_sweep001
 from batman_os.capabilities.rules.toml_dependencias import (
     EntradaDependencias,
     RegraDependenciasSpec,
 )
+from batman_os.capabilities.rules.toml_dependencias import (
+    construir_implementacao as construir_implementacao_dependencias,
+)
+from batman_os.capabilities.rules.toml_dependencias_loader import (
+    carregar_especificacoes_dependencias,
+)
 from batman_os.capabilities.rules.ui002_inline_style_estatico import EntradaUi002, RegraUi002Spec
+from batman_os.capabilities.rules.ui002_inline_style_estatico import (
+    construir_implementacao as construir_implementacao_ui002,
+)
+from batman_os.capabilities.rules.ui002_loader import carregar_especificacoes_ui002
 
 _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
 
@@ -1443,3 +1644,355 @@ def _rel_posix(root: Path, caminho: Path) -> str:
         return caminho.relative_to(root).as_posix()
     except ValueError:
         return caminho.as_posix()
+
+
+def registrar_capabilities_conhecidas() -> None:
+    """Registra as 47 Capabilities conhecidas (46 bespoke/específicas +
+    a genérica `regex-sobre-conteudo-de-arquivo`, alimentada por 3 lotes
+    de specs) no `registry_sdk` — chamado uma única vez por
+    `cli/scan_command.py::_preparar_capabilities()`. Único ponto de
+    registro necessário para uma Capability nova entrar no scan (Fase 1
+    do roadmap de plataforma — ver `.claude/plans/
+    peaceful-wondering-hearth.md`): antes eram 7 pontos manuais em
+    `scan_command.py` + este arquivo; agora é só este bloco.
+
+    Não é auto-discovery via reflexão (`pkgutil`) — isso exigiria mover
+    as primitivas de descoberta de arquivo (`arquivos_para_regra` etc.)
+    para fora de `cli/`, já que um módulo de Capability em
+    `capabilities/rules/*.py` não pode importar deste arquivo sem criar
+    import circular (este arquivo já importa de lá). Documentado como
+    extensão natural futura, não feito nesta rodada."""
+    registrar(
+        tipo="generico",
+        regra_cls=RegraSpec,
+        construir_implementacao=construir_implementacao_regex,
+        carregar_especificacoes=lambda: [
+            *carregar_lote_01(),
+            *carregar_lote_02(),
+            *carregar_lote_03(),
+        ],
+        entradas_para_regra=entradas_para_regra,
+    )
+
+    registrar(
+        tipo="a11y002",
+        regra_cls=RegraA11y002Spec,
+        construir_implementacao=construir_implementacao_a11y002,
+        carregar_especificacoes=carregar_especificacoes_a11y002,
+        entradas_para_regra=entradas_a11y002_para_regra,
+    )
+    registrar(
+        tipo="a11y003",
+        regra_cls=RegraA11y003Spec,
+        construir_implementacao=construir_implementacao_a11y003,
+        carregar_especificacoes=carregar_especificacoes_a11y003,
+        entradas_para_regra=entradas_a11y003_para_regra,
+    )
+    registrar(
+        tipo="agregadas",
+        regra_cls=RegraAgregadaSpec,
+        construir_implementacao=construir_implementacao_agregadas,
+        carregar_especificacoes=carregar_especificacoes_agregadas,
+        entradas_para_regra=entradas_agregadas_para_regra,
+    )
+    registrar(
+        tipo="arch003",
+        regra_cls=RegraArch003Spec,
+        construir_implementacao=construir_implementacao_arch003,
+        carregar_especificacoes=carregar_especificacoes_arch003,
+        entradas_para_regra=entradas_arch003_para_regra,
+    )
+    registrar(
+        tipo="ast",
+        regra_cls=RegraAstSpec,
+        construir_implementacao=construir_implementacao_ast,
+        carregar_especificacoes=carregar_especificacoes_ast,
+        entradas_para_regra=entradas_ast_para_regra,
+    )
+    registrar(
+        tipo="ba004",
+        regra_cls=RegraBa004Spec,
+        construir_implementacao=construir_implementacao_ba004,
+        carregar_especificacoes=carregar_especificacoes_ba004,
+        entradas_para_regra=entradas_ba004_para_regra,
+    )
+    registrar(
+        tipo="ba005",
+        regra_cls=RegraBa005Spec,
+        construir_implementacao=construir_implementacao_ba005,
+        carregar_especificacoes=carregar_especificacoes_ba005,
+        entradas_para_regra=entradas_ba005_para_regra,
+    )
+    registrar(
+        tipo="be010",
+        regra_cls=RegraBe010Spec,
+        construir_implementacao=construir_implementacao_be010,
+        carregar_especificacoes=carregar_especificacoes_be010,
+        entradas_para_regra=entradas_be010_para_regra,
+    )
+    registrar(
+        tipo="be013",
+        regra_cls=RegraBe013Spec,
+        construir_implementacao=construir_implementacao_be013,
+        carregar_especificacoes=carregar_especificacoes_be013,
+        entradas_para_regra=entradas_be013_para_regra,
+    )
+    registrar(
+        tipo="cs003",
+        regra_cls=RegraCs003Spec,
+        construir_implementacao=construir_implementacao_cs003,
+        carregar_especificacoes=carregar_especificacoes_cs003,
+        entradas_para_regra=entradas_cs003_para_regra,
+    )
+    registrar(
+        tipo="cs005",
+        regra_cls=RegraCs005Spec,
+        construir_implementacao=construir_implementacao_cs005,
+        carregar_especificacoes=carregar_especificacoes_cs005,
+        entradas_para_regra=entradas_cs005_para_regra,
+    )
+    registrar(
+        tipo="cto002",
+        regra_cls=RegraCto002Spec,
+        construir_implementacao=construir_implementacao_cto002,
+        carregar_especificacoes=carregar_especificacoes_cto002,
+        entradas_para_regra=entradas_cto002_para_regra,
+    )
+    registrar(
+        tipo="cto004",
+        regra_cls=RegraCto004Spec,
+        construir_implementacao=construir_implementacao_cto004,
+        carregar_especificacoes=carregar_especificacoes_cto004,
+        entradas_para_regra=entradas_cto004_para_regra,
+    )
+    registrar(
+        tipo="de003",
+        regra_cls=RegraDe003Spec,
+        construir_implementacao=construir_implementacao_de003,
+        carregar_especificacoes=carregar_especificacoes_de003,
+        entradas_para_regra=entradas_de003_para_regra,
+    )
+    registrar(
+        tipo="dependencias",
+        regra_cls=RegraDependenciasSpec,
+        construir_implementacao=construir_implementacao_dependencias,
+        carregar_especificacoes=carregar_especificacoes_dependencias,
+        entradas_para_regra=entradas_dependencias_para_regra,
+    )
+    registrar(
+        tipo="doc004",
+        regra_cls=RegraDoc004Spec,
+        construir_implementacao=construir_implementacao_doc004,
+        carregar_especificacoes=carregar_especificacoes_doc004,
+        entradas_para_regra=entradas_doc004_para_regra,
+    )
+    registrar(
+        tipo="execucao_comando",
+        regra_cls=RegraExecucaoComandoSpec,
+        construir_implementacao=construir_implementacao_execucao_comando,
+        carregar_especificacoes=carregar_especificacoes_execucao_comando,
+        entradas_para_regra=entradas_execucao_comando_para_regra,
+    )
+    registrar(
+        tipo="fe001",
+        regra_cls=RegraFe001Spec,
+        construir_implementacao=construir_implementacao_fe001,
+        carregar_especificacoes=carregar_especificacoes_fe001,
+        entradas_para_regra=entradas_fe001_para_regra,
+    )
+    registrar(
+        tipo="fe002",
+        regra_cls=RegraFe002Spec,
+        construir_implementacao=construir_implementacao_fe002,
+        carregar_especificacoes=carregar_especificacoes_fe002,
+        entradas_para_regra=entradas_fe002_para_regra,
+    )
+    registrar(
+        tipo="fe007",
+        regra_cls=RegraFe007Spec,
+        construir_implementacao=construir_implementacao_fe007,
+        carregar_especificacoes=carregar_especificacoes_fe007,
+        entradas_para_regra=entradas_fe007_para_regra,
+    )
+    registrar(
+        tipo="feapi",
+        regra_cls=RegraFeApiSpec,
+        construir_implementacao=construir_implementacao_feapi,
+        carregar_especificacoes=carregar_especificacoes_feapi,
+        entradas_para_regra=entradas_feapi_para_regra,
+    )
+    registrar(
+        tipo="fin005",
+        regra_cls=RegraFin005Spec,
+        construir_implementacao=construir_implementacao_fin005,
+        carregar_especificacoes=carregar_especificacoes_fin005,
+        entradas_para_regra=entradas_fin005_para_regra,
+    )
+    registrar(
+        tipo="git_interpretado",
+        regra_cls=RegraComparacaoNumericaSpec,
+        construir_implementacao=construir_implementacao_git_interpretado,
+        carregar_especificacoes=carregar_especificacoes_git_interpretado,
+        entradas_para_regra=entradas_git_interpretado_para_regra,
+    )
+    registrar(
+        tipo="govdebt001",
+        regra_cls=RegraGovdebt001Spec,
+        construir_implementacao=construir_implementacao_govdebt001,
+        carregar_especificacoes=carregar_especificacoes_govdebt001,
+        entradas_para_regra=entradas_govdebt001_para_regra,
+    )
+    registrar(
+        tipo="janela",
+        regra_cls=RegraJanelaSpec,
+        construir_implementacao=construir_implementacao_janela,
+        carregar_especificacoes=carregar_especificacoes_janela,
+        entradas_para_regra=entradas_janela_para_regra,
+    )
+    registrar(
+        tipo="kwarg_ausente",
+        regra_cls=RegraKwargAusenteSpec,
+        construir_implementacao=construir_implementacao_kwarg_ausente,
+        carregar_especificacoes=carregar_especificacoes_kwarg_ausente,
+        entradas_para_regra=entradas_kwarg_ausente_para_regra,
+    )
+    registrar(
+        tipo="metrica",
+        regra_cls=RegraMetricaSpec,
+        construir_implementacao=construir_implementacao_metrica,
+        carregar_especificacoes=carregar_especificacoes_metrica,
+        entradas_para_regra=entradas_metrica_para_regra,
+    )
+    registrar(
+        tipo="ora004",
+        regra_cls=RegraOra004Spec,
+        construir_implementacao=construir_implementacao_ora004,
+        carregar_especificacoes=carregar_especificacoes_ora004,
+        entradas_para_regra=entradas_ora004_para_regra,
+    )
+    registrar(
+        tipo="ora005",
+        regra_cls=RegraOra005Spec,
+        construir_implementacao=construir_implementacao_ora005,
+        carregar_especificacoes=carregar_especificacoes_ora005,
+        entradas_para_regra=entradas_ora005_para_regra,
+    )
+    registrar(
+        tipo="pd001",
+        regra_cls=RegraPd001Spec,
+        construir_implementacao=construir_implementacao_pd001,
+        carregar_especificacoes=carregar_especificacoes_pd001,
+        entradas_para_regra=entradas_pd001_para_regra,
+    )
+    registrar(
+        tipo="pd009",
+        regra_cls=RegraPd009Spec,
+        construir_implementacao=construir_implementacao_pd009,
+        carregar_especificacoes=carregar_especificacoes_pd009,
+        entradas_para_regra=entradas_pd009_para_regra,
+    )
+    registrar(
+        tipo="pd010",
+        regra_cls=RegraPd010Spec,
+        construir_implementacao=construir_implementacao_pd010,
+        carregar_especificacoes=carregar_especificacoes_pd010,
+        entradas_para_regra=entradas_pd010_para_regra,
+    )
+    registrar(
+        tipo="pd011",
+        regra_cls=RegraPd011Spec,
+        construir_implementacao=construir_implementacao_pd011,
+        carregar_especificacoes=carregar_especificacoes_pd011,
+        entradas_para_regra=entradas_pd011_para_regra,
+    )
+    registrar(
+        tipo="perf004",
+        regra_cls=RegraPerf004Spec,
+        construir_implementacao=construir_implementacao_perf004,
+        carregar_especificacoes=carregar_especificacoes_perf004,
+        entradas_para_regra=entradas_perf004_para_regra,
+    )
+    registrar(
+        tipo="qaauto001",
+        regra_cls=RegraQaAuto001Spec,
+        construir_implementacao=construir_implementacao_qaauto001,
+        carregar_especificacoes=carregar_especificacoes_qaauto001,
+        entradas_para_regra=entradas_qaauto001_para_regra,
+    )
+    registrar(
+        tipo="qaauto003",
+        regra_cls=RegraQaAuto003Spec,
+        construir_implementacao=construir_implementacao_qaauto003,
+        carregar_especificacoes=carregar_especificacoes_qaauto003,
+        entradas_para_regra=entradas_qaauto003_para_regra,
+    )
+    registrar(
+        tipo="rev005",
+        regra_cls=RegraRev005Spec,
+        construir_implementacao=construir_implementacao_rev005,
+        carregar_especificacoes=carregar_especificacoes_rev005,
+        entradas_para_regra=entradas_rev005_para_regra,
+    )
+    registrar(
+        tipo="rev006",
+        regra_cls=RegraRev006Spec,
+        construir_implementacao=construir_implementacao_rev006,
+        carregar_especificacoes=carregar_especificacoes_rev006,
+        entradas_para_regra=entradas_rev006_para_regra,
+    )
+    registrar(
+        tipo="sec005",
+        regra_cls=RegraSec005Spec,
+        construir_implementacao=construir_implementacao_sec005,
+        carregar_especificacoes=carregar_especificacoes_sec005,
+        entradas_para_regra=entradas_sec005_para_regra,
+    )
+    registrar(
+        tipo="sec007",
+        regra_cls=RegraSec007Spec,
+        construir_implementacao=construir_implementacao_sec007,
+        carregar_especificacoes=carregar_especificacoes_sec007,
+        entradas_para_regra=entradas_sec007_para_regra,
+    )
+    registrar(
+        tipo="sec008",
+        regra_cls=RegraSec008Spec,
+        construir_implementacao=construir_implementacao_sec008,
+        carregar_especificacoes=carregar_especificacoes_sec008,
+        entradas_para_regra=entradas_sec008_para_regra,
+    )
+    registrar(
+        tipo="sec009",
+        regra_cls=RegraSec009Spec,
+        construir_implementacao=construir_implementacao_sec009,
+        carregar_especificacoes=carregar_especificacoes_sec009,
+        entradas_para_regra=entradas_sec009_para_regra,
+    )
+    registrar(
+        tipo="sre006",
+        regra_cls=RegraSre006Spec,
+        construir_implementacao=construir_implementacao_sre006,
+        carregar_especificacoes=carregar_especificacoes_sre006,
+        entradas_para_regra=entradas_sre006_para_regra,
+    )
+    registrar(
+        tipo="sup001",
+        regra_cls=RegraSup001Spec,
+        construir_implementacao=construir_implementacao_sup001,
+        carregar_especificacoes=carregar_especificacoes_sup001,
+        entradas_para_regra=entradas_sup001_para_regra,
+    )
+    registrar(
+        tipo="sweep001",
+        regra_cls=RegraSweep001Spec,
+        construir_implementacao=construir_implementacao_sweep001,
+        carregar_especificacoes=carregar_especificacoes_sweep001,
+        entradas_para_regra=entradas_sweep001_para_regra,
+    )
+    registrar(
+        tipo="ui002",
+        regra_cls=RegraUi002Spec,
+        construir_implementacao=construir_implementacao_ui002,
+        carregar_especificacoes=carregar_especificacoes_ui002,
+        entradas_para_regra=entradas_ui002_para_regra,
+    )
