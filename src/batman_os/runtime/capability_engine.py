@@ -44,7 +44,16 @@ class CapabilityDefinition(BaseModel):
     `idempotent` (Vol.IV Cap.16, secao 16.5) — default `True` (toda Capability
     com `side_effects != none` deve, sempre que tecnicamente viavel, ser
     desenhada como idempotente); `False` e uma declaracao explicita de
-    excecao, nunca implicita."""
+    excecao, nunca implicita.
+
+    `owner`/`tags` (Fase 1 do roadmap de plataforma, `.claude/plans/
+    peaceful-wondering-hearth.md`, item "capability.yaml") — extensao
+    aditiva e opcional (default vazio, nenhuma das Capabilities ja
+    registradas precisa mudar). Deliberadamente SEM campo `cost`: um
+    valor estatico declarado a mao seria menos confiavel que o custo real
+    medido empiricamente (`ResultadoScan.resumo_de_performance()`,
+    `cli/scan_command.py` — tambem Fase 1). Duas fontes de verdade
+    divergentes (uma declarada, outra medida) e pior que uma so."""
 
     id: CapabilityId
     name: str
@@ -57,6 +66,8 @@ class CapabilityDefinition(BaseModel):
     idempotent: bool = True
     deprecated_by: CapabilityId | None = None
     status: StatusCapability = StatusCapability.ACTIVE
+    owner: str = ""
+    tags: list[str] = Field(default_factory=list)
 
 
 class RegistroInvalido(Exception):

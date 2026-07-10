@@ -97,12 +97,30 @@ class AchadoScan:
 @dataclass
 class ResultadoScan:
     achados: list[AchadoScan] = field(default_factory=list)
+    duracoes_por_capability: dict[str, list[float]] = field(default_factory=dict)
 
     def contagem_por_severidade(self) -> dict[str, int]:
         contagem: dict[str, int] = {}
         for achado in self.achados:
             contagem[achado.severidade] = contagem.get(achado.severidade, 0) + 1
         return contagem
+
+    def resumo_de_performance(self) -> dict[str, dict[str, float]]:
+        """Fase 1 do roadmap de plataforma ("Capability Timeline") --
+        agrega os tempos de execucao por Capability atraves de todas as
+        Missoes do scan. Nao adiciona instrumentacao nova: os tempos ja
+        sao medidos nativamente por `StepResult.iniciado_em`/
+        `finalizado_em` (Vol.II Cap.9) para cada step -- aqui so
+        agregamos o que ja existe."""
+        resumo: dict[str, dict[str, float]] = {}
+        for capability_id, duracoes in self.duracoes_por_capability.items():
+            resumo[capability_id] = {
+                "chamadas": float(len(duracoes)),
+                "total_ms": sum(duracoes),
+                "media_ms": sum(duracoes) / len(duracoes),
+                "max_ms": max(duracoes),
+            }
+        return resumo
 
 
 class _SemConhecimentoAinda:
@@ -285,7 +303,7 @@ def executar_scan(
                 )
             entradas = plugin.entradas_para_regra(root, regra, item["descoberta"])
             for entrada in entradas:
-                achados_da_entrada = _processar_entrada(
+                resultado_missao = _processar_entrada(
                     entrada.model_dump(),
                     runtime=runtime,
                     registry=registry,
@@ -294,10 +312,28 @@ def executar_scan(
                     adapter=adapter,
                     operator_ref=operator_ref,
                 )
-                resultado.achados.extend(achados_da_entrada)
+                resultado.achados.extend(resultado_missao.achados)
+                if resultado_missao.capability_id is not None and (
+                    resultado_missao.duracao_ms is not None
+                ):
+                    resultado.duracoes_por_capability.setdefault(
+                        resultado_missao.capability_id, []
+                    ).append(resultado_missao.duracao_ms)
     finally:
         execution_engine.fechar()
     return resultado
+
+
+@dataclass
+class ResultadoMissao:
+    """Achados + observabilidade de uma unica Missao (Fase 1 do roadmap
+    de plataforma) -- `capability_id`/`duracao_ms` vem direto do
+    `StepResult` que o Workflow Engine ja mede nativamente (Vol.II
+    Cap.9), sem instrumentacao nova."""
+
+    achados: list[AchadoScan] = field(default_factory=list)
+    capability_id: str | None = None
+    duracao_ms: float | None = None
 
 
 def _processar_entrada(
@@ -309,7 +345,7 @@ def _processar_entrada(
     execution_engine: ExecutionEngine,
     adapter: OperadorExecutavelAdapter,
     operator_ref: OperatorRef,
-) -> list[AchadoScan]:
+) -> ResultadoMissao:
     """Uma Missão real, do início ao fim, para um único (arquivo, regra).
 
     Retorna TODOS os achados da Missão, não só o primeiro (achado da
@@ -325,8 +361,12 @@ def _processar_entrada(
     )
     if not plano.steps:
         runtime.transition(mission.id, MissionEventType.PLAN_FAILED)
-        return []
-    runtime.transition(mission.id, MissionEventType.PLAN_READY)
+        return ResultadoMissao()
+    runtime.transition(
+        mission.id,
+        MissionEventType.PLAN_READY,
+        payload_extra={"capability_id": str(plano.steps[0].capability.capability_id)},
+    )
 
     runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
     for ponto in plano.decision_points:
@@ -354,10 +394,21 @@ def _processar_entrada(
 
     if workflow.get_run(run.id).estado != "completed":
         runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED)
-        return []
+        return ResultadoMissao()
 
-    runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
-    saida = workflow.get_run(run.id).completed_steps[0].output
+    step_result = workflow.get_run(run.id).completed_steps[0]
+    duracao_ms = (step_result.finalizado_em - step_result.iniciado_em).total_seconds() * 1000
+    capability_id = str(plano.steps[0].capability.capability_id)
+    runtime.transition(
+        mission.id,
+        MissionEventType.WORKFLOW_COMPLETED,
+        payload_extra={"capability_id": capability_id, "duracao_ms": round(duracao_ms, 3)},
+    )
+    saida = step_result.output
     if not saida or not saida.get("achados"):
-        return []
-    return [AchadoScan(**item) for item in saida["achados"]]
+        return ResultadoMissao(capability_id=capability_id, duracao_ms=duracao_ms)
+    return ResultadoMissao(
+        achados=[AchadoScan(**item) for item in saida["achados"]],
+        capability_id=capability_id,
+        duracao_ms=duracao_ms,
+    )

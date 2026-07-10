@@ -217,3 +217,29 @@ def test_versao_do_registro_muda_a_cada_mutacao() -> None:
     v1 = registry.versao()
 
     assert v0 != v1
+
+
+class TestOwnerETags:
+    """Fase 1 do roadmap de plataforma (item "capability.yaml") --
+    extensao aditiva, opcional, sem afetar nenhuma Capability ja
+    registrada."""
+
+    def test_owner_e_tags_tem_default_vazio(self) -> None:
+        definicao = _def()
+
+        assert definicao.owner == ""
+        assert definicao.tags == []
+
+    def test_owner_e_tags_aceitam_valores_explicitos(self) -> None:
+        definicao = CapabilityDefinition(
+            id=CapabilityId("cap-com-metadados"),
+            name="cap-com-metadados",
+            version="1.0.0",
+            deterministic=True,
+            side_effects=SideEffects.NONE,
+            owner="code-reviewer",
+            tags=["seguranca", "regressao"],
+        )
+
+        assert definicao.owner == "code-reviewer"
+        assert definicao.tags == ["seguranca", "regressao"]

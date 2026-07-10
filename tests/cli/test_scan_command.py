@@ -82,6 +82,32 @@ class TestExecutarScanComGatilhosReais:
         assert contagem == {"high": 1, "medium": 1}
 
 
+class TestResumoDePerformance:
+    """Fase 1 do roadmap de plataforma ("Capability Timeline") — os
+    tempos vem direto do `StepResult` que o Workflow Engine ja mede
+    nativamente, so a agregacao por Capability e nova."""
+
+    def test_duracoes_agregadas_por_capability(self, tmp_path: Path) -> None:
+        resultado = executar_scan(tmp_path, especificacoes=carregar_lote_01())
+
+        assert "regex-sobre-conteudo-de-arquivo" in resultado.duracoes_por_capability
+        duracoes = resultado.duracoes_por_capability["regex-sobre-conteudo-de-arquivo"]
+        assert len(duracoes) > 0
+        assert all(d >= 0 for d in duracoes)
+
+    def test_resumo_de_performance_agrega_chamadas_total_media_max(self, tmp_path: Path) -> None:
+        resultado = executar_scan(tmp_path, especificacoes=carregar_lote_01())
+
+        resumo = resultado.resumo_de_performance()
+        stats = resumo["regex-sobre-conteudo-de-arquivo"]
+        duracoes = resultado.duracoes_por_capability["regex-sobre-conteudo-de-arquivo"]
+
+        assert stats["chamadas"] == len(duracoes)
+        assert stats["total_ms"] == sum(duracoes)
+        assert stats["media_ms"] == sum(duracoes) / len(duracoes)
+        assert stats["max_ms"] == max(duracoes)
+
+
 class TestExecutarScanComTodosOsLotes:
     """Sem `especificacoes` explícito, `executar_scan` usa a união de todos
     os lotes já migrados — cobertura mínima de que isso não quebra."""
