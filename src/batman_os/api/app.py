@@ -1,5 +1,5 @@
 """Esqueleto do app FastAPI (Fase 6 do roadmap de plataforma, `.claude/
-plans/peaceful-wondering-hearth.md`, Estágio 6.2).
+plans/peaceful-wondering-hearth.md`, Estágios 6.2/6.3).
 
 Reaproveita as funções já públicas de `cli/auditoria_seguranca_
 command.py` (Estágios 6.1/6.2) para construir, UMA VEZ no `lifespan` do
@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from batman_os.api.routers.auditoria_seguranca import router as router_auditoria_seguranca
 from batman_os.api.state import ColaboradoresCompartilhados
 from batman_os.cli.auditoria_seguranca_command import (
     construir_decision_engine,
@@ -57,4 +58,6 @@ def criar_app(db_path: str = ":memory:") -> FastAPI:
         finally:
             execution_engine.fechar()
 
-    return FastAPI(title="Batman OS API", lifespan=lifespan)
+    app = FastAPI(title="Batman OS API", lifespan=lifespan)
+    app.include_router(router_auditoria_seguranca)
+    return app

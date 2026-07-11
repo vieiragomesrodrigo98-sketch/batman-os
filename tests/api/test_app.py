@@ -23,8 +23,8 @@ from batman_os.runtime.execution_engine import ExecutionEngine
 def test_lifespan_constroi_colaboradores_compartilhados() -> None:
     app = criar_app()
 
-    with TestClient(app) as client:
-        colaboradores = client.app.state.colaboradores
+    with TestClient(app):
+        colaboradores = app.state.colaboradores
         assert isinstance(colaboradores, ColaboradoresCompartilhados)
         assert isinstance(colaboradores.runtime, MissionRuntime)
 
@@ -58,8 +58,6 @@ def test_duas_instancias_de_app_nao_compartilham_colaboradores() -> None:
     """Cada `criar_app()` constrói seus próprios colaboradores — não há
     estado global entre apps distintos (relevante para testes rodando em
     paralelo/isolados)."""
-    with TestClient(criar_app()) as client_a, TestClient(criar_app()) as client_b:
-        assert (
-            client_a.app.state.colaboradores.registry
-            is not client_b.app.state.colaboradores.registry
-        )
+    app_a, app_b = criar_app(), criar_app()
+    with TestClient(app_a), TestClient(app_b):
+        assert app_a.state.colaboradores.registry is not app_b.state.colaboradores.registry
