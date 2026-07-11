@@ -155,7 +155,7 @@ class TestRetomarMissao:
         resultado = _decision_engine().resolve(ponto, mission.id)
         assert resultado.escalonado_para == "human"
         runtime_antes.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
-        assert runtime_antes.get_state(mission.id) == MissionState.AWAITING_HUMAN
+        assert runtime_antes.get_state(mission.id, TENANT) == MissionState.AWAITING_HUMAN
 
         workflow_antes = WorkflowEngine(invocador, event_bus=event_bus)
         run = workflow_antes.iniciar(mission.id, plano)
@@ -170,6 +170,7 @@ class TestRetomarMissao:
 
         resposta = RespostaHumanaChegada(
             mission_id=mission.id,
+            tenant_id=TENANT,
             workflow_run_id=run.id,
             ponto=ponto,
             opcao_escolhida=OPCAO,
@@ -183,7 +184,7 @@ class TestRetomarMissao:
         # passo-1 nunca foi reinvocado; so passo-2 rodou apos a retomada.
         assert invocador.chamadas == {"passo-1": 1, "passo-2": 1}
 
-        final_mission = runtime_depois.get_mission(mission.id)
+        final_mission = runtime_depois.get_mission(mission.id, TENANT)
         assert final_mission.estado == MissionState.COMPLETED
 
     def test_missao_que_nao_esta_em_awaiting_human_nao_e_retomavel(self) -> None:
@@ -195,6 +196,7 @@ class TestRetomarMissao:
         workflow = WorkflowEngine(_InvocadorContavel(), event_bus=event_bus)
         resposta = RespostaHumanaChegada(
             mission_id=mission.id,
+            tenant_id=TENANT,
             workflow_run_id="run-inexistente",  # type: ignore[arg-type]
             ponto=_ponto(),
             opcao_escolhida=OPCAO,
@@ -227,6 +229,7 @@ class TestRetomarMissao:
 
         resposta = RespostaHumanaChegada(
             mission_id=mission.id,
+            tenant_id=TENANT,
             workflow_run_id="run-qualquer",  # type: ignore[arg-type]
             ponto=_ponto(),
             opcao_escolhida=OPCAO,
@@ -272,6 +275,7 @@ class TestExecutarCicloWatchdog:
 
         resposta_ok = RespostaHumanaChegada(
             mission_id=mission_ok.id,
+            tenant_id=TENANT,
             workflow_run_id=run_ok.id,
             ponto=ponto,
             opcao_escolhida=OPCAO,
@@ -279,6 +283,7 @@ class TestExecutarCicloWatchdog:
         )
         resposta_invalida = RespostaHumanaChegada(
             mission_id=MissionId("missao-inexistente"),  # type: ignore[arg-type]
+            tenant_id=TENANT,
             workflow_run_id=run_ok.id,
             ponto=ponto,
             opcao_escolhida=OPCAO,

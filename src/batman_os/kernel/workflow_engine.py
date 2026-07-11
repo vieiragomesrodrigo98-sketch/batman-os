@@ -15,6 +15,10 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from batman_os.foundation.tenant_isolation import (
+    IsolamentoDeTenantViolado,
+    exigir_tenant_correspondente,
+)
 from batman_os.foundation.types import (
     MissionId,
     PlanId,
@@ -153,18 +157,39 @@ class WorkflowEngine:
         `passos_prontos()`/`executar_passo()`."""
         self._steps_do_plano[run_id] = list(plano.steps)
 
-    def get_run(self, run_id: WorkflowRunId, mission_id: MissionId | None = None) -> WorkflowRun:
+    def get_run(
+        self,
+        run_id: WorkflowRunId,
+        mission_id: MissionId | None = None,
+        tenant_id: TenantId | None = None,
+    ) -> WorkflowRun:
         """`mission_id` (Estagio 2.1) — usado SOMENTE em cache-miss, para
         localizar a historia da Missao no Event Bus (`replay` e indexado por
         `mission_id`, nao por `run_id`). Chamadores que so tem o `run_id` de
-        um `WorkflowRun` ja em memoria continuam funcionando sem passa-lo."""
+        um `WorkflowRun` ja em memoria continuam funcionando sem passa-lo.
+
+        `tenant_id` (Fase 5 do roadmap de plataforma, `.claude/plans/
+        peaceful-wondering-hearth.md`, Estagio 5.1) — OPCIONAL (preserva
+        os chamadores internos existentes que so fazem cache-hit); quando
+        fornecido, valida contra o `tenant_id` do `WorkflowRun`
+        encontrado (cache-hit OU apos hidratacao), levantando a MESMA
+        excecao de "nao encontrado" em mismatch — evita enumeracao
+        cross-tenant, mesmo raciocinio de `MissionRuntime.get_mission()`."""
         if run_id not in self._runs:
             hidratado = self._hidratar_de(run_id, mission_id) if mission_id is not None else None
             if hidratado is None:
                 raise WorkflowRunDesconhecido(str(run_id))
             self._runs[run_id] = hidratado
-            return hidratado
-        return self._runs[run_id]
+            run = hidratado
+        else:
+            run = self._runs[run_id]
+
+        if tenant_id is not None:
+            try:
+                exigir_tenant_correspondente(tenant_id, run.tenant_id)
+            except IsolamentoDeTenantViolado as erro:
+                raise WorkflowRunDesconhecido(str(run_id)) from erro
+        return run
 
     def _hidratar_de(self, run_id: WorkflowRunId, mission_id: MissionId) -> WorkflowRun | None:
         """Reconstrucao via replay do Event Bus, so em cache-miss. Nota de

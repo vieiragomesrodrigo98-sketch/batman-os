@@ -14,6 +14,10 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
+from batman_os.foundation.tenant_isolation import (
+    IsolamentoDeTenantViolado,
+    exigir_tenant_correspondente,
+)
 from batman_os.foundation.types import (
     CognitiveDebtFlag,
     DecisionId,
@@ -255,8 +259,11 @@ class MissionRuntime:
 
         `degradations` (Vol.V Cap.22, secao 22.4, AT-22.3) — obrigatorio e
         nao-vazio quando a transicao leva a `PartiallyCompleted`; nunca um
-        estado de degradacao sem evidencia (Evidence First)."""
-        mission = self.get_mission(mission_id)
+        estado de degradacao sem evidencia (Evidence First).
+
+        Nao exige `tenant_id` do chamador (Fase 5, Estagio 5.1) — ver
+        docstring de `get_mission()`."""
+        mission = self._buscar_mission(mission_id)
         chave = (mission.estado, evento)
         se_desconhecida = chave not in _TRANSICOES
         if se_desconhecida:
@@ -296,15 +303,43 @@ class MissionRuntime:
         )
         return mission
 
-    def get_state(self, mission_id: MissionId) -> MissionState:
-        return self.get_mission(mission_id).estado
+    def get_state(self, mission_id: MissionId, tenant_id: TenantId) -> MissionState:
+        return self.get_mission(mission_id, tenant_id).estado
 
-    def get_mission(self, mission_id: MissionId) -> Mission:
+    def get_mission(self, mission_id: MissionId, tenant_id: TenantId) -> Mission:
+        """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+        `.claude/plans/peaceful-wondering-hearth.md`, Estagio 5.1) —
+        `tenant_id` obrigatorio: fecha o gap real de acesso de leitura
+        cross-tenant (achado de investigacao direta, nao hipotetico —
+        antes, qualquer chamador com um `mission_id` valido conseguia ler
+        a Missao de QUALQUER tenant). Mismatch levanta a MESMA excecao de
+        "nao encontrada" que um `mission_id` inexistente (nunca uma
+        excecao distinta que revelaria "existe, mas nao e seu" — evita
+        enumeracao entre tenants, pratica padrao de seguranca).
+
+        Deliberadamente NAO aplicado a `transition()` (mutacao) — ver
+        exclusoes do Estagio 5.1: hoje `transition()` e chamado apenas por
+        codigo interno ja confiavel (a propria orquestracao que criou/
+        retomou a Missao), nunca por um chamador externo com `tenant_id`
+        de requisicao nao confiavel."""
+        mission = self._buscar_mission(mission_id)
+        try:
+            exigir_tenant_correspondente(tenant_id, mission.tenant_id)
+        except IsolamentoDeTenantViolado as erro:
+            raise KeyError(f"Missao desconhecida: {mission_id}") from erro
+        return mission
+
+    def _buscar_mission(self, mission_id: MissionId) -> Mission:
         """Fase 2 do roadmap de plataforma (persistencia hibrida,
         `.claude/plans/peaceful-wondering-hearth.md`, Estagio 2.1) —
         cache-miss (`mission_id` ausente do `dict` em memoria, ex.:
         processo reiniciado) hidrata a Missao via replay do Event Bus antes
-        de desistir. Caminho quente (Missao ja presente) inalterado."""
+        de desistir. Caminho quente (Missao ja presente) inalterado.
+
+        Busca RAW, sem checagem de tenant (Fase 5, Estagio 5.1) — usada
+        internamente por `transition()`, que nao exige `tenant_id` do
+        chamador (ver docstring de `get_mission`); `get_mission()` e a
+        unica forma publica de leitura, e essa SIM valida o tenant."""
         if mission_id not in self._missions:
             hidratada = self._hidratar_de(mission_id)
             if hidratada is None:

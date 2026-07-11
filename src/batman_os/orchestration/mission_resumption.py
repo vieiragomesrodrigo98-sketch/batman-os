@@ -24,7 +24,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from batman_os.foundation.types import DecisionOption, Evidence, MissionId, WorkflowRunId
+from batman_os.foundation.types import (
+    DecisionOption,
+    Evidence,
+    MissionId,
+    TenantId,
+    WorkflowRunId,
+)
 from batman_os.governance.governance_engine import GovernanceAlert, GovernanceEngine
 from batman_os.governance.human_review import HumanReviewRequest, verificar_sla_e_alarmar
 from batman_os.kernel.decision_engine import DecisionEngine
@@ -48,6 +54,7 @@ class RespostaHumanaChegada:
     como descobri-lo a partir só do `mission_id`."""
 
     mission_id: MissionId
+    tenant_id: TenantId
     workflow_run_id: WorkflowRunId
     ponto: DecisionPoint
     opcao_escolhida: DecisionOption
@@ -86,7 +93,7 @@ def retomar_missao(
     gravados), aplica a decisão humana, e despacha os passos AINDA NÃO
     concluídos até a Missão terminar — passos já em `completed_steps`
     nunca são reexecutados (AT-9.1, `WorkflowEngine.executar_passo`)."""
-    mission = runtime.get_mission(resposta.mission_id)
+    mission = runtime.get_mission(resposta.mission_id, resposta.tenant_id)
     if mission.estado != MissionState.AWAITING_HUMAN:
         raise MissaoNaoRetomavel(
             f"Missao {resposta.mission_id} nao esta em AwaitingHuman "
@@ -110,7 +117,9 @@ def retomar_missao(
     runtime.transition(resposta.mission_id, MissionEventType.ESCALATION_RESOLVED)
     runtime.transition(resposta.mission_id, MissionEventType.DECISIONS_RESOLVED)
 
-    workflow.get_run(resposta.workflow_run_id, mission_id=resposta.mission_id)
+    workflow.get_run(
+        resposta.workflow_run_id, mission_id=resposta.mission_id, tenant_id=resposta.tenant_id
+    )
     workflow.repovoar_plano(resposta.workflow_run_id, plano)
 
     scheduler = Scheduler(capacidade_worker_pool=capacidade_execucao)

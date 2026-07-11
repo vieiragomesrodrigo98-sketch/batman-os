@@ -176,7 +176,7 @@ class TestExecucao1EscaladaParaHumano:
         resultado = engine.resolve(ponto, mission.id)
         assert resultado.escalonado_para == "human"
         runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
-        assert runtime.get_state(mission.id) == MissionState.AWAITING_HUMAN
+        assert runtime.get_state(mission.id, TENANT) == MissionState.AWAITING_HUMAN
 
         decision = engine.resolver_com_resposta_humana(
             ponto,
@@ -189,7 +189,7 @@ class TestExecucao1EscaladaParaHumano:
         assert decision.resolved_by == "human"
         runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
         runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
-        assert runtime.get_state(mission.id) == MissionState.EXECUTING
+        assert runtime.get_state(mission.id, TENANT) == MissionState.EXECUTING
 
         wf = WorkflowEngine(_InvocadorSempreSucesso())
         run = wf.iniciar(mission.id, plano)

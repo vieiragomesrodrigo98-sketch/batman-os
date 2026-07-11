@@ -329,6 +329,55 @@ class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
         assert engine.get_run(run.id).id == run.id
 
 
+class TestFase5Estagio51IsolamentoDeTenantNaLeitura:
+    """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+    `.claude/plans/peaceful-wondering-hearth.md`), Estagio 5.1 — mesmo
+    tratamento de `MissionRuntime.get_mission()`, aqui para
+    `WorkflowEngine.get_run()`: `tenant_id` opcional, quando fornecido
+    valida contra o `WorkflowRun` encontrado."""
+
+    OUTRO_TENANT = TenantId("tenant-2")
+
+    def test_get_run_com_tenant_errado_levanta_workflow_run_desconhecido_cache_hit(
+        self,
+    ) -> None:
+        invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
+        engine = WorkflowEngine(invocador)
+        run = engine.iniciar(MISSAO, _plano([PlanStep(capability=_ref("cap-a"))]))
+
+        with pytest.raises(WorkflowRunDesconhecido):
+            engine.get_run(run.id, tenant_id=self.OUTRO_TENANT)
+
+    def test_get_run_com_tenant_correto_funciona_cache_hit(self) -> None:
+        invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
+        engine = WorkflowEngine(invocador)
+        run = engine.iniciar(MISSAO, _plano([PlanStep(capability=_ref("cap-a"))]))
+
+        assert engine.get_run(run.id, tenant_id=TENANT).id == run.id
+
+    def test_get_run_com_tenant_errado_levanta_workflow_run_desconhecido_cache_miss(
+        self,
+    ) -> None:
+        event_bus = EventBus()
+        invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
+        engine_a = WorkflowEngine(invocador, event_bus=event_bus)
+        run = engine_a.iniciar(MISSAO, _plano([PlanStep(capability=_ref("cap-a"))]))
+
+        engine_b = WorkflowEngine(invocador, event_bus=event_bus)
+        with pytest.raises(WorkflowRunDesconhecido):
+            engine_b.get_run(run.id, mission_id=MISSAO, tenant_id=self.OUTRO_TENANT)
+
+    def test_get_run_com_tenant_correto_funciona_cache_miss(self) -> None:
+        event_bus = EventBus()
+        invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
+        engine_a = WorkflowEngine(invocador, event_bus=event_bus)
+        run = engine_a.iniciar(MISSAO, _plano([PlanStep(capability=_ref("cap-a"))]))
+
+        engine_b = WorkflowEngine(invocador, event_bus=event_bus)
+        hidratado = engine_b.get_run(run.id, mission_id=MISSAO, tenant_id=TENANT)
+        assert hidratado.id == run.id
+
+
 class TestFase2Estagio24ExecucaoConcorrente:
     """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
     hearth.md`), Estagio 2.4 — pre-requisito para o dispatcher real

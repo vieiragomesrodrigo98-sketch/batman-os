@@ -316,7 +316,7 @@ class TestExecutarMissaoViaPlaybook:
         assert resultado.relatorio["total_achados"] == 2
         assert resultado.relatorio["resumo_por_severidade"] == {"high": 1, "medium": 1}
 
-        final_mission = runtime.get_mission(resultado.mission_id)
+        final_mission = runtime.get_mission(resultado.mission_id, TENANT)
         assert final_mission.estado == MissionState.COMPLETED
 
         execution_engine.fechar()
@@ -351,7 +351,7 @@ class TestExecutarMissaoViaPlaybook:
         assert resultado.estado_final == "failed"
         assert resultado.relatorio is None
 
-        final_mission = runtime.get_mission(resultado.mission_id)
+        final_mission = runtime.get_mission(resultado.mission_id, TENANT)
         assert final_mission.estado == MissionState.FAILED
 
         execution_engine.fechar()

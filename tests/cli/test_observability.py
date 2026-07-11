@@ -7,12 +7,14 @@ from batman_os.cli.observability import linha_do_tempo
 from batman_os.foundation.types import MissionId, TenantId
 from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 
+TENANT = TenantId("t-1")
+
 
 class TestLinhaDoTempo:
     def test_retorna_vazio_para_missao_sem_eventos(self) -> None:
         bus = EventBus()
 
-        assert linha_do_tempo(bus, MissionId("m-sem-eventos")) == []
+        assert linha_do_tempo(bus, MissionId("m-sem-eventos"), TENANT) == []
 
     def test_formata_eventos_na_ordem_de_publicacao(self) -> None:
         bus = EventBus()
@@ -36,7 +38,7 @@ class TestLinhaDoTempo:
             )
         )
 
-        linhas = linha_do_tempo(bus, mission_id)
+        linhas = linha_do_tempo(bus, mission_id, TENANT)
 
         assert len(linhas) == 2
         assert "MissionCreated" in linhas[0]
@@ -65,5 +67,20 @@ class TestLinhaDoTempo:
             )
         )
 
-        assert len(linha_do_tempo(bus, MissionId("m-a"))) == 1
-        assert len(linha_do_tempo(bus, MissionId("m-b"))) == 1
+        assert len(linha_do_tempo(bus, MissionId("m-a"), TENANT)) == 1
+        assert len(linha_do_tempo(bus, MissionId("m-b"), TENANT)) == 1
+
+    def test_missao_de_outro_tenant_produz_lista_vazia(self) -> None:
+        bus = EventBus()
+        mission_id = MissionId("m-1")
+        bus.publish(
+            KernelEvent(
+                mission_id=mission_id,
+                tenant_id=TENANT,
+                tipo="MissionCreated",
+                emitido_por=EmissorKernel.MISSION_RUNTIME,
+                payload={},
+            )
+        )
+
+        assert linha_do_tempo(bus, mission_id, TenantId("outro-tenant")) == []

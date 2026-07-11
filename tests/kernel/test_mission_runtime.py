@@ -35,6 +35,8 @@ from batman_os.kernel.mission_runtime import (
 from batman_os.workflow.missions import MissionTypeDefinition, MissionTypeRegistry
 
 TIPO_INVESTIGAR_INCIDENTE = MissionTypeId("investigate-incident")
+TENANT = TenantId("tenant-1")
+OUTRO_TENANT = TenantId("tenant-2")
 
 
 def _registro_tipos() -> MissionTypeRegistry:
@@ -69,7 +71,7 @@ def _cria(runtime: MissionRuntime) -> Mission:
     return runtime.create(
         MissionIntent(dados={"exemplo": True}),
         TIPO_INVESTIGAR_INCIDENTE,
-        tenant_id=TenantId("tenant-1"),
+        tenant_id=TENANT,
     )
 
 
@@ -165,7 +167,7 @@ class TestAT62ReconciliacaoComEventBus:
             runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
 
         assert len(event_bus.replay(mission.id)) == antes
-        assert runtime.get_state(mission.id) == MissionState.CREATED
+        assert runtime.get_state(mission.id, TENANT) == MissionState.CREATED
 
 
 class TestAT64CancelamentoEmTempoFinito:
@@ -224,7 +226,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         final = runtime_a.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
 
         runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
-        hidratada = runtime_b.get_mission(mission.id)
+        hidratada = runtime_b.get_mission(mission.id, TENANT)
 
         assert hidratada.estado == final.estado
         assert hidratada.tenant_id == final.tenant_id
@@ -248,7 +250,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         )
 
         runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
-        hidratada = runtime_b.get_mission(mission.id)
+        hidratada = runtime_b.get_mission(mission.id, TENANT)
 
         assert len(hidratada.degradations) == 1
         assert hidratada.degradations[0].step_id == degradacao.step_id
@@ -257,7 +259,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
 
         with pytest.raises(KeyError):
-            runtime.get_mission(MissionId("inexistente"))
+            runtime.get_mission(MissionId("inexistente"), TENANT)
 
     def test_hidratacao_ignora_estado_de_eventos_de_outros_emissores(
         self, event_bus: EventBus
@@ -284,7 +286,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         )
 
         runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
-        hidratada = runtime_b.get_mission(mission.id)
+        hidratada = runtime_b.get_mission(mission.id, TENANT)
 
         assert hidratada.estado == final.estado == MissionState.PLANNING
 
@@ -298,7 +300,62 @@ class TestFase2Estagio21PersistenciaHibrida:
 
         monkeypatch.setattr(runtime, "_hidratar_de", _falhar)
 
-        assert runtime.get_mission(mission.id).id == mission.id
+        assert runtime.get_mission(mission.id, TENANT).id == mission.id
+
+
+class TestFase5Estagio51IsolamentoDeTenantNaLeitura:
+    """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+    `.claude/plans/peaceful-wondering-hearth.md`), Estagio 5.1 — achado
+    de investigacao direta: `get_mission`/`get_state` nao recebiam
+    `tenant_id` do chamador para validar, entao qualquer chamador com um
+    `mission_id` valido conseguia ler a Missao de QUALQUER tenant."""
+
+    def test_get_mission_com_tenant_errado_levanta_keyerror_cache_hit(
+        self, runtime: MissionRuntime
+    ) -> None:
+        mission = _cria(runtime)
+
+        with pytest.raises(KeyError):
+            runtime.get_mission(mission.id, OUTRO_TENANT)
+
+    def test_get_mission_com_tenant_correto_funciona_cache_hit(
+        self, runtime: MissionRuntime
+    ) -> None:
+        mission = _cria(runtime)
+
+        assert runtime.get_mission(mission.id, TENANT).id == mission.id
+
+    def test_get_mission_com_tenant_errado_levanta_keyerror_cache_miss(
+        self, event_bus: EventBus
+    ) -> None:
+        runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
+        mission = _cria(runtime_a)
+
+        runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
+        with pytest.raises(KeyError):
+            runtime_b.get_mission(mission.id, OUTRO_TENANT)
+
+    def test_get_mission_com_tenant_correto_funciona_cache_miss(self, event_bus: EventBus) -> None:
+        runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
+        mission = _cria(runtime_a)
+
+        runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
+        assert runtime_b.get_mission(mission.id, TENANT).id == mission.id
+
+    def test_get_state_com_tenant_errado_levanta_keyerror(self, runtime: MissionRuntime) -> None:
+        mission = _cria(runtime)
+
+        with pytest.raises(KeyError):
+            runtime.get_state(mission.id, OUTRO_TENANT)
+
+    def test_transition_continua_sem_exigir_tenant_id(self, runtime: MissionRuntime) -> None:
+        """Mutacao (`transition`) fica deliberadamente fora deste
+        Estagio — hoje so chamada por codigo interno ja confiavel. Ver
+        exclusao explicita no plano."""
+        mission = _cria(runtime)
+
+        final = runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        assert final.estado == MissionState.PLANNING
 
 
 def test_awaiting_human_e_awaiting_llm_sempre_retornam_a_deciding() -> None:
