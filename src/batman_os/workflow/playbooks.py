@@ -241,3 +241,45 @@ def certificar_playbook(
         raise GapDeCertificacaoDoPlaybook(f"Playbook '{playbook.id}' reprovado: {gaps}")
 
     return playbook.model_copy(update={"status": StatusPlaybook.ACTIVE})
+
+
+class PlaybookNaoAtivo(Exception):
+    """Levantada por `PlaybookRegistry.register()` quando o Playbook
+    fornecido não está `Active` — nunca registrar algo que
+    `certificar_playbook()` ainda não aprovou."""
+
+
+class PlaybookRegistry:
+    """Fase 3 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`, Estágio 3.3) — aditivo a este módulo, não toca
+    `PlaybookDefinition`/`resolve_playbook`/`certificar_playbook` (mesmo
+    padrão de convivência que `MissionTypeRegistry`, Vol.V Cap.20, já tem
+    no pacote `workflow/`).
+
+    Antes disto só existia `resolve_playbook(intent, candidatos: list)` —
+    uma função pura de desempate, sem estado. Um CLI (ou qualquer chamador
+    que precise satisfazer `kernel.planning_engine.RepositorioPlaybooks`)
+    precisa de algo para acumular Playbooks certificados sem gerenciar a
+    lista manualmente."""
+
+    def __init__(self) -> None:
+        self._playbooks: dict[PlaybookId, PlaybookDefinition] = {}
+
+    def register(self, playbook: PlaybookDefinition) -> None:
+        """Só aceita Playbooks já `Active` (certificados pelo chamador via
+        `certificar_playbook()`) — mesma doutrina de `CapabilityRegistry.
+        register` só aceitar definições já certificadas."""
+        if playbook.status != StatusPlaybook.ACTIVE:
+            raise PlaybookNaoAtivo(
+                f"Playbook '{playbook.id}' nao esta ACTIVE (status={playbook.status.value})"
+            )
+        self._playbooks[playbook.id] = playbook
+
+    def resolve_por_id(self, playbook_id: PlaybookId) -> PlaybookDefinition | None:
+        return self._playbooks.get(playbook_id)
+
+    def encontrar_correspondente(self, intent: MissionIntent) -> PlaybookDefinition | None:
+        """Satisfaz `kernel.planning_engine.RepositorioPlaybooks` — delega
+        100% a `resolve_playbook()`, nenhuma lógica de desempate
+        reimplementada."""
+        return resolve_playbook(intent, list(self._playbooks.values()))
