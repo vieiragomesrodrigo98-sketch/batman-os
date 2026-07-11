@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
@@ -10,12 +12,15 @@ from batman_os.foundation.types import (
     RecoveryStrategy,
     TenantId,
     TipoRecoveryStrategy,
+    WorkflowRunId,
 )
+from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.planning_engine import ExecutionPlan, PlanStep
 from batman_os.kernel.workflow_engine import (
     ErrorEvidence,
     ResultadoInvocacao,
     WorkflowEngine,
+    WorkflowRunDesconhecido,
 )
 
 MISSAO = MissionId("m-1")
@@ -212,3 +217,60 @@ def test_cancelamento_cooperativo_so_afeta_run_em_execucao() -> None:
     engine.executar_passo(run2.id, step_a)
     ainda_completo = engine.cancelar(run2.id)
     assert ainda_completo.estado == "completed"
+
+
+class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.1 — sem `event_bus`, comportamento identico ao
+    anterior (ja coberto pelos testes acima); com `event_bus`, uma segunda
+    instancia de `WorkflowEngine` reconstroi o `WorkflowRun` via replay em
+    cache-miss."""
+
+    def test_cache_miss_reconstroi_completed_steps_e_checkpoints(self) -> None:
+        event_bus = EventBus()
+        step_a = PlanStep(capability=_ref("cap-a"))
+        step_b = PlanStep(capability=_ref("cap-b"), depende_de=[step_a.id])
+        invocador = InvocadorControlavel(
+            {
+                "cap-a": [ResultadoInvocacao(sucesso=True)],
+                "cap-b": [ResultadoInvocacao(sucesso=True)],
+            }
+        )
+        engine_a = WorkflowEngine(invocador, event_bus=event_bus)
+        run = engine_a.iniciar(MISSAO, _plano([step_a, step_b]))
+        engine_a.executar_passo(run.id, step_a)
+        final = engine_a.executar_passo(run.id, step_b)
+
+        engine_b = WorkflowEngine(invocador, event_bus=event_bus)
+        hidratado = engine_b.get_run(run.id, mission_id=MISSAO)
+
+        assert hidratado.estado == final.estado == "completed"
+        assert [r.step_id for r in hidratado.completed_steps] == [
+            r.step_id for r in final.completed_steps
+        ]
+        assert len(hidratado.checkpoints) == len(final.checkpoints) == 2
+        assert hidratado.plan_id == run.plan_id
+        assert hidratado.tenant_id == run.tenant_id
+
+    def test_sem_event_bus_cache_miss_ainda_levanta_erro_conhecido(self) -> None:
+        invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
+        engine = WorkflowEngine(invocador)  # sem event_bus — comportamento anterior
+
+        with pytest.raises(WorkflowRunDesconhecido):
+            engine.get_run(WorkflowRunId("inexistente"), mission_id=MISSAO)
+
+    def test_hidratacao_nao_e_chamada_no_caminho_quente(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        event_bus = EventBus()
+        step_a = PlanStep(capability=_ref("cap-a"))
+        invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
+        engine = WorkflowEngine(invocador, event_bus=event_bus)
+        run = engine.iniciar(MISSAO, _plano([step_a]))
+
+        def _falhar(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("_hidratar_de nao deveria rodar com WorkflowRun em cache")
+
+        monkeypatch.setattr(engine, "_hidratar_de", _falhar)
+
+        assert engine.get_run(run.id).id == run.id

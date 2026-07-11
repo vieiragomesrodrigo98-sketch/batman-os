@@ -14,9 +14,13 @@ import pytest
 from batman_os.foundation.types import (
     CognitiveDebtFlag,
     Criticidade,
+    DegradationRecord,
     EscalationPolicy,
+    ImpactoDegradacao,
+    MissionId,
     MissionTypeId,
     Reversibilidade,
+    StepId,
     TenantId,
 )
 from batman_os.kernel.event_bus import EventBus
@@ -204,6 +208,68 @@ def test_transicao_nunca_pula_estados() -> None:
 
     with pytest.raises(TransicaoInvalida):
         runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+
+
+class TestFase2Estagio21PersistenciaHibrida:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.1 — cache em memoria inalterado no caminho
+    quente; hidratacao via replay do Event Bus so em cache-miss (segunda
+    instancia de `MissionRuntime` compartilhando o mesmo `EventBus`,
+    simulando processo reiniciado)."""
+
+    def test_cache_miss_reconstroi_mission_via_replay(self, event_bus: EventBus) -> None:
+        runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
+        mission = _cria(runtime_a)
+        _ate_executando(runtime_a, mission)
+        final = runtime_a.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+
+        runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
+        hidratada = runtime_b.get_mission(mission.id)
+
+        assert hidratada.estado == final.estado
+        assert hidratada.tenant_id == final.tenant_id
+        assert hidratada.tipo == final.tipo
+        assert hidratada.intent.dados == final.intent.dados
+        assert hidratada.cognitive_debt_flag == final.cognitive_debt_flag
+
+    def test_cache_miss_reconstroi_degradations(self, event_bus: EventBus) -> None:
+        runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
+        mission = _cria(runtime_a)
+        _ate_executando(runtime_a, mission)
+        degradacao = DegradationRecord(
+            step_id=StepId("passo-1"),
+            exhausted_chain=[],
+            impact=ImpactoDegradacao.REDUCED_FUNCTIONALITY,
+        )
+        runtime_a.transition(
+            mission.id,
+            MissionEventType.WORKFLOW_PARTIALLY_COMPLETED,
+            degradations=[degradacao],
+        )
+
+        runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
+        hidratada = runtime_b.get_mission(mission.id)
+
+        assert len(hidratada.degradations) == 1
+        assert hidratada.degradations[0].step_id == degradacao.step_id
+
+    def test_mission_id_desconhecido_ainda_levanta_keyerror(self, event_bus: EventBus) -> None:
+        runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
+
+        with pytest.raises(KeyError):
+            runtime.get_mission(MissionId("inexistente"))
+
+    def test_hidratacao_nao_e_chamada_no_caminho_quente(
+        self, runtime: MissionRuntime, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mission = _cria(runtime)
+
+        def _falhar(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("_hidratar_de nao deveria rodar com Mission em cache")
+
+        monkeypatch.setattr(runtime, "_hidratar_de", _falhar)
+
+        assert runtime.get_mission(mission.id).id == mission.id
 
 
 def test_awaiting_human_e_awaiting_llm_sempre_retornam_a_deciding() -> None:

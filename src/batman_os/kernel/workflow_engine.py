@@ -26,6 +26,7 @@ from batman_os.foundation.types import (
     agora,
     novo_uuid7,
 )
+from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 from batman_os.kernel.planning_engine import ExecutionPlan, PlanStep
 
 EstadoWorkflowRun = Literal["running", "paused", "completed", "failed", "cancelled"]
@@ -105,8 +106,15 @@ class WorkflowEngine:
     construção); aqui apenas a execução determinística de um passo já
     despachado, com checkpoint e recuperação."""
 
-    def __init__(self, invocador: InvocadorDeStep) -> None:
+    def __init__(self, invocador: InvocadorDeStep, event_bus: EventBus | None = None) -> None:
+        """`event_bus` (Fase 2 do roadmap de plataforma, `.claude/plans/
+        peaceful-wondering-hearth.md`, Estagio 2.1) — opcional, default
+        `None` preserva 100% dos chamadores existentes. Quando fornecido,
+        publica `WorkflowRunIniciado`/`StepCompleted`/`WorkflowRunCancelado`
+        para permitir hidratacao em cache-miss; sem ele, comportamento
+        identico ao anterior (so estado em memoria)."""
         self._invocador = invocador
+        self._event_bus = event_bus
         self._runs: dict[WorkflowRunId, WorkflowRun] = {}
         self._steps_do_plano: dict[WorkflowRunId, list[PlanStep]] = {}
         self._tentativas: dict[tuple[WorkflowRunId, StepId], int] = {}
@@ -118,12 +126,66 @@ class WorkflowEngine:
         run = WorkflowRun(mission_id=mission_id, tenant_id=plano.tenant_id, plan_id=plano.id)
         self._runs[run.id] = run
         self._steps_do_plano[run.id] = list(plano.steps)
+        self._publicar(run, "WorkflowRunIniciado", {"plan_id": str(plano.id)})
         return run
 
-    def get_run(self, run_id: WorkflowRunId) -> WorkflowRun:
+    def get_run(self, run_id: WorkflowRunId, mission_id: MissionId | None = None) -> WorkflowRun:
+        """`mission_id` (Estagio 2.1) — usado SOMENTE em cache-miss, para
+        localizar a historia da Missao no Event Bus (`replay` e indexado por
+        `mission_id`, nao por `run_id`). Chamadores que so tem o `run_id` de
+        um `WorkflowRun` ja em memoria continuam funcionando sem passa-lo."""
         if run_id not in self._runs:
-            raise WorkflowRunDesconhecido(str(run_id))
+            hidratado = self._hidratar_de(run_id, mission_id) if mission_id is not None else None
+            if hidratado is None:
+                raise WorkflowRunDesconhecido(str(run_id))
+            self._runs[run_id] = hidratado
+            return hidratado
         return self._runs[run_id]
+
+    def _hidratar_de(self, run_id: WorkflowRunId, mission_id: MissionId) -> WorkflowRun | None:
+        """Reconstrucao via replay do Event Bus, so em cache-miss. Nota de
+        escopo (Estagio 2.1): reconstroi `completed_steps`/`checkpoints`/
+        `estado`, mas NAO `_steps_do_plano` — isso exige o `ExecutionPlan`
+        completo, persistido no Estagio 2.2. Um `WorkflowRun` hidratado aqui
+        e consultavel (`get_run`), mas `passos_prontos`/`executar_passo`
+        exigem que `_steps_do_plano` seja repovoado externamente primeiro."""
+        if self._event_bus is None:
+            return None
+        historia = [
+            e for e in self._event_bus.replay(mission_id) if e.payload.get("run_id") == str(run_id)
+        ]
+        iniciado = next((e for e in historia if e.tipo == "WorkflowRunIniciado"), None)
+        if iniciado is None:
+            return None
+
+        run = WorkflowRun(
+            id=run_id,
+            mission_id=mission_id,
+            tenant_id=iniciado.tenant_id,
+            plan_id=PlanId(iniciado.payload["plan_id"]),
+        )
+        for evento in historia:
+            if evento.tipo == "StepCompleted":
+                run.completed_steps.append(StepResult.model_validate(evento.payload["step_result"]))
+                if "checkpoint" in evento.payload:
+                    run.checkpoints.append(Checkpoint.model_validate(evento.payload["checkpoint"]))
+            run.estado = evento.payload["estado"]
+        return run
+
+    def _publicar(
+        self, run: WorkflowRun, tipo_evento: str, payload_extra: dict[str, Any] | None = None
+    ) -> None:
+        if self._event_bus is None:
+            return
+        self._event_bus.publish(
+            KernelEvent(
+                mission_id=run.mission_id,
+                tenant_id=run.tenant_id,
+                tipo=tipo_evento,
+                emitido_por=EmissorKernel.WORKFLOW_ENGINE,
+                payload={"run_id": str(run.id), "estado": run.estado, **(payload_extra or {})},
+            )
+        )
 
     def passos_prontos(self, run_id: WorkflowRunId) -> list[PlanStep]:
         """Vol.II Cap.9, secao 9.3, regra 1 — passos cujas dependencias
@@ -155,8 +217,10 @@ class WorkflowEngine:
         run.completed_steps.append(resultado)
         run.current_step_id = None
 
+        checkpoint: Checkpoint | None = None
         if resultado.status in ("success", "recovered"):
-            run.checkpoints.append(Checkpoint(apos_step_id=step.id))
+            checkpoint = Checkpoint(apos_step_id=step.id)
+            run.checkpoints.append(checkpoint)
             steps = self._steps_do_plano[run_id]
             todos_processados = {r.step_id for r in run.completed_steps} == {s.id for s in steps}
             if todos_processados:
@@ -167,6 +231,11 @@ class WorkflowEngine:
             # deterministica, nunca em estado indefinido.
             run.estado = "failed"
 
+        payload_extra: dict[str, Any] = {"step_result": resultado.model_dump(mode="json")}
+        if checkpoint is not None:
+            payload_extra["checkpoint"] = checkpoint.model_dump(mode="json")
+        self._publicar(run, "StepCompleted", payload_extra)
+
         return run
 
     def cancelar(self, run_id: WorkflowRunId) -> WorkflowRun:
@@ -176,6 +245,7 @@ class WorkflowEngine:
         run = self.get_run(run_id)
         if run.estado == "running":
             run.estado = "cancelled"
+            self._publicar(run, "WorkflowRunCancelado")
         return run
 
     def _invocar_com_recuperacao(self, run_id: WorkflowRunId, step: PlanStep) -> StepResult:

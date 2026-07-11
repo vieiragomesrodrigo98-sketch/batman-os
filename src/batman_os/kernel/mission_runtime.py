@@ -235,7 +235,11 @@ class MissionRuntime:
             tenant_id=tenant_id, tipo=tipo, intent=intent, parent_mission_id=parent_mission_id
         )
         self._missions[mission.id] = mission
-        self._publicar(mission, "MissionCreated")
+        self._publicar(
+            mission,
+            "MissionCreated",
+            payload_extra={"tipo": str(mission.tipo), "intent": mission.intent.dados},
+        )
         return mission
 
     def transition(
@@ -280,7 +284,15 @@ class MissionRuntime:
         self._publicar(
             mission,
             f"Mission{novo_estado.value}",
-            payload_extra={"evento": evento.value, **(payload_extra or {})},
+            payload_extra={
+                "evento": evento.value,
+                **(
+                    {"degradations": [d.model_dump(mode="json") for d in degradations]}
+                    if degradations
+                    else {}
+                ),
+                **(payload_extra or {}),
+            },
         )
         return mission
 
@@ -288,9 +300,51 @@ class MissionRuntime:
         return self.get_mission(mission_id).estado
 
     def get_mission(self, mission_id: MissionId) -> Mission:
+        """Fase 2 do roadmap de plataforma (persistencia hibrida,
+        `.claude/plans/peaceful-wondering-hearth.md`, Estagio 2.1) —
+        cache-miss (`mission_id` ausente do `dict` em memoria, ex.:
+        processo reiniciado) hidrata a Missao via replay do Event Bus antes
+        de desistir. Caminho quente (Missao ja presente) inalterado."""
         if mission_id not in self._missions:
-            raise KeyError(f"Missao desconhecida: {mission_id}")
+            hidratada = self._hidratar_de(mission_id)
+            if hidratada is None:
+                raise KeyError(f"Missao desconhecida: {mission_id}")
+            self._missions[mission_id] = hidratada
+            return hidratada
         return self._missions[mission_id]
+
+    def _hidratar_de(self, mission_id: MissionId) -> Mission | None:
+        """Reconstrucao via replay do Event Bus, generalizando o padrao que
+        `_calcular_cognitive_debt_flag` ja aplicava a 1 campo — aqui para a
+        `Mission` inteira. So chamada em cache-miss (nunca no caminho
+        quente); retorna `None` se `mission_id` nunca existiu de fato."""
+        historia = self._event_bus.replay(mission_id)
+        criado = next((e for e in historia if e.tipo == "MissionCreated"), None)
+        if criado is None:
+            return None
+
+        tipo_raw = criado.payload.get("tipo", "")
+        mission = Mission(
+            id=mission_id,
+            tenant_id=criado.tenant_id,
+            tipo=MissionTypeId(tipo_raw),
+            intent=MissionIntent(dados=criado.payload.get("intent", {})),
+            criado_em=criado.ocorrido_em,
+        )
+        for evento in historia:
+            estado_raw = evento.payload.get("estado")
+            if estado_raw is not None:
+                mission.estado = MissionState(estado_raw)
+            mission.atualizado_em = evento.ocorrido_em
+            degradations_raw = evento.payload.get("degradations")
+            if degradations_raw:
+                mission.degradations.extend(
+                    DegradationRecord.model_validate(d) for d in degradations_raw
+                )
+
+        if mission.estado in ESTADOS_TERMINAIS:
+            mission.cognitive_debt_flag = self._calcular_cognitive_debt_flag(mission_id)
+        return mission
 
     def _calcular_cognitive_debt_flag(self, mission_id: MissionId) -> CognitiveDebtFlag:
         """Vol.I Cap.4, secao 4.9.1 (AT-6.1) — deriva o flag a partir da
