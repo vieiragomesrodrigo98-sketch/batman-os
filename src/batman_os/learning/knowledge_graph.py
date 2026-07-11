@@ -19,7 +19,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from batman_os.foundation.types import MissionTypeId, PlaybookId, Timestamp, agora
+from batman_os.foundation.types import MissionTypeId, PlaybookId, TenantId, Timestamp, agora
 
 
 class TipoNoKnowledge(StrEnum):
@@ -38,12 +38,22 @@ class TipoNoKnowledge(StrEnum):
 class KnowledgeNode(BaseModel):
     """Vol.VI Cap.23, secao 23.3 — `ref` é o ID opaco do Knowledge Asset
     (RuleId/CapabilityId/SkillId/... como string). Congelado (`frozen`) para
-    servir de chave de dicionário/identidade em grafo."""
+    servir de chave de dicionário/identidade em grafo.
+
+    `tenant_id` (Fase 4 do roadmap de plataforma, `.claude/plans/
+    peaceful-wondering-hearth.md`, Estagio 4.1) — retrofit obrigatorio
+    (ADR-0005, sem default): gap ja documentado em
+    `foundation/tenant_isolation.py` desde a Milestone 4, fechado agora
+    porque o Mission Graph (Estagio 4.2) representa Missoes, que ja
+    carregam `tenant_id` obrigatorio em todo o resto do Kernel — nao
+    fixar isso agora criaria um vazamento de isolamento multi-tenant
+    imediato, nao hipotetico."""
 
     model_config = ConfigDict(frozen=True)
 
     tipo: TipoNoKnowledge
     ref: str
+    tenant_id: TenantId
 
 
 class TipoAresta(StrEnum):
@@ -58,13 +68,17 @@ class TipoAresta(StrEnum):
 
 
 class KnowledgeEdge(BaseModel):
-    """Vol.VI Cap.23, secao 23.3."""
+    """Vol.VI Cap.23, secao 23.3.
+
+    `tenant_id` (Fase 4, Estagio 4.1) — mesmo retrofit de `KnowledgeNode`;
+    ver docstring lá para o raciocínio completo."""
 
     model_config = ConfigDict(frozen=True)
 
     kind: TipoAresta
     de: KnowledgeNode
     para: KnowledgeNode
+    tenant_id: TenantId
 
 
 class KnowledgeNodeDetail(BaseModel):
@@ -110,6 +124,14 @@ class KnowledgeGraph:
 
     def nos_por_tipo(self, tipo: TipoNoKnowledge) -> list[KnowledgeNode]:
         return [n for n in self._nos if n.tipo == tipo]
+
+    def nos_por_tenant(self, tenant_id: TenantId) -> list[KnowledgeNode]:
+        """Fase 4, Estagio 4.1 — filtro simples por tenant. Deliberadamente
+        NAO retrofitado em `get_neighbors`/`impact_analysis`/
+        `provenance_trail` (travessias a partir de um nó específico já
+        conhecido, não consultas cross-tenant) — ver exclusões do Estágio
+        4.1 no plano de Fase 4."""
+        return [n for n in self._nos if n.tenant_id == tenant_id]
 
     def get_node(self, ref: KnowledgeNode) -> KnowledgeNodeDetail:
         if ref not in self._nos:

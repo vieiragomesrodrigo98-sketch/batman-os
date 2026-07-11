@@ -284,6 +284,7 @@ class TestCicloDeAprendizadoEExecucaoN:
             taxa_minima=0.9,
             minimo_avaliacoes=50,
             grafo=grafo if grafo is not None else KnowledgeGraph(),
+            tenant_id=TENANT,
         )
 
     def test_padrao_recorrente_e_identificado_como_candidato(self) -> None:

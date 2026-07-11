@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from batman_os.foundation.types import DecisionOption, HumanReviewRef, RuleId
+from batman_os.foundation.types import DecisionOption, HumanReviewRef, RuleId, TenantId
 from batman_os.governance.aprendizado_para_metricas import (
     METRIC_REGRAS_PROMOVIDAS,
     METRIC_TAMANHO_KNOWLEDGE_GRAPH,
@@ -31,6 +31,7 @@ from batman_os.learning.rule_evolution import (
 )
 
 _JANELA = timedelta(hours=1)
+TENANT = TenantId("tenant-1")
 
 
 def _regra(id_: str, status: StatusRegra) -> RuleDefinition:
@@ -55,8 +56,8 @@ def _observability() -> ObservabilityEngine:
 class TestTamanhoDoKnowledgeGraph:
     def test_reflete_a_quantidade_real_de_nos(self) -> None:
         grafo = KnowledgeGraph()
-        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1"))
-        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-2"))
+        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1", tenant_id=TENANT))
+        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-2", tenant_id=TENANT))
         observability = _observability()
 
         alimentar_metricas_de_aprendizado(observability, grafo, [], _JANELA)
@@ -105,7 +106,7 @@ class TestRegrasPromovidasPorPeriodo:
 class TestIntegracaoComOPainel:
     def test_metricas_aparecem_no_painel_learning_throughput(self) -> None:
         grafo = KnowledgeGraph()
-        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1"))
+        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1", tenant_id=TENANT))
         regras = [_regra("R-1", StatusRegra.ACTIVE)]
         observability = _observability()
 

@@ -11,6 +11,7 @@ from batman_os.foundation.types import (
     HumanReviewRef,
     Reversibilidade,
     RuleId,
+    TenantId,
 )
 from batman_os.kernel.planning_engine import DecisionPoint
 from batman_os.learning.knowledge_graph import KnowledgeGraph, TipoAresta, TipoNoKnowledge
@@ -29,6 +30,7 @@ from batman_os.learning.rule_evolution import (
 )
 
 _APPROVED_BY = HumanReviewRef("review-1")
+TENANT = TenantId("tenant-1")
 
 
 def _politica() -> EscalationPolicy:
@@ -86,7 +88,12 @@ class TestAT241ShadowModeObrigatorioAntesDeActive:
 
         with pytest.raises(ShadowModeInsuficiente):
             promover_a_active(
-                regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=KnowledgeGraph()
+                regra,
+                avaliacoes,
+                taxa_minima=0.9,
+                minimo_avaliacoes=50,
+                grafo=KnowledgeGraph(),
+                tenant_id=TENANT,
             )
 
     def test_taxa_de_concordancia_abaixo_do_limiar_reprova(self) -> None:
@@ -104,7 +111,12 @@ class TestAT241ShadowModeObrigatorioAntesDeActive:
 
         with pytest.raises(ShadowModeInsuficiente):
             promover_a_active(
-                regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=10, grafo=KnowledgeGraph()
+                regra,
+                avaliacoes,
+                taxa_minima=0.9,
+                minimo_avaliacoes=10,
+                grafo=KnowledgeGraph(),
+                tenant_id=TENANT,
             )
 
     def test_avaliacoes_suficientes_e_concordantes_promove(self) -> None:
@@ -122,7 +134,7 @@ class TestAT241ShadowModeObrigatorioAntesDeActive:
 
         grafo = KnowledgeGraph()
         promovida = promover_a_active(
-            regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo
+            regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo, tenant_id=TENANT
         )
         assert promovida.status == StatusRegra.ACTIVE
 
@@ -150,7 +162,7 @@ class TestMilestone4RegraPromovidaEntraNoKnowledgeGraph:
         ]
         grafo = KnowledgeGraph()
         promovida = promover_a_active(
-            regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo
+            regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo, tenant_id=TENANT
         )
         return promovida, grafo
 
@@ -192,7 +204,14 @@ class TestMilestone4RegraPromovidaEntraNoKnowledgeGraph:
         grafo = KnowledgeGraph()
 
         with pytest.raises(ShadowModeInsuficiente):
-            promover_a_active(regra, avaliacoes, taxa_minima=0.9, minimo_avaliacoes=50, grafo=grafo)
+            promover_a_active(
+                regra,
+                avaliacoes,
+                taxa_minima=0.9,
+                minimo_avaliacoes=50,
+                grafo=grafo,
+                tenant_id=TENANT,
+            )
 
         assert grafo.nos_por_tipo(TipoNoKnowledge.RULE) == []
 

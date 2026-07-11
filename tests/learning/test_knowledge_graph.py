@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from batman_os.foundation.types import CapabilityId, MissionTypeId, PlaybookId, SkillId, agora
+import pytest
+from pydantic import ValidationError
+
+from batman_os.foundation.types import (
+    CapabilityId,
+    MissionTypeId,
+    PlaybookId,
+    SkillId,
+    TenantId,
+    agora,
+)
 from batman_os.learning.knowledge_graph import (
     KnowledgeEdge,
     KnowledgeGraph,
@@ -16,9 +26,12 @@ from batman_os.learning.knowledge_graph import (
     verificar_integridade,
 )
 
+TENANT = TenantId("tenant-1")
+OUTRO_TENANT = TenantId("tenant-2")
+
 
 def _no(tipo: TipoNoKnowledge, ref: str) -> KnowledgeNode:
-    return KnowledgeNode(tipo=tipo, ref=ref)
+    return KnowledgeNode(tipo=tipo, ref=ref, tenant_id=TENANT)
 
 
 class TestAT231ReconciliacaoDentroDoSla:
@@ -68,8 +81,12 @@ class TestAT232EquivalenciaComVarreduraDeImpactoDeSkill:
 
         for no in (skill, cap_a, cap_b, cap_sem_dependencia):
             grafo.adicionar_no(no)
-        grafo.adicionar_aresta(KnowledgeEdge(kind=TipoAresta.USES, de=cap_a, para=skill))
-        grafo.adicionar_aresta(KnowledgeEdge(kind=TipoAresta.USES, de=cap_b, para=skill))
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.USES, de=cap_a, para=skill, tenant_id=TENANT)
+        )
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.USES, de=cap_b, para=skill, tenant_id=TENANT)
+        )
 
         relatorio = grafo.impact_analysis(skill)
 
@@ -133,7 +150,9 @@ class TestAT232EquivalenciaComVarreduraDeImpactoDeSkill:
         cap_no = _no(TipoNoKnowledge.CAPABILITY, "cap-a")
         grafo.adicionar_no(skill_no)
         grafo.adicionar_no(cap_no)
-        grafo.adicionar_aresta(KnowledgeEdge(kind=TipoAresta.USES, de=cap_no, para=skill_no))
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.USES, de=cap_no, para=skill_no, tenant_id=TENANT)
+        )
 
         relatorio = grafo.impact_analysis(skill_no)
         afetadas_grafo = {CapabilityId(n.ref) for n in relatorio.directly_dependent}
@@ -152,9 +171,11 @@ class TestAT232EquivalenciaComVarreduraDeImpactoDeSkill:
         grafo.adicionar_no(
             playbook, KnowledgeNodeDetail(mission_type_id=MissionTypeId("investigate-incident"))
         )
-        grafo.adicionar_aresta(KnowledgeEdge(kind=TipoAresta.USES, de=cap, para=skill))
         grafo.adicionar_aresta(
-            KnowledgeEdge(kind=TipoAresta.INSTANTIATED_BY, de=playbook, para=cap)
+            KnowledgeEdge(kind=TipoAresta.USES, de=cap, para=skill, tenant_id=TENANT)
+        )
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.INSTANTIATED_BY, de=playbook, para=cap, tenant_id=TENANT)
         )
 
         relatorio = grafo.impact_analysis(skill)
@@ -181,7 +202,7 @@ class TestAT233RegraSemJustifiedByViolaIntegridade:
         grafo.adicionar_no(regra)
         grafo.adicionar_no(evidencia)
         grafo.adicionar_aresta(
-            KnowledgeEdge(kind=TipoAresta.JUSTIFIED_BY, de=regra, para=evidencia)
+            KnowledgeEdge(kind=TipoAresta.JUSTIFIED_BY, de=regra, para=evidencia, tenant_id=TENANT)
         )
 
         violacoes = verificar_integridade(grafo)
@@ -205,10 +226,12 @@ class TestProvenanceTrail:
         grafo.adicionar_no(registro)
         grafo.adicionar_no(evidencia)
         grafo.adicionar_aresta(
-            KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=regra, para=registro)
+            KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=regra, para=registro, tenant_id=TENANT)
         )
         grafo.adicionar_aresta(
-            KnowledgeEdge(kind=TipoAresta.JUSTIFIED_BY, de=registro, para=evidencia)
+            KnowledgeEdge(
+                kind=TipoAresta.JUSTIFIED_BY, de=registro, para=evidencia, tenant_id=TENANT
+            )
         )
 
         trilha = grafo.provenance_trail(regra)
@@ -227,8 +250,46 @@ class TestProvenanceTrail:
         b = _no(TipoNoKnowledge.RULE, "b")
         grafo.adicionar_no(a)
         grafo.adicionar_no(b)
-        grafo.adicionar_aresta(KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=a, para=b))
-        grafo.adicionar_aresta(KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=b, para=a))
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=a, para=b, tenant_id=TENANT)
+        )
+        grafo.adicionar_aresta(
+            KnowledgeEdge(kind=TipoAresta.PROMOTED_FROM, de=b, para=a, tenant_id=TENANT)
+        )
 
         trilha = grafo.provenance_trail(a)
         assert trilha == [b]  # para antes de repetir 'a'
+
+
+class TestFase4Estagio41TenantIdEmNoEAresta:
+    """Vol.VI Cap.23 — retrofit de `tenant_id` (Fase 4, Estagio 4.1):
+    fecha o gap documentado em `foundation/tenant_isolation.py` antes do
+    Mission Graph (Estagio 4.2) introduzir nos de Missao, que ja carregam
+    `tenant_id` obrigatorio em todo o resto do Kernel."""
+
+    def test_nos_por_tenant_filtra_apenas_o_tenant_pedido(self) -> None:
+        grafo = KnowledgeGraph()
+        no_tenant_1 = KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1", tenant_id=TENANT)
+        no_tenant_2 = KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-2", tenant_id=OUTRO_TENANT)
+        grafo.adicionar_no(no_tenant_1)
+        grafo.adicionar_no(no_tenant_2)
+
+        nos_do_tenant_1 = grafo.nos_por_tenant(TENANT)
+
+        assert nos_do_tenant_1 == [no_tenant_1]
+
+    def test_nos_por_tenant_sem_nenhum_no_do_tenant_retorna_vazio(self) -> None:
+        grafo = KnowledgeGraph()
+        grafo.adicionar_no(KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1", tenant_id=TENANT))
+
+        assert grafo.nos_por_tenant(OUTRO_TENANT) == []
+
+    def test_knowledge_node_sem_tenant_id_e_rejeitado(self) -> None:
+        with pytest.raises(ValidationError):
+            KnowledgeNode(tipo=TipoNoKnowledge.RULE, ref="R-1")  # type: ignore[call-arg]
+
+    def test_knowledge_edge_sem_tenant_id_e_rejeitado(self) -> None:
+        de = _no(TipoNoKnowledge.RULE, "R-1")
+        para = _no(TipoNoKnowledge.EVIDENCE, "ev-1")
+        with pytest.raises(ValidationError):
+            KnowledgeEdge(kind=TipoAresta.JUSTIFIED_BY, de=de, para=para)  # type: ignore[call-arg]
