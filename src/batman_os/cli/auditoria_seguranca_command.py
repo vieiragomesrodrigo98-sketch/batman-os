@@ -274,13 +274,16 @@ def executar_auditoria_seguranca(
     root: Path,
     db_path: str = ":memory:",
     grafo_conhecimento: KnowledgeGraph | None = None,
+    tenant_id: TenantId = TENANT_PADRAO,
 ) -> ResultadoMissaoPlaybook:
     """Vol.IX Cap.34 — roda o Playbook "Auditar Segurança" contra `root`.
     `db_path`: mesma convenção de `cli/scan_command.py::executar_scan`
     (`":memory:"` default; um caminho real persiste os eventos entre
     execuções). `grafo_conhecimento` (Fase 4, Estágio 4.2): opcional,
     repassado direto a `executar_missao_via_playbook` — quando fornecido,
-    a Missão é reconciliada no Mission Graph."""
+    a Missão é reconciliada no Mission Graph. `tenant_id` (Fase 5,
+    Estágio 5.3): opcional, default `TENANT_PADRAO` preserva 100% do
+    comportamento atual; CLI: `--tenant`."""
     playbook, especificacoes = _montar_playbook(root)
     registry, operator = _preparar_capabilities()
 
@@ -303,7 +306,7 @@ def executar_auditoria_seguranca(
         return executar_missao_via_playbook(
             MissionIntent(dados={"tipo": "security-audit"}),
             TIPO_MISSAO,
-            TENANT_PADRAO,
+            tenant_id,
             especificacoes,
             runtime=runtime,
             registro=registry,

@@ -3,6 +3,8 @@ declarada em `pyproject.toml` (`batman_os.cli.batman:main`)."""
 
 from __future__ import annotations
 
+import json
+import sqlite3
 from pathlib import Path
 
 from batman_os.cli.batman import main
@@ -60,3 +62,34 @@ class TestMilestone5OpcaoDb:
         main(["scan", "--root", str(tmp_path), "--db", str(db_path)])
 
         assert db_path.stat().st_size >= tamanho_apos_primeira
+
+
+def _tenants_das_missoes_criadas(db_path: Path) -> set[str]:
+    conn = sqlite3.connect(str(db_path))
+    try:
+        linhas = conn.execute(
+            "SELECT payload_json FROM events WHERE payload_json LIKE '%MissionCreated%'"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {json.loads(linha[0])["tenant_id"] for linha in linhas}
+
+
+class TestFase5Estagio53FlagTenant:
+    """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+    `.claude/plans/peaceful-wondering-hearth.md`), Estagio 5.3 — `--tenant`
+    substitui o `TENANT_PADRAO` hardcoded que toda Missao de scan usava."""
+
+    def test_flag_tenant_e_usada_nas_missoes_criadas(self, tmp_path: Path) -> None:
+        db_path = tmp_path / "estado.db"
+
+        main(["scan", "--root", str(tmp_path), "--db", str(db_path), "--tenant", "acme"])
+
+        assert _tenants_das_missoes_criadas(db_path) == {"acme"}
+
+    def test_sem_flag_tenant_preserva_o_default_local(self, tmp_path: Path) -> None:
+        db_path = tmp_path / "estado.db"
+
+        main(["scan", "--root", str(tmp_path), "--db", str(db_path)])
+
+        assert _tenants_das_missoes_criadas(db_path) == {"local"}

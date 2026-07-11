@@ -12,7 +12,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from batman_os.cli.scan_command import executar_scan
+from batman_os.cli.scan_command import TENANT_PADRAO, executar_scan
+from batman_os.foundation.types import TenantId
 
 _ORDEM_SEVERIDADE = ["critical", "high", "medium", "low"]
 
@@ -37,7 +38,7 @@ def _resolver_db_path(root: Path, db_arg: str | None) -> str:
 def _comando_scan(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     db_path = _resolver_db_path(root, args.db)
-    resultado = executar_scan(root, db_path=db_path)
+    resultado = executar_scan(root, db_path=db_path, tenant_id=TenantId(args.tenant))
 
     for achado in resultado.achados:
         print(f"[{achado.severidade.upper()}] {achado.codigo} {achado.arquivo}: {achado.titulo}")
@@ -73,6 +74,14 @@ def _montar_parser() -> argparse.ArgumentParser:
             "Caminho do SQLite para persistir eventos entre execucoes "
             "(default: .batman-os/estado.db relativo a --root; use ':memory:' "
             "para o comportamento efemero anterior)"
+        ),
+    )
+    scan_parser.add_argument(
+        "--tenant",
+        default=str(TENANT_PADRAO),
+        help=(
+            "Tenant dono desta execucao (Fase 5 do roadmap de plataforma, "
+            "isolamento multi-tenant; default: 'local')"
         ),
     )
     scan_parser.set_defaults(func=_comando_scan)

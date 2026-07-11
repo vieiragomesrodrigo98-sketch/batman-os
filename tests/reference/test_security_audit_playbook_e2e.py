@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from batman_os.cli.auditoria_seguranca_command import executar_auditoria_seguranca
+from batman_os.foundation.types import TenantId
 from batman_os.learning.knowledge_graph import KnowledgeGraph, TipoAresta, TipoNoKnowledge
 
 
@@ -125,3 +126,17 @@ class TestAuditoriaSegurancaPlaybookPontaAPonta:
         # Este fluxo nao produz DecisionPoint (ver _SemConhecimentoAinda) —
         # nenhum no DECISION deve existir.
         assert grafo.nos_por_tipo(TipoNoKnowledge.DECISION) == []
+
+    def test_tenant_id_customizado_e_usado_na_missao(self, tmp_path: Path) -> None:
+        """Fase 5, Estágio 5.3 — `tenant_id` opcional substitui o
+        `TENANT_PADRAO` hardcoded que a Missão da auditoria usava."""
+        _plantar_repositorio_com_violacoes(tmp_path)
+        grafo = KnowledgeGraph()
+
+        resultado = executar_auditoria_seguranca(
+            tmp_path, grafo_conhecimento=grafo, tenant_id=TenantId("acme")
+        )
+
+        assert resultado.estado_final == "completed"
+        nos_missao = grafo.nos_por_tipo(TipoNoKnowledge.MISSION)
+        assert nos_missao[0].tenant_id == "acme"

@@ -263,6 +263,7 @@ def executar_scan(
     db_path: str = ":memory:",
     paralelo: bool = False,
     max_workers: int = 8,
+    tenant_id: TenantId = TENANT_PADRAO,
 ) -> ResultadoScan:
     """Vol.IX Cap.34 -- roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa os specs de todas as Capabilities registradas
@@ -286,7 +287,11 @@ def executar_scan(
     fora do que os Protocols de borda ja isolam). Resultado final e o MESMO
     conjunto de achados que o caminho sequencial -- so a ORDEM de conclusao
     pode variar, nunca testada como garantia (`tests/cli/test_scan_command.py`
-    compara por conjunto)."""
+    compara por conjunto).
+
+    `tenant_id` (Fase 5 do roadmap de plataforma, Estagio 5.3) -- opcional,
+    default `TENANT_PADRAO` preserva 100% do comportamento atual; CLI:
+    `--tenant`."""
     if not registry_sdk.registry():
         registrar_capabilities_conhecidas()
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
@@ -328,6 +333,7 @@ def executar_scan(
                 execution_engine=execution_engine,
                 operator=operator,
                 operator_ref=operator_ref,
+                tenant_id=tenant_id,
             )
 
         if paralelo:
@@ -370,6 +376,7 @@ def _processar_entrada(
     execution_engine: ExecutionEngine,
     operator: Operator,
     operator_ref: OperatorRef,
+    tenant_id: TenantId,
 ) -> ResultadoMissao:
     """Uma Missão real, do início ao fim, para um único (arquivo, regra).
 
@@ -378,11 +385,11 @@ def _processar_entrada(
     achados — ex.: várias rotas ausentes no mesmo arquivo, cada uma com
     `chave` distinta — `saida["achados"][0]` descartava silenciosamente
     os demais)."""
-    mission = runtime.create(MissionIntent(dados=entrada), TIPO_MISSAO, tenant_id=TENANT_PADRAO)
+    mission = runtime.create(MissionIntent(dados=entrada), TIPO_MISSAO, tenant_id=tenant_id)
     runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
 
     plano = plan(
-        mission_id=mission.id, tenant_id=TENANT_PADRAO, intent=mission.intent, registro=registry
+        mission_id=mission.id, tenant_id=tenant_id, intent=mission.intent, registro=registry
     )
     if not plano.steps:
         runtime.transition(mission.id, MissionEventType.PLAN_FAILED)
@@ -407,7 +414,7 @@ def _processar_entrada(
         capability_registry=registry,
         tabela_entradas=tabela,
         mission_id=mission.id,
-        tenant_id=TENANT_PADRAO,
+        tenant_id=tenant_id,
     )
     workflow = WorkflowEngine(invocador)
     run = workflow.iniciar(mission.id, plano)

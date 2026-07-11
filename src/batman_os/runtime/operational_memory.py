@@ -127,6 +127,20 @@ class OperationalMemory:
         self._conn.commit()
 
     def all_records(self) -> list[OperationalRecord]:
+        """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+        `.claude/plans/peaceful-wondering-hearth.md`, Estágio 5.3) —
+        avaliado e mantido DELIBERADAMENTE cross-tenant, não um gap
+        esquecido: junto com `get_frequency()`/`find_promotion_
+        candidates()` abaixo, alimenta o mesmo tipo de sinal de
+        aprendizado/padrão compartilhado que `CapabilityRegistry`/
+        `MissionTypeRegistry`/`PlaybookRegistry` já tratam como catálogos
+        globais — um padrão recorrente que gera candidato a promoção de
+        regra plausivelmente PRECISA ser observado através de todos os
+        tenants, não é o mesmo tipo de leitura que `MissionRuntime.
+        get_mission()` (Estágio 5.1), onde um chamador escopado a UM
+        tenant nunca deveria ver dado de outro. Quem precisar de leitura
+        escopada usa `_records_do_tenant()` (via `find_similar_missions`/
+        `get_decision_history`, já tenant-scoped desde a Milestone 7)."""
         cursor = self._conn.execute("SELECT payload_json FROM records ORDER BY seq ASC")
         return [OperationalRecord.model_validate_json(linha[0]) for linha in cursor.fetchall()]
 
