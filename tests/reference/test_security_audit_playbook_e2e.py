@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from batman_os.cli.auditoria_seguranca_command import executar_auditoria_seguranca
+from batman_os.learning.knowledge_graph import KnowledgeGraph, TipoAresta, TipoNoKnowledge
 
 
 def _plantar_repositorio_com_violacoes(root: Path) -> None:
@@ -96,3 +97,31 @@ class TestAuditoriaSegurancaPlaybookPontaAPonta:
         assert resultado.estado_final == "completed"
         assert resultado.mission_id is not None
         assert resultado.workflow_run_id is not None
+
+    def test_grafo_de_conhecimento_recebe_a_missao_reconciliada(self, tmp_path: Path) -> None:
+        """Fase 4, Estágio 4.3 — mesma prova ponta-a-ponta, agora passando
+        `grafo_conhecimento` real: confirma que a Missão real (não uma
+        fake de unit test) aparece no Mission Graph com o Playbook
+        correto. Este fluxo nunca produz `DecisionPoint` (ver docstring
+        de `_SemConhecimentoAinda`) — cobre o caso "Missão sem decisões"
+        de fora para dentro, com o driver real."""
+        _plantar_repositorio_com_violacoes(tmp_path)
+        grafo = KnowledgeGraph()
+
+        resultado = executar_auditoria_seguranca(tmp_path, grafo_conhecimento=grafo)
+
+        assert resultado.estado_final == "completed"
+
+        nos_missao = grafo.nos_por_tipo(TipoNoKnowledge.MISSION)
+        assert len(nos_missao) == 1
+        assert nos_missao[0].ref == str(resultado.mission_id)
+
+        nos_playbook = grafo.nos_por_tipo(TipoNoKnowledge.PLAYBOOK)
+        assert any(no.ref == "auditoria-seguranca" for no in nos_playbook)
+
+        vizinhos = grafo.get_neighbors(nos_missao[0], edge_kind=TipoAresta.USES)
+        assert any(v.ref == "auditoria-seguranca" for v in vizinhos)
+
+        # Este fluxo nao produz DecisionPoint (ver _SemConhecimentoAinda) —
+        # nenhum no DECISION deve existir.
+        assert grafo.nos_por_tipo(TipoNoKnowledge.DECISION) == []
