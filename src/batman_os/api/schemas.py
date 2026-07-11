@@ -20,8 +20,13 @@ class AuditoriaSegurancaRequest(BaseModel):
 
 
 class AuditoriaSegurancaResponse(BaseModel):
+    """`workflow_run_id` opcional desde a Fase 7, Estágio 7.1 — uma
+    Missão que escala para humano antes do `WorkflowEngine` ser criado
+    não tem nenhum `WorkflowRun` ainda (ver `orchestration/
+    playbook_driver.py::ResultadoMissaoPlaybook`)."""
+
     mission_id: str
-    workflow_run_id: str
+    workflow_run_id: str | None = None
     estado_final: str
     achados: list[dict[str, Any]] = Field(default_factory=list)
     relatorio: dict[str, Any] | None = None

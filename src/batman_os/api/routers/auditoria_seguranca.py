@@ -51,7 +51,7 @@ def executar_security_audit(
 
     return AuditoriaSegurancaResponse(
         mission_id=str(resultado.mission_id),
-        workflow_run_id=str(resultado.workflow_run_id),
+        workflow_run_id=str(resultado.workflow_run_id) if resultado.workflow_run_id else None,
         estado_final=resultado.estado_final,
         achados=resultado.achados,
         relatorio=resultado.relatorio,

@@ -31,8 +31,14 @@ from batman_os.foundation.types import (
     WorkflowRunId,
 )
 from batman_os.kernel.decision_engine import Decision, DecisionEngine
+from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionEventType, MissionIntent, MissionRuntime
-from batman_os.kernel.planning_engine import RegistroCapacidades, RepositorioPlaybooks, plan
+from batman_os.kernel.planning_engine import (
+    DecisionPoint,
+    RegistroCapacidades,
+    RepositorioPlaybooks,
+    plan,
+)
 from batman_os.kernel.workflow_engine import WorkflowEngine
 from batman_os.learning.knowledge_graph import KnowledgeGraph
 from batman_os.learning.mission_reconciliation import reconciliar_missao
@@ -60,9 +66,20 @@ class EspecificacaoDeStepAusente(Exception):
 
 @dataclass
 class ResultadoMissaoPlaybook:
+    """`workflow_run_id`/`decision_pendente` (Fase 7 do roadmap de
+    plataforma, `.claude/plans/peaceful-wondering-hearth.md`, Estágio
+    7.1) — `workflow_run_id` vira opcional: quando a Missão escala para
+    humano ANTES do `WorkflowEngine` ser criado (loop de `decision_
+    points`, antes da linha `workflow.iniciar()`), não existe nenhum
+    `WorkflowRun` ainda. `decision_pendente` carrega o `DecisionPoint`
+    que causou a escalada — o Kernel não persiste isso em lugar nenhum
+    (achado de investigação), então é responsabilidade do CHAMADOR
+    guardá-lo para poder ecoá-lo de volta num resumo futuro."""
+
     mission_id: MissionId
-    workflow_run_id: WorkflowRunId
     estado_final: str
+    workflow_run_id: WorkflowRunId | None = None
+    decision_pendente: DecisionPoint | None = None
     achados: list[dict[str, Any]] = field(default_factory=list)
     relatorio: dict[str, Any] | None = None
 
@@ -82,6 +99,7 @@ def executar_missao_via_playbook(
     operator_ref: OperatorRef,
     repositorio_playbooks: RepositorioPlaybooks,
     grafo_conhecimento: KnowledgeGraph | None = None,
+    event_bus: EventBus | None = None,
 ) -> ResultadoMissaoPlaybook:
     """Cria a Missão, resolve o Playbook via `plan(..., repositorio_
     playbooks=...)`, e dirige o `WorkflowEngine` registrando a entrada de
@@ -92,7 +110,15 @@ def executar_missao_via_playbook(
     padrão (preserva 100% dos chamadores existentes, mesmo padrão de
     `event_bus=None`/`paralelo=False` já usado nas Fases 2-3): quando
     fornecido, a Missão é reconciliada no Knowledge Graph (Mission
-    Graph) após atingir estado terminal, via `reconciliar_missao`."""
+    Graph) após atingir estado terminal, via `reconciliar_missao`.
+
+    `event_bus` (Fase 7, Estágio 7.1) — opcional, `None` por padrão
+    preserva 100% dos chamadores existentes; repassado a `plan(...,
+    event_bus=...)` para persistir o `ExecutionPlan` concreto (Fase 2,
+    Estágio 2.2). Sem isso, `hidratar_plano()` sempre retorna `None` para
+    Missões criadas por este driver, e `retomar_missao()` (`orchestration/
+    mission_resumption.py`) nunca conseguiria retomar uma Missão que
+    escalou para humano aqui."""
     mission = runtime.create(intent, tipo_missao, tenant_id=tenant_id)
     runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
 
@@ -100,6 +126,7 @@ def executar_missao_via_playbook(
         mission_id=mission.id,
         tenant_id=tenant_id,
         intent=intent,
+        event_bus=event_bus,
         registro=registro,
         repositorio_playbooks=repositorio_playbooks,
     )
@@ -121,6 +148,20 @@ def executar_missao_via_playbook(
     decisoes: list[Decision] = []
     for ponto in plano.decision_points:
         resultado_resolucao = decision_engine.resolve(ponto, mission.id)
+        if resultado_resolucao.escalonado_para is not None:
+            # Fase 7, Estagio 7.1 — achado de investigacao: antes desta
+            # correcao, uma escalada era descartada silenciosamente
+            # (decision=None, loop continuava, DECISIONS_RESOLVED disparava
+            # incondicionalmente) e o workflow era despachado mesmo assim.
+            # A Missao PARA aqui — nenhum WorkflowRun e criado ainda, entao
+            # `workflow_run_id` nao existe (ver docstring de
+            # ResultadoMissaoPlaybook).
+            runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
+            return ResultadoMissaoPlaybook(
+                mission_id=mission.id,
+                estado_final="awaiting_human",
+                decision_pendente=ponto,
+            )
         if resultado_resolucao.decision is not None:
             decisoes.append(resultado_resolucao.decision)
     runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)

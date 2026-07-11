@@ -31,6 +31,7 @@ from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
     Criticidade,
+    DecisionOption,
     EscalationPolicy,
     HumanReviewRef,
     MissionTypeId,
@@ -42,9 +43,16 @@ from batman_os.foundation.types import (
     TenantId,
 )
 from batman_os.kernel.decision_engine import DecisionEngine
-from batman_os.kernel.event_bus import EventBus
+from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 from batman_os.kernel.mission_runtime import MissionIntent, MissionRuntime, MissionState
-from batman_os.kernel.planning_engine import PlanStepTemplate
+from batman_os.kernel.planning_engine import (
+    DecisionPoint,
+    ExecutionPlan,
+    PlanStep,
+    PlanStepTemplate,
+    hidratar_plano,
+)
+from batman_os.orchestration import playbook_driver as playbook_driver_mod
 from batman_os.orchestration.implementation_registry import ExecutorViaImplementacoes
 from batman_os.orchestration.playbook_driver import (
     EspecificacaoDeStepAusente,
@@ -401,4 +409,196 @@ class TestExecutarMissaoViaPlaybook:
                 operator_ref=operator_ref,
                 repositorio_playbooks=playbook_registry,
             )
+        execution_engine.fechar()
+
+
+def _fake_plan_com_escalada(capability_id: CapabilityId) -> Any:
+    """Fase 7, Estágio 7.1 — `plan()` real nunca produz `decision_points`
+    para um Playbook real (`_extrair_decision_points()` sempre retorna
+    `[]`, fora de escopo até Volume V, achado de investigação). Este fake
+    substitui `plan()` DENTRO do módulo `playbook_driver` (via
+    monkeypatch) para provar que o DRIVER reage corretamente a uma
+    escalada — replica o mesmo comportamento de publicar `PlanCreated`
+    que `plan(..., event_bus=...)` já faz, sem depender da função
+    privada `_publicar_plan_created`."""
+
+    def _plan(
+        mission_id: Any,
+        tenant_id: Any,
+        intent: Any,
+        registro: Any,
+        repositorio_playbooks: Any = None,
+        event_bus: Any = None,
+    ) -> ExecutionPlan:
+        del intent, registro, repositorio_playbooks
+        plano = ExecutionPlan(
+            mission_id=mission_id,
+            tenant_id=tenant_id,
+            steps=[PlanStep(capability=CapabilityRef(capability_id=capability_id, versao="1.0.0"))],
+            decision_points=[
+                DecisionPoint(
+                    pergunta="precisa de aprovacao humana?",
+                    opcoes=[DecisionOption(id="a", descricao="Aprovar")],
+                    escalation_policy=EscalationPolicy(
+                        confidence_threshold=0.8,
+                        preferred_escalation="human",
+                        max_llm_retries=1,
+                        reversibility=Reversibilidade.REVERSIVEL,
+                    ),
+                )
+            ],
+            plan_hash="hash-escalada",
+        )
+        if event_bus is not None:
+            event_bus.publish(
+                KernelEvent(
+                    mission_id=plano.mission_id,
+                    tenant_id=plano.tenant_id,
+                    tipo="PlanCreated",
+                    emitido_por=EmissorKernel.PLANNING_ENGINE,
+                    payload={"plano": plano.model_dump(mode="json")},
+                )
+            )
+        return plano
+
+    return _plan
+
+
+class TestFase7Estagio71ReconhecimentoDeEscalada:
+    """Fase 7 do roadmap de plataforma (`.claude/plans/peaceful-
+    wondering-hearth.md`), Estágio 7.1 — achado de investigação: antes
+    desta correção, `executar_missao_via_playbook` descartava uma
+    escalada silenciosamente (decision=None, loop continuava,
+    DECISIONS_RESOLVED disparava incondicionalmente) e despachava o
+    workflow mesmo assim."""
+
+    def test_escalada_interrompe_e_nao_cria_workflow(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
+            _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
+        )
+        playbook_registry = PlaybookRegistry()
+        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
+        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+
+        resultado = executar_missao_via_playbook(
+            MissionIntent(dados={"tipo": "playbook-de-teste"}),
+            TIPO,
+            TENANT,
+            {},  # nenhum ConstrutorDeEntrada necessario -- workflow nunca desperta
+            runtime=runtime,
+            registro=_RegistroCapacidadesFake(),
+            registry=registry,
+            decision_engine=decision_engine,
+            execution_engine=execution_engine,
+            operator=operator,
+            operator_ref=operator_ref,
+            repositorio_playbooks=playbook_registry,
+        )
+
+        assert resultado.estado_final == "awaiting_human"
+        assert resultado.workflow_run_id is None
+        assert resultado.decision_pendente is not None
+        assert resultado.decision_pendente.pergunta == "precisa de aprovacao humana?"
+        assert resultado.achados == []
+        assert resultado.relatorio is None
+
+        missao_real = runtime.get_mission(resultado.mission_id, TENANT)
+        assert missao_real.estado == MissionState.AWAITING_HUMAN
+
+        execution_engine.fechar()
+
+    def test_sem_event_bus_plano_nao_e_persistido(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
+            _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
+        )
+        playbook_registry = PlaybookRegistry()
+        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
+        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        event_bus_de_verificacao = EventBus()  # instancia PROPRIA, nunca passada ao driver
+
+        resultado = executar_missao_via_playbook(
+            MissionIntent(dados={"tipo": "playbook-de-teste"}),
+            TIPO,
+            TENANT,
+            {},
+            runtime=runtime,
+            registro=_RegistroCapacidadesFake(),
+            registry=registry,
+            decision_engine=decision_engine,
+            execution_engine=execution_engine,
+            operator=operator,
+            operator_ref=operator_ref,
+            repositorio_playbooks=playbook_registry,
+            # event_bus NAO fornecido -- comportamento default preservado
+        )
+
+        assert hidratar_plano(event_bus_de_verificacao, resultado.mission_id) is None
+        execution_engine.fechar()
+
+    def test_com_event_bus_plano_e_persistido_e_hidratavel(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        event_bus = EventBus()
+        runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
+        definicao_check = _capability_check(CAP_CHECK_ID, _handler_check_sucesso)
+        registry = CapabilityRegistry()
+        registry.register(definicao_check)
+        registry.register(
+            certificar(
+                construir_implementacao_relatorio(),
+                entrada_para_teste_idempotencia=construir_implementacao_relatorio()
+                .acceptance_tests[0]
+                .entrada,
+                contexto_para_teste_idempotencia=_contexto(),
+            )
+        )
+        operator = Operator(
+            operator_id=OperatorId("op-playbook-eb"),
+            capabilities=[CAP_CHECK_ID, CAP_RELATORIO_ID],
+            permissions=PermissionSet(
+                allowed_actions=[str(CAP_CHECK_ID), str(CAP_RELATORIO_ID)],
+                side_effect_scope=SideEffectScope.READ_ONLY,
+            ),
+            sandbox=SandboxPolicy(
+                resource_limits=ResourceLimits(),
+                network_policy=NetworkPolicy.NONE,
+                filesystem_access=FilesystemAccess.NONE,
+            ),
+            executor=ExecutorViaImplementacoes({}),
+        )
+        decision_engine = DecisionEngine(
+            base_conhecimento=_SemConhecimento(),
+            llm_gateway=_LlmNuncaChamado(),
+            validador=_ValidadorQualquer(),
+        )
+        execution_engine = ExecutionEngine(
+            validador_schema=ValidadorSchemaEstrutural(),
+            validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
+        )
+        operator_ref = OperatorRef(operator_id=operator.id)
+        playbook_registry = PlaybookRegistry()
+        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
+        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+
+        resultado = executar_missao_via_playbook(
+            MissionIntent(dados={"tipo": "playbook-de-teste"}),
+            TIPO,
+            TENANT,
+            {},
+            runtime=runtime,
+            registro=_RegistroCapacidadesFake(),
+            registry=registry,
+            decision_engine=decision_engine,
+            execution_engine=execution_engine,
+            operator=operator,
+            operator_ref=operator_ref,
+            repositorio_playbooks=playbook_registry,
+            event_bus=event_bus,
+        )
+
+        plano_hidratado = hidratar_plano(event_bus, resultado.mission_id)
+        assert plano_hidratado is not None
+        assert len(plano_hidratado.decision_points) == 1
+        assert plano_hidratado.decision_points[0].pergunta == "precisa de aprovacao humana?"
+
         execution_engine.fechar()
