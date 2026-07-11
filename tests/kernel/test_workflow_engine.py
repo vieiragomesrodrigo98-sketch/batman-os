@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import threading
+import time
+
 import pytest
 
 from batman_os.foundation.types import (
@@ -55,6 +58,24 @@ class InvocadorControlavel:
         self.chamadas[chave] = self.chamadas.get(chave, 0) + 1
         fila = self._resultados[chave]
         return fila.pop(0) if len(fila) > 1 else fila[0]
+
+
+class InvocadorControlavelComAtraso(InvocadorControlavel):
+    """Variante de `InvocadorControlavel` com um pequeno atraso antes de
+    retornar — usada para aumentar a chance real de interleaving de
+    threads nos testes de concorrencia do Estagio 2.4 (a correcao em si
+    nao depende de timing, mas o teste fica mais honesto exercitando
+    entrelacamento de fato)."""
+
+    def __init__(
+        self, resultados: dict[str, list[ResultadoInvocacao]], atraso_segundos: float = 0.0
+    ) -> None:
+        super().__init__(resultados)
+        self._atraso_segundos = atraso_segundos
+
+    def invocar(self, step: PlanStep) -> ResultadoInvocacao:
+        time.sleep(self._atraso_segundos)
+        return super().invocar(step)
 
 
 class TestAT91NuncaReexecutaStepComSucesso:
@@ -274,3 +295,52 @@ class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
         monkeypatch.setattr(engine, "_hidratar_de", _falhar)
 
         assert engine.get_run(run.id).id == run.id
+
+
+class TestFase2Estagio24ExecucaoConcorrente:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.4 — pre-requisito para o dispatcher real
+    (`runtime/dispatcher.py`) despachar passos independentes do MESMO
+    WorkflowRun em paralelo: `executar_passo` precisa ser seguro sob
+    chamada concorrente, e a falha de um passo nunca pode ser
+    sobrescrita de volta a "completed" por um passo irmao bem-sucedido
+    que termina depois (a race que a versao sequencial nunca expunha)."""
+
+    def test_falha_de_um_passo_nunca_e_sobrescrita_por_sucesso_concorrente(self) -> None:
+        passos = [PlanStep(capability=_ref(f"cap-{i}")) for i in range(6)]
+        resultados = {f"cap-{i}": [ResultadoInvocacao(sucesso=(i != 3))] for i in range(6)}
+        invocador = InvocadorControlavelComAtraso(resultados, atraso_segundos=0.01)
+        engine = WorkflowEngine(invocador)
+        run = engine.iniciar(MISSAO, _plano(passos))
+
+        threads = [
+            threading.Thread(target=engine.executar_passo, args=(run.id, passo)) for passo in passos
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        final = engine.get_run(run.id)
+        assert final.estado == "failed"
+        assert len(final.completed_steps) == 6
+
+    def test_todos_bem_sucedidos_concorrentes_completa_corretamente(self) -> None:
+        passos = [PlanStep(capability=_ref(f"cap-{i}")) for i in range(6)]
+        resultados = {f"cap-{i}": [ResultadoInvocacao(sucesso=True)] for i in range(6)}
+        invocador = InvocadorControlavelComAtraso(resultados, atraso_segundos=0.01)
+        engine = WorkflowEngine(invocador)
+        run = engine.iniciar(MISSAO, _plano(passos))
+
+        threads = [
+            threading.Thread(target=engine.executar_passo, args=(run.id, passo)) for passo in passos
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        final = engine.get_run(run.id)
+        assert final.estado == "completed"
+        assert len(final.completed_steps) == 6
+        assert len(final.checkpoints) == 6

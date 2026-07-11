@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Literal
 
 import pytest
@@ -211,6 +212,37 @@ class TestAT84TaxaDeEscalonamentoMonitoravel:
     def test_taxa_llm_zero_sem_nenhuma_decisao(self) -> None:
         engine = _engine()
         assert engine.taxa_llm() == 0.0
+
+
+class TestFase2Estagio24ContadoresSobConcorrencia:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.4 — achado ao habilitar processamento concorrente
+    de Missoes em `cli/scan_command.py`: `_total_decisoes`/`_decisoes_via_
+    llm` usavam `+=` sem lock, um read-modify-write nao atomico que perdia
+    incrementos sob chamadas concorrentes ao MESMO DecisionEngine
+    (compartilhado entre Missoes no scan)."""
+
+    def test_resolve_concorrente_nao_perde_nenhum_incremento(self) -> None:
+        engine = _engine(
+            conhecimento=ResolucaoConhecimento(
+                opcao=DecisionOption(id="a", descricao="A"),
+                confidence=0.99,
+                evidencia=[Evidence(origem="r", evidencias=["e"])],
+            )
+        )
+        n_threads = 20
+
+        def _resolver() -> None:
+            engine.resolve(_ponto(confidence_threshold=0.5), MISSAO)
+
+        threads = [threading.Thread(target=_resolver) for _ in range(n_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(engine._decisoes) == n_threads
+        assert engine._total_decisoes == n_threads
 
 
 class TestGatewayIndisponivel:

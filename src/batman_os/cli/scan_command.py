@@ -16,6 +16,7 @@ foco virar performance: uma Capability que aceita lote de arquivos numa
 from __future__ import annotations
 
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -260,6 +261,8 @@ def executar_scan(
     root: Path,
     especificacoes: Sequence[Any] | None = None,
     db_path: str = ":memory:",
+    paralelo: bool = False,
+    max_workers: int = 8,
 ) -> ResultadoScan:
     """Vol.IX Cap.34 -- roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa os specs de todas as Capabilities registradas
@@ -270,7 +273,20 @@ def executar_scan(
     interno do Mission Runtime -- `":memory:"` (default) preserva o
     comportamento anterior (log descartado ao final do scan); um caminho
     real faz os eventos desta execucao sobreviverem e acumularem entre
-    scans sucessivos apontando para o mesmo arquivo (CLI: `--db`)."""
+    scans sucessivos apontando para o mesmo arquivo (CLI: `--db`).
+
+    `paralelo`/`max_workers` (Fase 2 do roadmap de plataforma, `.claude/
+    plans/peaceful-wondering-hearth.md`, Estagio 2.4) -- opt-in, default
+    `False` preserva 100% do caminho sequencial anterior (mesma ordem de
+    processamento, achado por achado). Quando `True`, cada (arquivo, regra)
+    vira uma Missao processada de forma concorrente via ThreadPoolExecutor
+    -- seguro desde que EventBus/ExecutionEngine/adapter (Estagio 2.3) e os
+    contadores do DecisionEngine (Estagio 2.4) ja sao thread-safe, e toda
+    Capability migrada e `side_effects=none` (nunca muta estado compartilhado
+    fora do que os Protocols de borda ja isolam). Resultado final e o MESMO
+    conjunto de achados que o caminho sequencial -- so a ORDEM de conclusao
+    pode variar, nunca testada como garantia (`tests/cli/test_scan_command.py`
+    compara por conjunto)."""
     if not registry_sdk.registry():
         registrar_capabilities_conhecidas()
     especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
@@ -291,6 +307,7 @@ def executar_scan(
 
     resultado = ResultadoScan()
     try:
+        entradas_para_processar: list[dict[str, object]] = []
         for item in especificacoes:
             regra = item["regra"]
             plugin = dispatch_por_regra.get(type(regra))
@@ -300,23 +317,33 @@ def executar_scan(
                     "(ver descoberta_arquivos.py::registrar_capabilities_conhecidas)"
                 )
             entradas = plugin.entradas_para_regra(root, regra, item["descoberta"])
-            for entrada in entradas:
-                resultado_missao = _processar_entrada(
-                    entrada.model_dump(),
-                    runtime=runtime,
-                    registry=registry,
-                    decision_engine=decision_engine,
-                    execution_engine=execution_engine,
-                    operator=operator,
-                    operator_ref=operator_ref,
-                )
-                resultado.achados.extend(resultado_missao.achados)
-                if resultado_missao.capability_id is not None and (
-                    resultado_missao.duracao_ms is not None
-                ):
-                    resultado.duracoes_por_capability.setdefault(
-                        resultado_missao.capability_id, []
-                    ).append(resultado_missao.duracao_ms)
+            entradas_para_processar.extend(entrada.model_dump() for entrada in entradas)
+
+        def _processar(entrada: dict[str, object]) -> ResultadoMissao:
+            return _processar_entrada(
+                entrada,
+                runtime=runtime,
+                registry=registry,
+                decision_engine=decision_engine,
+                execution_engine=execution_engine,
+                operator=operator,
+                operator_ref=operator_ref,
+            )
+
+        if paralelo:
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                resultados_missao = list(pool.map(_processar, entradas_para_processar))
+        else:
+            resultados_missao = [_processar(entrada) for entrada in entradas_para_processar]
+
+        for resultado_missao in resultados_missao:
+            resultado.achados.extend(resultado_missao.achados)
+            if resultado_missao.capability_id is not None and (
+                resultado_missao.duracao_ms is not None
+            ):
+                resultado.duracoes_por_capability.setdefault(
+                    resultado_missao.capability_id, []
+                ).append(resultado_missao.duracao_ms)
     finally:
         execution_engine.fechar()
     return resultado

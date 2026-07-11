@@ -108,6 +108,44 @@ class TestResumoDePerformance:
         assert stats["max_ms"] == max(duracoes)
 
 
+class TestFase2Estagio24ScanParalelo:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.4 — `paralelo=True` e opt-in (default `False`
+    preserva o caminho sequencial anterior, ja coberto pelos testes acima);
+    quando ativado, produz o MESMO conjunto de achados que o sequencial."""
+
+    def test_paralelo_produz_o_mesmo_conjunto_de_achados_que_sequencial(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / ".env").write_text("X=1", encoding="utf-8")
+        (tmp_path / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "config_ruim.py").write_text(
+            "SECRET_KEY = 'valor-literal-de-verdade'\n", encoding="utf-8"
+        )
+        (tmp_path / "frontend" / "src").mkdir(parents=True)
+        (tmp_path / "frontend" / "src" / "App.ts").write_text(
+            "console.log('debug')\n", encoding="utf-8"
+        )
+
+        sequencial = executar_scan(tmp_path, especificacoes=carregar_lote_01())
+        paralelo = executar_scan(tmp_path, especificacoes=carregar_lote_01(), paralelo=True)
+
+        codigos_sequencial = {a.codigo for a in sequencial.achados}
+        codigos_paralelo = {a.codigo for a in paralelo.achados}
+        assert codigos_paralelo == codigos_sequencial
+        assert len(paralelo.achados) == len(sequencial.achados)
+
+    def test_paralelo_sem_erro_com_todos_os_lotes(self, tmp_path: Path) -> None:
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "exemplo.py").write_text("class Foo:\n    pass\n", encoding="utf-8")
+
+        resultado = executar_scan(tmp_path, paralelo=True, max_workers=4)
+
+        codigos = {a.codigo for a in resultado.achados}
+        assert {"VPS-001", "DE-002"}.issubset(codigos)
+
+
 class TestExecutarScanComTodosOsLotes:
     """Sem `especificacoes` explícito, `executar_scan` usa a união de todos
     os lotes já migrados — cobertura mínima de que isso não quebra."""

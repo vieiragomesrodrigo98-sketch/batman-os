@@ -10,6 +10,7 @@ Fonte da verdade: docs/spec/02-kernel/04-decision-engine.md
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -159,6 +160,12 @@ class DecisionEngine:
         self._decisoes: dict[DecisionId, Decision] = {}
         self._total_decisoes = 0
         self._decisoes_via_llm = 0
+        # Fase 2 Estagio 2.4 — descoberto ao habilitar processamento
+        # concorrente de Missoes em cli/scan_command.py: `+=` nos contadores
+        # abaixo e um read-modify-write nao atomico; duas Missoes chamando
+        # resolve() concorrentemente no MESMO DecisionEngine (compartilhado
+        # entre Missoes no scan) podiam perder incrementos.
+        self._lock_contadores = threading.Lock()
 
     def resolve(
         self,
@@ -312,7 +319,8 @@ class DecisionEngine:
             ),
         )
         self._decisoes[decision.id] = decision
-        self._total_decisoes += 1
-        if resolved_by == "llm":
-            self._decisoes_via_llm += 1
+        with self._lock_contadores:
+            self._total_decisoes += 1
+            if resolved_by == "llm":
+                self._decisoes_via_llm += 1
         return decision

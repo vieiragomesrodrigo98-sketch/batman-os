@@ -10,6 +10,7 @@ Fonte da verdade: docs/spec/02-kernel/05-workflow-engine.md
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -118,6 +119,20 @@ class WorkflowEngine:
         self._runs: dict[WorkflowRunId, WorkflowRun] = {}
         self._steps_do_plano: dict[WorkflowRunId, list[PlanStep]] = {}
         self._tentativas: dict[tuple[WorkflowRunId, StepId], int] = {}
+        # Fase 2 Estagio 2.4 — um lock por WorkflowRun guarda so a
+        # contabilidade (completed_steps/checkpoints/estado), nunca a
+        # invocacao em si (`_invocar_com_recuperacao` roda FORA do lock, de
+        # proposito: e o trabalho lento/IO-bound que o dispatcher precisa
+        # rodar de verdade em paralelo — Estagio 2.4). `_lock_dos_locks`
+        # protege so a criacao lazy de um lock por run_id.
+        self._locks_por_run: dict[WorkflowRunId, threading.Lock] = {}
+        self._lock_dos_locks = threading.Lock()
+
+    def _lock_do_run(self, run_id: WorkflowRunId) -> threading.Lock:
+        with self._lock_dos_locks:
+            if run_id not in self._locks_por_run:
+                self._locks_por_run[run_id] = threading.Lock()
+            return self._locks_por_run[run_id]
 
     def iniciar(self, mission_id: MissionId, plano: ExecutionPlan) -> WorkflowRun:
         """`tenant_id` do `WorkflowRun` é sempre derivado do `ExecutionPlan`
@@ -206,35 +221,60 @@ class WorkflowEngine:
 
     def executar_passo(self, run_id: WorkflowRunId, step: PlanStep) -> WorkflowRun:
         """Vol.II Cap.9, secao 9.4 — executa um passo com recuperacao
-        (AT-9.1: nunca reexecuta um `StepResult` ja marcado `success`)."""
+        (AT-9.1: nunca reexecuta um `StepResult` ja marcado `success`).
+
+        Fase 2 Estagio 2.4 — seguro para chamada concorrente por MULTIPLAS
+        threads sobre o MESMO `run_id` (passos independentes despachados
+        juntos pelo dispatcher, `runtime/dispatcher.py`). `_invocar_com_
+        recuperacao` roda FORA do lock (e o trabalho lento que precisa
+        rodar de verdade em paralelo); so a contabilidade (completed_steps/
+        checkpoints/estado) e atomica via `_lock_do_run`. `current_step_id`
+        é best-effort sob concorrência — com múltiplos passos em voo ao
+        mesmo tempo, reflete apenas o último a iniciar, não um conjunto
+        (o modelo `WorkflowRun` tem um único campo escalar, Vol.II Cap.9);
+        informativo, nunca usado para decisão de controle."""
         run = self.get_run(run_id)
-        ja_processado = {r.step_id for r in run.completed_steps}
-        if step.id in ja_processado:
-            return run
+        lock = self._lock_do_run(run_id)
 
-        run.current_step_id = step.id
+        with lock:
+            ja_processado = {r.step_id for r in run.completed_steps}
+            if step.id in ja_processado:
+                return run
+            run.current_step_id = step.id
+
         resultado = self._invocar_com_recuperacao(run_id, step)
-        run.completed_steps.append(resultado)
-        run.current_step_id = None
 
-        checkpoint: Checkpoint | None = None
-        if resultado.status in ("success", "recovered"):
-            checkpoint = Checkpoint(apos_step_id=step.id)
-            run.checkpoints.append(checkpoint)
+        with lock:
+            run.completed_steps.append(resultado)
+            run.current_step_id = None
+
+            checkpoint: Checkpoint | None = None
+            if resultado.status in ("success", "recovered"):
+                checkpoint = Checkpoint(apos_step_id=step.id)
+                run.checkpoints.append(checkpoint)
+
             steps = self._steps_do_plano[run_id]
-            todos_processados = {r.step_id for r in run.completed_steps} == {s.id for s in steps}
-            if todos_processados:
-                run.estado = "completed"
-        else:
-            # AT-9.2: falha de passo critico sem recuperacao (ou recuperacao
-            # esgotada) resulta em WorkflowRun.state = failed de forma
-            # deterministica, nunca em estado indefinido.
-            run.estado = "failed"
+            todos_ids = {s.id for s in steps}
+            status_por_step = {r.step_id: r.status for r in run.completed_steps}
+            algum_falhou = any(status == "failed" for status in status_por_step.values())
+            todos_processados = set(status_por_step) == todos_ids
 
-        payload_extra: dict[str, Any] = {"step_result": resultado.model_dump(mode="json")}
-        if checkpoint is not None:
-            payload_extra["checkpoint"] = checkpoint.model_dump(mode="json")
-        self._publicar(run, "StepCompleted", payload_extra)
+            if algum_falhou:
+                # AT-9.2: falha de qualquer passo do plano — mesmo um passo
+                # IRMAO, concluido em paralelo com sucesso — resulta em
+                # WorkflowRun.state = failed, nunca sobrescrito de volta a
+                # completed por uma checagem tardia de outro passo bem
+                # sucedido (a race que a checagem ingenua por igualdade de
+                # conjuntos, sem olhar status, permitia sob dispatch
+                # concorrente real).
+                run.estado = "failed"
+            elif todos_processados:
+                run.estado = "completed"
+
+            payload_extra: dict[str, Any] = {"step_result": resultado.model_dump(mode="json")}
+            if checkpoint is not None:
+                payload_extra["checkpoint"] = checkpoint.model_dump(mode="json")
+            self._publicar(run, "StepCompleted", payload_extra)
 
         return run
 
