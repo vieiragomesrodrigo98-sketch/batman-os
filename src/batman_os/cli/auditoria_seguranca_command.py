@@ -122,6 +122,21 @@ class _ValidadorSempreAprova:
         return True
 
 
+def construir_decision_engine() -> DecisionEngine:
+    """Público desde a Fase 6, Estágio 6.2 — reaproveitado pelo app
+    FastAPI (`api/app.py`) para construir o `DecisionEngine` uma vez no
+    startup, com o mesmo comportamento "nunca escala" (nem para
+    conhecimento estruturado, nem para LLM) que `executar_auditoria_
+    seguranca()` já usava construindo isso inline. Extensão do mesmo
+    padrão do Estágio 6.1 — pequena o bastante para não merecer seu
+    próprio estágio."""
+    return DecisionEngine(
+        base_conhecimento=_SemConhecimentoAinda(),
+        llm_gateway=_LlmNuncaChamadoNesteFluxo(),
+        validador=_ValidadorSempreAprova(),
+    )
+
+
 def registro_tipos() -> MissionTypeRegistry:
     """Público desde a Fase 6 (`.claude/plans/peaceful-wondering-hearth.md`,
     Estágio 6.1) — reaproveitado pelo app FastAPI (`api/app.py`) para
@@ -304,11 +319,7 @@ def executar_auditoria_seguranca(
     playbook_registry.register(playbook)
 
     runtime = MissionRuntime(EventBus(db_path=db_path), tipos=registro_tipos())
-    decision_engine = DecisionEngine(
-        base_conhecimento=_SemConhecimentoAinda(),
-        llm_gateway=_LlmNuncaChamadoNesteFluxo(),
-        validador=_ValidadorSempreAprova(),
-    )
+    decision_engine = construir_decision_engine()
     execution_engine = ExecutionEngine(
         validador_schema=ValidadorSchemaEstrutural(),
         validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
