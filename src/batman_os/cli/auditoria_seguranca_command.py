@@ -64,6 +64,7 @@ from batman_os.kernel.decision_engine import DecisionEngine, RespostaLlmCandidat
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionIntent, MissionRuntime
 from batman_os.kernel.planning_engine import DecisionPoint, PlanStepTemplate
+from batman_os.learning.knowledge_graph import KnowledgeGraph
 from batman_os.orchestration.implementation_registry import ExecutorViaImplementacoes
 from batman_os.orchestration.playbook_driver import (
     ResultadoMissaoPlaybook,
@@ -269,11 +270,17 @@ def _preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
     return registry, operator
 
 
-def executar_auditoria_seguranca(root: Path, db_path: str = ":memory:") -> ResultadoMissaoPlaybook:
+def executar_auditoria_seguranca(
+    root: Path,
+    db_path: str = ":memory:",
+    grafo_conhecimento: KnowledgeGraph | None = None,
+) -> ResultadoMissaoPlaybook:
     """Vol.IX Cap.34 — roda o Playbook "Auditar Segurança" contra `root`.
     `db_path`: mesma convenção de `cli/scan_command.py::executar_scan`
     (`":memory:"` default; um caminho real persiste os eventos entre
-    execuções)."""
+    execuções). `grafo_conhecimento` (Fase 4, Estágio 4.2): opcional,
+    repassado direto a `executar_missao_via_playbook` — quando fornecido,
+    a Missão é reconciliada no Mission Graph."""
     playbook, especificacoes = _montar_playbook(root)
     registry, operator = _preparar_capabilities()
 
@@ -306,6 +313,7 @@ def executar_auditoria_seguranca(root: Path, db_path: str = ":memory:") -> Resul
             operator=operator,
             operator_ref=operator_ref,
             repositorio_playbooks=playbook_registry,
+            grafo_conhecimento=grafo_conhecimento,
         )
     finally:
         execution_engine.fechar()

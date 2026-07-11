@@ -30,10 +30,12 @@ from batman_os.foundation.types import (
     TenantId,
     WorkflowRunId,
 )
-from batman_os.kernel.decision_engine import DecisionEngine
+from batman_os.kernel.decision_engine import Decision, DecisionEngine
 from batman_os.kernel.mission_runtime import MissionEventType, MissionIntent, MissionRuntime
 from batman_os.kernel.planning_engine import RegistroCapacidades, RepositorioPlaybooks, plan
 from batman_os.kernel.workflow_engine import WorkflowEngine
+from batman_os.learning.knowledge_graph import KnowledgeGraph
+from batman_os.learning.mission_reconciliation import reconciliar_missao
 from batman_os.orchestration.playbook_step_specs import (
     ConstrutorDeEntrada,
     RelatorioConsolidadoSpec,
@@ -79,11 +81,18 @@ def executar_missao_via_playbook(
     operator: Operator,
     operator_ref: OperatorRef,
     repositorio_playbooks: RepositorioPlaybooks,
+    grafo_conhecimento: KnowledgeGraph | None = None,
 ) -> ResultadoMissaoPlaybook:
     """Cria a Missão, resolve o Playbook via `plan(..., repositorio_
     playbooks=...)`, e dirige o `WorkflowEngine` registrando a entrada de
     cada step JUSTO ANTES de invocá-lo — nunca antes, para que um step de
-    relatório possa ler `StepResult.output` das suas dependências."""
+    relatório possa ler `StepResult.output` das suas dependências.
+
+    `grafo_conhecimento` (Fase 4, Estágio 4.2) — opcional, `None` por
+    padrão (preserva 100% dos chamadores existentes, mesmo padrão de
+    `event_bus=None`/`paralelo=False` já usado nas Fases 2-3): quando
+    fornecido, a Missão é reconciliada no Knowledge Graph (Mission
+    Graph) após atingir estado terminal, via `reconciliar_missao`."""
     mission = runtime.create(intent, tipo_missao, tenant_id=tenant_id)
     runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
 
@@ -109,8 +118,11 @@ def executar_missao_via_playbook(
     }
 
     runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+    decisoes: list[Decision] = []
     for ponto in plano.decision_points:
-        decision_engine.resolve(ponto, mission.id)
+        resultado_resolucao = decision_engine.resolve(ponto, mission.id)
+        if resultado_resolucao.decision is not None:
+            decisoes.append(resultado_resolucao.decision)
     runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
 
     tabela = TabelaDeEntradasPorStep()
@@ -147,6 +159,9 @@ def executar_missao_via_playbook(
         runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
     elif estado_final == "failed":
         runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED)
+
+    if grafo_conhecimento is not None:
+        reconciliar_missao(mission, decisoes, grafo_conhecimento, playbook_id=plano.source_playbook)
 
     run_final = workflow.get_run(run.id)
     todos_achados: list[dict[str, Any]] = []

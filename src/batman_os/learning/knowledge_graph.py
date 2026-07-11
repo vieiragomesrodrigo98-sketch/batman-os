@@ -23,7 +23,11 @@ from batman_os.foundation.types import MissionTypeId, PlaybookId, TenantId, Time
 
 
 class TipoNoKnowledge(StrEnum):
-    """Vol.VI Cap.23, secao 23.3 — `KnowledgeNode.type`."""
+    """Vol.VI Cap.23, secao 23.3 — `KnowledgeNode.type`.
+
+    `MISSION`/`DECISION` (Fase 4, Estagio 4.2) — vocabulario do Mission
+    Graph: extensao aditiva do mesmo grafo, nao um grafo novo. Ver
+    `learning/mission_reconciliation.py`."""
 
     RULE = "rule"
     CAPABILITY = "capability"
@@ -33,6 +37,8 @@ class TipoNoKnowledge(StrEnum):
     ADR = "adr"
     EVIDENCE = "evidence"
     OPERATIONAL_RECORD = "operational-record"
+    MISSION = "mission"
+    DECISION = "decision"
 
 
 class KnowledgeNode(BaseModel):
@@ -57,7 +63,12 @@ class KnowledgeNode(BaseModel):
 
 
 class TipoAresta(StrEnum):
-    """Vol.VI Cap.23, secao 23.3 — `KnowledgeEdge.kind`."""
+    """Vol.VI Cap.23, secao 23.3 — `KnowledgeEdge.kind`.
+
+    `PRODUCED` (Fase 4, Estagio 4.2) — Missao->Decision. `USES`
+    (Missao->Playbook) e `JUSTIFIED_BY` (Decision->Evidence) sao
+    reaproveitados sem alteracao — mesmo padrao ja usado por
+    Regra->Evidence."""
 
     USES = "uses"
     INSTANTIATED_BY = "instantiated-by"
@@ -65,6 +76,7 @@ class TipoAresta(StrEnum):
     JUSTIFIED_BY = "justified-by"
     SUPERSEDES = "supersedes"
     GOVERNED_BY = "governed-by"
+    PRODUCED = "produced"
 
 
 class KnowledgeEdge(BaseModel):
