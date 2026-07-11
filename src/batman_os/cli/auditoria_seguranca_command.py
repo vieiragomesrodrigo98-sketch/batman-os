@@ -122,7 +122,11 @@ class _ValidadorSempreAprova:
         return True
 
 
-def _registro_tipos() -> MissionTypeRegistry:
+def registro_tipos() -> MissionTypeRegistry:
+    """Público desde a Fase 6 (`.claude/plans/peaceful-wondering-hearth.md`,
+    Estágio 6.1) — reaproveitado pelo app FastAPI (`api/app.py`) para
+    construir o `MissionTypeRegistry` uma vez no startup, sem duplicar
+    esta lógica."""
     registro = MissionTypeRegistry()
     registro.register(
         MissionTypeDefinition(
@@ -157,10 +161,16 @@ def _carregar_spec_dependencias() -> tuple[Any, dict[str, Any]]:
     return item["regra"], item["descoberta"]
 
 
-def _montar_playbook(root: Path) -> tuple[PlaybookDefinition, dict[int, Any]]:
+def montar_playbook(root: Path) -> tuple[PlaybookDefinition, dict[int, Any]]:
     """Monta o Playbook "Auditar Segurança": 6 checagens repo-wide (5 via
     agregador regex + 1 via agregador dependências) + 1 step de relatório
-    consolidado dependente de todas."""
+    consolidado dependente de todas.
+
+    Público desde a Fase 6, Estágio 6.1 — chamado POR REQUISIÇÃO pelo app
+    FastAPI (barato: os specs estáticos já são carregados por `_carregar_
+    specs_regex()`/`_carregar_spec_dependencias()`, o único custo daqui é
+    montar `ChecagemDeArquivos` — um dataclass leve, zero I/O na
+    construção — com o `root` desta requisição)."""
     specs_regex = _carregar_specs_regex()
     regra_dep, descoberta_dep = _carregar_spec_dependencias()
 
@@ -233,7 +243,10 @@ def _contexto_de_certificacao() -> ExecutionContext:
     )
 
 
-def _preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
+def preparar_capabilities() -> tuple[CapabilityRegistry, Operator]:
+    """Público desde a Fase 6, Estágio 6.1 — reaproveitado pelo app
+    FastAPI para certificar as Capabilities UMA VEZ no startup (custo de
+    recertificação pago por processo, não por requisição)."""
     implementacoes = {
         impl.definition.id: impl
         for impl in (
@@ -284,13 +297,13 @@ def executar_auditoria_seguranca(
     a Missão é reconciliada no Mission Graph. `tenant_id` (Fase 5,
     Estágio 5.3): opcional, default `TENANT_PADRAO` preserva 100% do
     comportamento atual; CLI: `--tenant`."""
-    playbook, especificacoes = _montar_playbook(root)
-    registry, operator = _preparar_capabilities()
+    playbook, especificacoes = montar_playbook(root)
+    registry, operator = preparar_capabilities()
 
     playbook_registry = PlaybookRegistry()
     playbook_registry.register(playbook)
 
-    runtime = MissionRuntime(EventBus(db_path=db_path), tipos=_registro_tipos())
+    runtime = MissionRuntime(EventBus(db_path=db_path), tipos=registro_tipos())
     decision_engine = DecisionEngine(
         base_conhecimento=_SemConhecimentoAinda(),
         llm_gateway=_LlmNuncaChamadoNesteFluxo(),
