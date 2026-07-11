@@ -34,24 +34,33 @@ from batman_os.kernel.decision_engine import DecisionEngine
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionRuntime
 from batman_os.orchestration.playbook_driver import ResultadoMissaoPlaybook
+from batman_os.orchestration.playbook_step_specs import ConstrutorDeEntrada
 from batman_os.runtime.capability_engine import CapabilityRegistry
 from batman_os.runtime.execution_engine import ExecutionEngine
 
 
 @dataclass
 class EntradaJob:
-    """Fase 7, Estágio 7.2 — `resultado`/`erro` ficam `None` enquanto a
-    Missão está em andamento; um dos dois é preenchido via `future.
+    """Fase 7, Estágio 7.2/7.3 — `resultado`/`erro` ficam `None` enquanto
+    a Missão está em andamento; um dos dois é preenchido via `future.
     add_done_callback` assim que `continuar_missao_via_playbook`/
-    `retomar_missao` terminam. `erro` cobre o caso de uma exceção NÃO
-    tratada escapar da execução em background (`PlaybookNaoResolvido`,
-    `EspecificacaoDeStepAusente`, etc.) — sem isso, `future.result()`
-    dentro do callback relançaria a exceção, `add_done_callback` a
-    engoliria silenciosamente (comportamento documentado do `concurrent.
-    futures`), e o job ficaria "em andamento" para sempre."""
+    `retomar_missao_apos_escalada` terminam. `erro` cobre o caso de uma
+    exceção NÃO tratada escapar da execução em background (`PlaybookNao
+    Resolvido`, `EspecificacaoDeStepAusente`, etc.) — sem isso, `future.
+    result()` dentro do callback relançaria a exceção, `add_done_
+    callback` a engoliria silenciosamente (comportamento documentado do
+    `concurrent.futures`), e o job ficaria "em andamento" para sempre.
+
+    `especificacoes_por_indice` (Estágio 7.3) — o `ConstrutorDeEntrada`
+    por índice de step do Playbook original, guardado aqui porque é
+    exatamente a peça que falta para `POST /missions/{id}/resume`
+    retomar depois: sem isso, não haveria como reconstruir os steps do
+    Playbook a partir só do `mission_id`/`DecisionPoint` ecoado de
+    volta."""
 
     tenant_id: TenantId
     future: Future[ResultadoMissaoPlaybook]
+    especificacoes_por_indice: dict[int, ConstrutorDeEntrada]
     resultado: ResultadoMissaoPlaybook | None = None
     erro: str | None = None
 
@@ -70,10 +79,18 @@ class JobStore:
         self._entradas: dict[MissionId, EntradaJob] = {}
 
     def registrar(
-        self, mission_id: MissionId, tenant_id: TenantId, future: Future[ResultadoMissaoPlaybook]
+        self,
+        mission_id: MissionId,
+        tenant_id: TenantId,
+        future: Future[ResultadoMissaoPlaybook],
+        especificacoes_por_indice: dict[int, ConstrutorDeEntrada],
     ) -> None:
         with self._lock:
-            self._entradas[mission_id] = EntradaJob(tenant_id=tenant_id, future=future)
+            self._entradas[mission_id] = EntradaJob(
+                tenant_id=tenant_id,
+                future=future,
+                especificacoes_por_indice=especificacoes_por_indice,
+            )
 
     def atualizar_resultado(
         self, mission_id: MissionId, resultado: ResultadoMissaoPlaybook

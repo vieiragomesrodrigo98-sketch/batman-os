@@ -63,7 +63,7 @@ def executar_security_audit(
         repositorio_playbooks=playbook_registry,
         event_bus=colaboradores.event_bus,
     )
-    colaboradores.job_store.registrar(mission.id, tenant_id, future)
+    colaboradores.job_store.registrar(mission.id, tenant_id, future, especificacoes)
     future.add_done_callback(colaboradores.job_store.callback_de_desfecho(mission.id))
 
     return AuditoriaSegurancaAceito(mission_id=str(mission.id))

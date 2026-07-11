@@ -24,9 +24,12 @@ from typing import Any
 
 from batman_os.capabilities.operator import Operator
 from batman_os.foundation.types import (
+    DecisionOption,
+    Evidence,
     MissionId,
     MissionTypeId,
     OperatorRef,
+    StepId,
     TenantId,
     WorkflowRunId,
 )
@@ -40,8 +43,10 @@ from batman_os.kernel.mission_runtime import (
 )
 from batman_os.kernel.planning_engine import (
     DecisionPoint,
+    ExecutionPlan,
     RegistroCapacidades,
     RepositorioPlaybooks,
+    hidratar_plano,
     plan,
 )
 from batman_os.kernel.workflow_engine import WorkflowEngine
@@ -67,6 +72,15 @@ class EspecificacaoDeStepAusente(Exception):
     erro de autoria do Playbook/chamador, nunca silenciado (mesma
     doutrina de "gap nunca aceito 'para ajustar depois'" do resto do
     Kernel)."""
+
+
+class PlanoNaoPersistido(Exception):
+    """Fase 7, Estágio 7.3 — levantada por `retomar_missao_apos_
+    escalada()` quando `hidratar_plano()` retorna `None`: a Missão
+    escalou sem que `event_bus` tivesse sido passado a `continuar_
+    missao_via_playbook()` (Estágio 7.1) — sem o plano concreto
+    persistido, não há como retomar sem replanejar (proibido, quebraria
+    os `PlanStep.id` já referenciados)."""
 
 
 @dataclass
@@ -188,6 +202,49 @@ def continuar_missao_via_playbook(
             decisoes.append(resultado_resolucao.decision)
     runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
 
+    return _rodar_workflow_e_coletar(
+        mission,
+        plano,
+        especs_por_step_id,
+        steps_de_relatorio,
+        decisoes,
+        runtime=runtime,
+        registry=registry,
+        execution_engine=execution_engine,
+        operator=operator,
+        operator_ref=operator_ref,
+        grafo_conhecimento=grafo_conhecimento,
+        event_bus=event_bus,
+    )
+
+
+def _rodar_workflow_e_coletar(
+    mission: Mission,
+    plano: ExecutionPlan,
+    especs_por_step_id: dict[StepId, ConstrutorDeEntrada],
+    steps_de_relatorio: set[StepId],
+    decisoes: list[Decision],
+    *,
+    runtime: MissionRuntime,
+    registry: CapabilityRegistry,
+    execution_engine: ExecutionEngine,
+    operator: Operator,
+    operator_ref: OperatorRef,
+    grafo_conhecimento: KnowledgeGraph | None,
+    event_bus: EventBus | None,
+) -> ResultadoMissaoPlaybook:
+    """Fase 7, Estágio 7.3 — fatorado de `continuar_missao_via_playbook()`
+    para ser reaproveitado também por `retomar_missao_apos_escalada()`:
+    todas as decisões já foram resolvidas (seja pelo `DecisionEngine`
+    direto, seja por uma resposta humana ecoada de volta) — daqui em
+    diante, cria o `WorkflowEngine` e roda até estado terminal.
+
+    `WorkflowEngine(invocador, event_bus=event_bus)` — achado de
+    investigação: antes desta correção, o `WorkflowRun` NUNCA era
+    persistido (só o `ExecutionPlan`, via `plan(..., event_bus=...)`,
+    Estágio 7.1); sem isso, mesmo com o plano persistido, uma tentativa
+    futura de hidratar o `WorkflowRun` a partir do `EventBus` sempre
+    retornaria vazio."""
     tabela = TabelaDeEntradasPorStep()
     invocador = InvocadorDeStepPadrao(
         execution_engine=execution_engine,
@@ -196,9 +253,9 @@ def continuar_missao_via_playbook(
         capability_registry=registry,
         tabela_entradas=tabela,
         mission_id=mission.id,
-        tenant_id=tenant_id,
+        tenant_id=mission.tenant_id,
     )
-    workflow = WorkflowEngine(invocador)
+    workflow = WorkflowEngine(invocador, event_bus=event_bus)
     run = workflow.iniciar(mission.id, plano)
 
     while workflow.get_run(run.id).estado == "running":
@@ -241,6 +298,72 @@ def continuar_missao_via_playbook(
         estado_final=estado_final,
         achados=todos_achados,
         relatorio=relatorio,
+    )
+
+
+def retomar_missao_apos_escalada(
+    mission: Mission,
+    decision_pendente: DecisionPoint,
+    especificacoes_por_indice: dict[int, ConstrutorDeEntrada],
+    *,
+    opcao_escolhida: DecisionOption,
+    evidencia: list[Evidence],
+    runtime: MissionRuntime,
+    registry: CapabilityRegistry,
+    decision_engine: DecisionEngine,
+    execution_engine: ExecutionEngine,
+    operator: Operator,
+    operator_ref: OperatorRef,
+    event_bus: EventBus,
+    grafo_conhecimento: KnowledgeGraph | None = None,
+) -> ResultadoMissaoPlaybook:
+    """Fase 7, Estágio 7.3 — retoma uma Missão que escalou para humano
+    ANTES do `WorkflowEngine` ser criado (único caso que `continuar_
+    missao_via_playbook()` produz hoje, ver Estágio 7.1 — o driver não
+    suporta escalada NO MEIO de uma execução já em andamento, esse
+    cenário nunca acontece aqui). Aplica a decisão humana e continua
+    exatamente de onde o loop de `decision_points` parou: cria o
+    workflow (agora, pela primeira vez) e roda até estado terminal.
+
+    `event_bus` OBRIGATÓRIO aqui (diferente de `continuar_missao_via_
+    playbook`, onde é opcional) — sem ele, o plano nunca teria sido
+    persistido (Estágio 7.1) e `hidratar_plano()` sempre retornaria
+    `None`; não existe "retomar sem `event_bus`" que faça sentido."""
+    decision_engine.resolver_com_resposta_humana(
+        decision_pendente, mission.id, opcao_escolhida=opcao_escolhida, evidencia=evidencia
+    )
+    runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
+    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+
+    plano = hidratar_plano(event_bus, mission.id)
+    if plano is None:
+        raise PlanoNaoPersistido(
+            f"Missao {mission.id} nao tem ExecutionPlan persistido — "
+            "impossivel retomar sem o plano concreto (nunca replanejar)"
+        )
+
+    especs_por_step_id = {
+        plano.steps[i].id: espec for i, espec in especificacoes_por_indice.items()
+    }
+    steps_de_relatorio = {
+        plano.steps[i].id
+        for i, espec in especificacoes_por_indice.items()
+        if isinstance(espec, RelatorioConsolidadoSpec)
+    }
+
+    return _rodar_workflow_e_coletar(
+        mission,
+        plano,
+        especs_por_step_id,
+        steps_de_relatorio,
+        [],
+        runtime=runtime,
+        registry=registry,
+        execution_engine=execution_engine,
+        operator=operator,
+        operator_ref=operator_ref,
+        grafo_conhecimento=grafo_conhecimento,
+        event_bus=event_bus,
     )
 
 
