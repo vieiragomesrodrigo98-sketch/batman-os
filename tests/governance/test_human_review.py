@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
-from batman_os.foundation.types import Evidence, Timestamp, agora
+from batman_os.foundation.types import Evidence, TenantId, Timestamp, agora
 from batman_os.governance.governance_engine import FonteAlerta, GovernanceEngine
 from batman_os.governance.human_review import (
     HumanReviewDecision,
@@ -22,8 +23,12 @@ from batman_os.governance.human_review import (
     emitir_referencia,
     papeis_autorizados,
     reabrir_como_nova_solicitacao,
+    solicitacoes_do_tenant,
     verificar_sla_e_alarmar,
 )
+
+TENANT = TenantId("tenant-1")
+OUTRO_TENANT = TenantId("tenant-2")
 
 
 def _solicitacao(
@@ -31,8 +36,10 @@ def _solicitacao(
     required_reviewer_role: ReviewerRole = ReviewerRole.DOMAIN_EXPERT,
     sla_deadline: Timestamp | None = None,
     status: StatusRevisao = StatusRevisao.PENDING,
+    tenant_id: TenantId = TENANT,
 ) -> HumanReviewRequest:
     return HumanReviewRequest(
+        tenant_id=tenant_id,
         kind=kind,
         subject_ref="rule-candidate-1",
         evidence=[Evidence(origem="teste", evidencias=["x"])],
@@ -262,3 +269,50 @@ class TestMilestone4FilaComAlarmeDeSlaReal:
 
         assert len(disparados) == 1
         assert disparados[0].evidence[0].origem == f"HumanReviewRequest:{vencida.id}"
+
+
+class TestFase5Estagio52TenantIdEmHumanReviewRequest:
+    """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+    `.claude/plans/peaceful-wondering-hearth.md`), Estagio 5.2."""
+
+    def test_sem_tenant_id_e_rejeitado_pelo_schema(self) -> None:
+        with pytest.raises(ValidationError):
+            HumanReviewRequest(  # type: ignore[call-arg]
+                kind=TipoRevisao.RULE_PROMOTION,
+                subject_ref="rule-candidate-1",
+                evidence=[Evidence(origem="teste", evidencias=["x"])],
+                required_reviewer_role=ReviewerRole.DOMAIN_EXPERT,
+                sla_deadline=agora(),
+            )
+
+    def test_solicitacoes_do_tenant_filtra_corretamente(self) -> None:
+        do_tenant_1 = _solicitacao(tenant_id=TENANT)
+        do_tenant_2 = _solicitacao(tenant_id=OUTRO_TENANT)
+
+        filtradas = solicitacoes_do_tenant([do_tenant_1, do_tenant_2], TENANT)
+
+        assert filtradas == [do_tenant_1]
+
+    def test_reabertura_preserva_o_tenant_id_original(self) -> None:
+        original = _solicitacao(tenant_id=OUTRO_TENANT, status=StatusRevisao.CHANGES_REQUESTED)
+
+        reaberta = reabrir_como_nova_solicitacao(original)
+
+        assert reaberta.tenant_id == OUTRO_TENANT
+
+    def test_verificar_sla_e_alarmar_permanece_cross_tenant(self) -> None:
+        """Deliberado (ver docstring de `verificar_sla_e_alarmar`) — um
+        sweep de governanca ve o backlog de todos os tenants, diferente
+        de `MissionRuntime.get_mission()` (Estagio 5.1)."""
+        momento = datetime(2026, 1, 1, tzinfo=UTC)
+        vencida_tenant_1 = _solicitacao(tenant_id=TENANT, sla_deadline=momento - timedelta(hours=1))
+        vencida_tenant_2 = _solicitacao(
+            tenant_id=OUTRO_TENANT, sla_deadline=momento - timedelta(hours=1)
+        )
+        governance = GovernanceEngine()
+
+        disparados = verificar_sla_e_alarmar(
+            [vencida_tenant_1, vencida_tenant_2], governance, agora_=momento
+        )
+
+        assert len(disparados) == 2

@@ -27,7 +27,14 @@ from typing import Literal, NewType
 
 from pydantic import BaseModel, Field
 
-from batman_os.foundation.types import Evidence, HumanReviewRef, Timestamp, agora, novo_uuid7
+from batman_os.foundation.types import (
+    Evidence,
+    HumanReviewRef,
+    TenantId,
+    Timestamp,
+    agora,
+    novo_uuid7,
+)
 from batman_os.governance.governance_engine import (
     FonteAlerta,
     GovernanceAlert,
@@ -99,9 +106,17 @@ class HumanReviewRequest(BaseModel):
     `subject_ref` simplifica a união `KnowledgeNode | GovernanceAlert["id"]
     | AddendumRef` da especificação para uma referência opaca (`str`) — o
     que está sendo revisado varia por `kind`, e nenhuma decisão deste
-    capítulo depende de inspecionar a estrutura interna do alvo."""
+    capítulo depende de inspecionar a estrutura interna do alvo.
+
+    `tenant_id` (Fase 5 do roadmap de plataforma, `.claude/plans/
+    peaceful-wondering-hearth.md`, Estagio 5.2) — obrigatório, sem
+    default (mesma convenção ADR-0005/Fase 4 Estágio 4.1): retrofit que
+    permite `solicitacoes_do_tenant()` filtrar o backlog de revisão por
+    tenant. `verificar_sla_e_alarmar()` continua deliberadamente
+    cross-tenant — ver docstring lá."""
 
     id: ReviewRequestId = Field(default_factory=lambda: ReviewRequestId(novo_uuid7()))
+    tenant_id: TenantId
     kind: TipoRevisao
     subject_ref: str
     evidence: list[Evidence]
@@ -172,6 +187,7 @@ def reabrir_como_nova_solicitacao(
     proveniência do artefato revisado (RulePromotion/PlaybookProvenance)
     continua responsabilidade do capítulo de origem, não deste módulo."""
     return HumanReviewRequest(
+        tenant_id=original.tenant_id,
         kind=original.kind,
         subject_ref=original.subject_ref,
         evidence=original.evidence + (evidencia_adicional or []),
@@ -196,6 +212,16 @@ def emitir_referencia(decisao: HumanReviewDecision) -> HumanReviewRef:
     return HumanReviewRef(f"{decisao.request_id}:{decisao.reviewer_id}")
 
 
+def solicitacoes_do_tenant(
+    solicitacoes: list[HumanReviewRequest], tenant_id: TenantId
+) -> list[HumanReviewRequest]:
+    """Fase 5 do roadmap de plataforma (isolamento multi-tenant,
+    `.claude/plans/peaceful-wondering-hearth.md`, Estagio 5.2) — filtro
+    simples, mesmo padrão de `KnowledgeGraph.nos_por_tenant()`/
+    `OperationalMemory._records_do_tenant()`."""
+    return [s for s in solicitacoes if s.tenant_id == tenant_id]
+
+
 _STATUS_AGUARDANDO_DECISAO = frozenset({StatusRevisao.PENDING, StatusRevisao.IN_REVIEW})
 
 
@@ -214,7 +240,17 @@ def verificar_sla_e_alarmar(
     Só solicitações ainda aguardando decisão (`pending`/`in-review`)
     alarmam — uma já decidida (`approved`/`rejected`/`changes-requested`)
     nunca dispara, mesmo que o prazo tenha passado depois: a SLA mede o
-    tempo ATÉ a decisão, não depois dela."""
+    tempo ATÉ a decisão, não depois dela.
+
+    Deliberadamente NÃO filtra por tenant (Fase 5, Estágio 5.2) — opera
+    sobre a lista completa que o chamador fornece. Um sweep de
+    governança/operação (o uso pretendido, ver `orchestration/
+    mission_resumption.py::executar_ciclo_watchdog`) plausivelmente
+    PRECISA ver o backlog de SLA de todos os tenants para operar a
+    plataforma — não é o mesmo tipo de leitura que `MissionRuntime.
+    get_mission()` (Estágio 5.1), onde um chamador escopado a UM tenant
+    nunca deveria ver dado de outro. Quem quiser um sweep por tenant usa
+    `solicitacoes_do_tenant()` antes de chamar esta função."""
     momento = agora_ or agora()
     disparados: list[GovernanceAlert] = []
     for solicitacao in solicitacoes:

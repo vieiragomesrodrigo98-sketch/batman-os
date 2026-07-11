@@ -265,6 +265,7 @@ class TestExecutarCicloWatchdog:
         run_ok = workflow.iniciar(mission_ok.id, plano)
 
         solicitacao_vencida = HumanReviewRequest(
+            tenant_id=TENANT,
             kind=TipoRevisao.RULE_PROMOTION,
             subject_ref="regra-x",
             evidence=[Evidence(origem="sistema", evidencias=["candidato"])],
