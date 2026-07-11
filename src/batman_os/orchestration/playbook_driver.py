@@ -32,7 +32,12 @@ from batman_os.foundation.types import (
 )
 from batman_os.kernel.decision_engine import Decision, DecisionEngine
 from batman_os.kernel.event_bus import EventBus
-from batman_os.kernel.mission_runtime import MissionEventType, MissionIntent, MissionRuntime
+from batman_os.kernel.mission_runtime import (
+    Mission,
+    MissionEventType,
+    MissionIntent,
+    MissionRuntime,
+)
 from batman_os.kernel.planning_engine import (
     DecisionPoint,
     RegistroCapacidades,
@@ -84,10 +89,26 @@ class ResultadoMissaoPlaybook:
     relatorio: dict[str, Any] | None = None
 
 
-def executar_missao_via_playbook(
+def iniciar_missao_via_playbook(
     intent: MissionIntent,
     tipo_missao: MissionTypeId,
     tenant_id: TenantId,
+    *,
+    runtime: MissionRuntime,
+) -> Mission:
+    """Fase 7 do roadmap de plataforma (`.claude/plans/peaceful-
+    wondering-hearth.md`), Estágio 7.2 — parte RÁPIDA e síncrona de
+    `executar_missao_via_playbook()`, fatorada para que um chamador (ex.:
+    handler HTTP) obtenha o `mission_id` real IMEDIATAMENTE, antes de
+    submeter o resto da execução (potencialmente lenta) a um pool de
+    background. `continuar_missao_via_playbook()` faz o resto."""
+    mission = runtime.create(intent, tipo_missao, tenant_id=tenant_id)
+    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+    return mission
+
+
+def continuar_missao_via_playbook(
+    mission: Mission,
     especificacoes_por_indice: dict[int, ConstrutorDeEntrada],
     *,
     runtime: MissionRuntime,
@@ -101,10 +122,11 @@ def executar_missao_via_playbook(
     grafo_conhecimento: KnowledgeGraph | None = None,
     event_bus: EventBus | None = None,
 ) -> ResultadoMissaoPlaybook:
-    """Cria a Missão, resolve o Playbook via `plan(..., repositorio_
-    playbooks=...)`, e dirige o `WorkflowEngine` registrando a entrada de
-    cada step JUSTO ANTES de invocá-lo — nunca antes, para que um step de
-    relatório possa ler `StepResult.output` das suas dependências.
+    """Resolve o Playbook via `plan(..., repositorio_playbooks=...)` para
+    uma Missão JÁ CRIADA (ver `iniciar_missao_via_playbook()`), e dirige
+    o `WorkflowEngine` registrando a entrada de cada step JUSTO ANTES de
+    invocá-lo — nunca antes, para que um step de relatório possa ler
+    `StepResult.output` das suas dependências.
 
     `grafo_conhecimento` (Fase 4, Estágio 4.2) — opcional, `None` por
     padrão (preserva 100% dos chamadores existentes, mesmo padrão de
@@ -119,8 +141,8 @@ def executar_missao_via_playbook(
     Missões criadas por este driver, e `retomar_missao()` (`orchestration/
     mission_resumption.py`) nunca conseguiria retomar uma Missão que
     escalou para humano aqui."""
-    mission = runtime.create(intent, tipo_missao, tenant_id=tenant_id)
-    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+    intent = mission.intent
+    tenant_id = mission.tenant_id
 
     plano = plan(
         mission_id=mission.id,
@@ -219,4 +241,45 @@ def executar_missao_via_playbook(
         estado_final=estado_final,
         achados=todos_achados,
         relatorio=relatorio,
+    )
+
+
+def executar_missao_via_playbook(
+    intent: MissionIntent,
+    tipo_missao: MissionTypeId,
+    tenant_id: TenantId,
+    especificacoes_por_indice: dict[int, ConstrutorDeEntrada],
+    *,
+    runtime: MissionRuntime,
+    registro: RegistroCapacidades,
+    registry: CapabilityRegistry,
+    decision_engine: DecisionEngine,
+    execution_engine: ExecutionEngine,
+    operator: Operator,
+    operator_ref: OperatorRef,
+    repositorio_playbooks: RepositorioPlaybooks,
+    grafo_conhecimento: KnowledgeGraph | None = None,
+    event_bus: EventBus | None = None,
+) -> ResultadoMissaoPlaybook:
+    """Wrapper de conveniência (Fase 7, Estágio 7.2) — `iniciar_missao_
+    via_playbook()` + `continuar_missao_via_playbook()` numa única
+    chamada, comportamento 100% idêntico ao anterior. Todo chamador
+    existente (CLI, endpoint HTTP síncrono) continua usando esta função
+    sem mudança nenhuma; só o handler assíncrono da API (que precisa do
+    `mission_id` ANTES de submeter a parte lenta a um pool de background)
+    usa as duas peças fatoradas separadamente."""
+    mission = iniciar_missao_via_playbook(intent, tipo_missao, tenant_id, runtime=runtime)
+    return continuar_missao_via_playbook(
+        mission,
+        especificacoes_por_indice,
+        runtime=runtime,
+        registro=registro,
+        registry=registry,
+        decision_engine=decision_engine,
+        execution_engine=execution_engine,
+        operator=operator,
+        operator_ref=operator_ref,
+        repositorio_playbooks=repositorio_playbooks,
+        grafo_conhecimento=grafo_conhecimento,
+        event_bus=event_bus,
     )

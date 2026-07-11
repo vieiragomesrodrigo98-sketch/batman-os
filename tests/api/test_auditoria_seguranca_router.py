@@ -1,18 +1,23 @@
 """Prova ponta-a-ponta do endpoint `POST /missions/security-audit`
 (Fase 6 do roadmap de plataforma, `.claude/plans/peaceful-wondering-
-hearth.md`, Estágio 6.3). Mesma doutrina de `tests/reference/
-test_security_audit_playbook_e2e.py` (zero mock de Kernel/Runtime/
-Capability), agora via requisição HTTP real contra o app."""
+hearth.md`, Estágio 6.3; assíncrono desde a Fase 7, Estágio 7.2). Mesma
+doutrina de `tests/reference/test_security_audit_playbook_e2e.py` (zero
+mock de Kernel/Runtime/Capability), agora via requisição HTTP real
+contra o app."""
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import batman_os.api.routers.auditoria_seguranca as router_mod
 import batman_os.cli.auditoria_seguranca_command as auditoria_mod
 from batman_os.api.app import criar_app
+from batman_os.api.state import EntradaJob, JobStore
 from batman_os.foundation.types import MissionId, TenantId
 
 
@@ -34,40 +39,65 @@ def _plantar_repositorio_com_violacoes(root: Path) -> None:
     )
 
 
+def _aguardar_job(app: FastAPI, mission_id: MissionId, timeout: float = 5.0) -> EntradaJob:
+    """Fase 7, Estágio 7.2 — o `GET /jobs/{id}` só chega no Estágio 7.3;
+    até lá, os testes fazem polling direto no `JobStore` interno do app
+    (mesmo dado que o endpoint futuro vai expor, só sem a camada HTTP)."""
+    job_store: JobStore = app.state.colaboradores.job_store  # app.state e dinamico (Any)
+    prazo = time.monotonic() + timeout
+    while time.monotonic() < prazo:
+        entrada = job_store.consultar(mission_id)
+        if entrada is not None and (entrada.resultado is not None or entrada.erro is not None):
+            return entrada
+        time.sleep(0.01)
+    raise AssertionError(f"job {mission_id} nao terminou em {timeout}s")
+
+
 class TestEndpointSecurityAudit:
     def test_repo_com_violacoes_detecta_exatamente_as_4_esperadas(self, tmp_path: Path) -> None:
         _plantar_repositorio_com_violacoes(tmp_path)
+        app = criar_app()
 
-        with TestClient(criar_app()) as client:
+        with TestClient(app) as client:
             resposta = client.post(
                 "/missions/security-audit", json={"root": str(tmp_path), "tenant_id": "acme"}
             )
+            assert resposta.status_code == 202
+            mission_id = MissionId(resposta.json()["mission_id"])
 
-        assert resposta.status_code == 200
-        corpo = resposta.json()
-        assert corpo["estado_final"] == "completed"
-        codigos = {a["codigo"] for a in corpo["achados"]}
+            entrada = _aguardar_job(app, mission_id)
+
+        assert entrada.erro is None
+        assert entrada.resultado is not None
+        assert entrada.resultado.estado_final == "completed"
+        codigos = {a["codigo"] for a in entrada.resultado.achados}
         assert codigos == {"CLOUD-001", "DEVOPS-003", "CLOUD-002", "DEP-003"}
-        assert corpo["relatorio"]["total_achados"] == 4
+        assert entrada.resultado.relatorio is not None
+        assert entrada.resultado.relatorio["total_achados"] == 4
 
     def test_repo_limpo_completa_sem_achados(self, tmp_path: Path) -> None:
         (tmp_path / "api").mkdir()
         (tmp_path / "api" / "app.py").write_text("print('ola mundo')\n", encoding="utf-8")
+        app = criar_app()
 
-        with TestClient(criar_app()) as client:
+        with TestClient(app) as client:
             resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            assert resposta.status_code == 202
+            mission_id = MissionId(resposta.json()["mission_id"])
 
-        assert resposta.status_code == 200
-        corpo = resposta.json()
-        assert corpo["estado_final"] == "completed"
-        assert corpo["achados"] == []
+            entrada = _aguardar_job(app, mission_id)
+
+        assert entrada.erro is None
+        assert entrada.resultado is not None
+        assert entrada.resultado.estado_final == "completed"
+        assert entrada.resultado.achados == []
 
     def test_tenant_id_ausente_usa_local_como_default(self, tmp_path: Path) -> None:
         app = criar_app()
         with TestClient(app) as client:
             resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
 
-        assert resposta.status_code == 200
+        assert resposta.status_code == 202
         mission_id = MissionId(resposta.json()["mission_id"])
         missao = app.state.colaboradores.runtime.get_mission(mission_id, TenantId("local"))
         assert missao.tenant_id == "local"
@@ -102,11 +132,93 @@ class TestEndpointSecurityAudit:
 
         monkeypatch.setattr(auditoria_mod, "certificar", _certificar_espiao)
 
-        with TestClient(criar_app()) as client:
+        app = criar_app()
+        with TestClient(app) as client:
             chamadas_apos_startup = len(chamadas)
             assert chamadas_apos_startup == 3  # 3 Capabilities certificadas no lifespan
 
-            client.post("/missions/security-audit", json={"root": str(tmp_path)})
-            client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            r1 = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            r2 = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            _aguardar_job(app, MissionId(r1.json()["mission_id"]))
+            _aguardar_job(app, MissionId(r2.json()["mission_id"]))
 
             assert len(chamadas) == chamadas_apos_startup
+
+
+class TestFase7Estagio72RespostaAssincrona:
+    """Fase 7 do roadmap de plataforma (`.claude/plans/peaceful-
+    wondering-hearth.md`), Estágio 7.2."""
+
+    def test_job_aparece_no_store_logo_apos_o_submit(self, tmp_path: Path) -> None:
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "app.py").write_text("print('ola mundo')\n", encoding="utf-8")
+        app = criar_app()
+
+        with TestClient(app) as client:
+            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            mission_id = MissionId(resposta.json()["mission_id"])
+
+            # Consultado ANTES de qualquer polling/espera — a entrada ja
+            # precisa existir (resultado pode ou nao estar pronto ainda,
+            # dependendo de quao rapido a thread do pool rodou).
+            entrada_imediata = app.state.colaboradores.job_store.consultar(mission_id)
+            assert entrada_imediata is not None
+            assert entrada_imediata.tenant_id == "local"
+
+            _aguardar_job(app, mission_id)
+
+    def test_resposta_202_nao_espera_a_missao_terminar(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Prova que o handler NÃO bloqueia — se bloqueasse, o `POST`
+        demoraria pelo menos o tempo do atraso artificial injetado
+        abaixo (0.2s); a resposta real chega em uma fração disso."""
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "app.py").write_text("print('ola mundo')\n", encoding="utf-8")
+
+        # Mesmo padrao de auditoria_mod.certificar acima: acessa o simbolo
+        # importado dentro do modulo sob teste, nao reexportado
+        # explicitamente, para o monkeypatch valer no NAMESPACE certo.
+        original = router_mod.continuar_missao_via_playbook  # type: ignore[attr-defined]
+
+        def _continuar_com_atraso(*args: object, **kwargs: object) -> object:
+            time.sleep(0.2)
+            return original(*args, **kwargs)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(router_mod, "continuar_missao_via_playbook", _continuar_com_atraso)
+
+        app = criar_app()
+        with TestClient(app) as client:
+            inicio = time.monotonic()
+            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            duracao_da_resposta = time.monotonic() - inicio
+
+            assert resposta.status_code == 202
+            assert duracao_da_resposta < 0.1  # bem menor que o atraso de 0.2s injetado
+
+            _aguardar_job(app, MissionId(resposta.json()["mission_id"]), timeout=2.0)
+
+    def test_excecao_nao_tratada_em_background_e_registrada_como_erro_no_job(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """`EntradaJob.erro` (ver docstring) — sem isso, uma exceção
+        escapando de `continuar_missao_via_playbook` dentro do
+        `pool_missoes` faria o job ficar "em andamento" para sempre
+        (`add_done_callback` engole exceções não tratadas em silêncio)."""
+
+        def _continuar_falha(*args: object, **kwargs: object) -> object:
+            del args, kwargs
+            raise ValueError("falha proposital de teste")
+
+        monkeypatch.setattr(router_mod, "continuar_missao_via_playbook", _continuar_falha)
+
+        app = criar_app()
+        with TestClient(app) as client:
+            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            assert resposta.status_code == 202
+
+            entrada = _aguardar_job(app, MissionId(resposta.json()["mission_id"]))
+
+        assert entrada.resultado is None
+        assert entrada.erro is not None
+        assert "falha proposital de teste" in entrada.erro

@@ -19,6 +19,15 @@ class AuditoriaSegurancaRequest(BaseModel):
     tenant_id: str = "local"
 
 
+class AuditoriaSegurancaAceito(BaseModel):
+    """Resposta do `202` (Fase 7, Estágio 7.2) — `mission_id` é o
+    `job_id` (Achado 1 da Fase 7: `MissionState` já é a máquina de
+    estados, não se inventa um `JobId` paralelo). Consultar o resultado
+    via `GET /jobs/{mission_id}` (Estágio 7.3)."""
+
+    mission_id: str
+
+
 class AuditoriaSegurancaResponse(BaseModel):
     """`workflow_run_id` opcional desde a Fase 7, Estágio 7.1 — uma
     Missão que escala para humano antes do `WorkflowEngine` ser criado
