@@ -5,12 +5,14 @@ from __future__ import annotations
 import pytest
 
 from batman_os.foundation.types import CapabilityId, CapabilityRef, MissionId, StepId, TenantId
+from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionIntent
 from batman_os.kernel.planning_engine import (
     PlanningFailure,
     PlanStep,
     RegistroCapacidades,
     _encontrar_ciclo,
+    hidratar_plano,
     plan,
 )
 
@@ -130,3 +132,52 @@ class TestComposicaoViaGrafo:
         assert plano.steps[0].depende_de == []
         assert plano.steps[1].depende_de == [plano.steps[0].id]
         assert plano.steps[2].depende_de == [plano.steps[1].id]
+
+
+class TestFase2Estagio22PersistirExecutionPlanConcreto:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.2 — `PlanStep.id` e aleatorio a cada chamada de
+    `plan()` (so `plan_hash` e deterministico); retomar precisa do plano
+    CONCRETO ja gerado, nunca de rechamar `plan()`."""
+
+    def test_hidratar_plano_reproduz_os_mesmos_step_ids(self) -> None:
+        event_bus = EventBus()
+        registro = _registro_como_protocolo(
+            RegistroFake([_ref("passo-1"), _ref("passo-2"), _ref("passo-3")])
+        )
+
+        original = plan(
+            MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={}), registro, event_bus=event_bus
+        )
+        hidratado = hidratar_plano(event_bus, MISSAO_EXEMPLO)
+
+        assert hidratado is not None
+        assert [s.id for s in hidratado.steps] == [s.id for s in original.steps]
+        assert hidratado.plan_hash == original.plan_hash
+        assert hidratado.id == original.id
+
+    def test_replanejar_geraria_ids_diferentes_dos_ja_gravados(self) -> None:
+        """Contraste explicito: rechamar plan() (em vez de hidratar) produz
+        StepId novos mesmo com o mesmo intent — por isso retomada nunca pode
+        replanejar."""
+        registro = _registro_como_protocolo(RegistroFake([_ref("passo-1")]))
+        intent = MissionIntent(dados={})
+
+        plano_1 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, intent, registro)
+        plano_2 = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, intent, registro)
+
+        assert plano_1.plan_hash == plano_2.plan_hash
+        assert plano_1.steps[0].id != plano_2.steps[0].id
+
+    def test_sem_event_bus_nenhum_evento_e_publicado(self) -> None:
+        registro = _registro_como_protocolo(RegistroFake([_ref("passo-1")]))
+
+        plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={}), registro)  # sem event_bus
+
+        event_bus = EventBus()
+        assert hidratar_plano(event_bus, MISSAO_EXEMPLO) is None
+
+    def test_hidratar_plano_de_missao_sem_plano_retorna_none(self) -> None:
+        event_bus = EventBus()
+
+        assert hidratar_plano(event_bus, MissionId("nunca-planejada")) is None

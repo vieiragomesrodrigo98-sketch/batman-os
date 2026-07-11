@@ -30,6 +30,7 @@ from batman_os.foundation.types import (
     agora,
     novo_uuid7,
 )
+from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 from batman_os.kernel.mission_runtime import MissionIntent
 
 
@@ -137,6 +138,7 @@ def plan(
     intent: MissionIntent,
     registro: RegistroCapacidades,
     repositorio_playbooks: RepositorioPlaybooks | None = None,
+    event_bus: EventBus | None = None,
 ) -> ExecutionPlan:
     """Vol.II Cap.7, secao 7.4.
 
@@ -145,6 +147,16 @@ def plan(
     `ExecutionPlan` exige ambos os campos — adicionados aqui como parametros
     obrigatorios (gap mecanico, nao decisao arquitetural nova; `tenant_id`
     e exigido estruturalmente desde Vol.III Cap.14, ADR-0005).
+
+    `event_bus` (Fase 2 do roadmap de plataforma, `.claude/plans/peaceful-
+    wondering-hearth.md`, Estagio 2.2) — opcional, default `None` preserva
+    100% dos chamadores existentes. Quando fornecido, publica `PlanCreated`
+    com o `ExecutionPlan` CONCRETO (mesmos `PlanStep.id` ja gerados aqui).
+    Retomar apos um restart nunca pode rechamar `plan()`: `PlanStep.id` e
+    aleatorio a cada chamada, e nao bateria com os ids ja referenciados em
+    `Checkpoint`/`completed_steps` gravados (Estagio 2.1) — so `plan_hash` e
+    deterministico. `hidratar_plano()` reconstroi o mesmo objeto a partir
+    do evento persistido, nunca replanejando.
     """
     playbook = (
         repositorio_playbooks.encontrar_correspondente(intent) if repositorio_playbooks else None
@@ -163,7 +175,7 @@ def plan(
 
     plan_hash = _hash_determinístico(intent, registro.versao())
 
-    return ExecutionPlan(
+    plano = ExecutionPlan(
         mission_id=mission_id,
         tenant_id=tenant_id,
         steps=steps,
@@ -171,6 +183,34 @@ def plan(
         source_playbook=origem,
         plan_hash=plan_hash,
     )
+    if event_bus is not None:
+        _publicar_plan_created(event_bus, plano)
+    return plano
+
+
+def _publicar_plan_created(event_bus: EventBus, plano: ExecutionPlan) -> None:
+    event_bus.publish(
+        KernelEvent(
+            mission_id=plano.mission_id,
+            tenant_id=plano.tenant_id,
+            tipo="PlanCreated",
+            emitido_por=EmissorKernel.PLANNING_ENGINE,
+            payload={"plano": plano.model_dump(mode="json")},
+        )
+    )
+
+
+def hidratar_plano(event_bus: EventBus, mission_id: MissionId) -> ExecutionPlan | None:
+    """Fase 2 Estagio 2.2 — reconstroi o `ExecutionPlan` CONCRETO (mesmos
+    `PlanStep.id` ja usados na execucao original) a partir do evento
+    `PlanCreated` persistido por `plan(..., event_bus=...)`. Retorna `None`
+    se a Missao nunca teve um plano publicado (ex.: `event_bus` nao foi
+    passado a `plan()`, ou a Missao nao existe)."""
+    historia = event_bus.replay(mission_id)
+    evento = next((e for e in historia if e.tipo == "PlanCreated"), None)
+    if evento is None:
+        return None
+    return ExecutionPlan.model_validate(evento.payload["plano"])
 
 
 def _instanciar_de_playbook(playbook: PlaybookCandidato) -> list[PlanStep]:
