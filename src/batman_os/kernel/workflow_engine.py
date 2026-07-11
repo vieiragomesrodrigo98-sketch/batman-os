@@ -144,6 +144,15 @@ class WorkflowEngine:
         self._publicar(run, "WorkflowRunIniciado", {"plan_id": str(plano.id)})
         return run
 
+    def repovoar_plano(self, run_id: WorkflowRunId, plano: ExecutionPlan) -> None:
+        """Fase 2 Estagio 2.5 — fecha a lacuna documentada em `_hidratar_de`:
+        um `WorkflowRun` hidratado via replay (Estagio 2.1) nao reconstroi
+        `_steps_do_plano` sozinho (precisa do `ExecutionPlan` completo,
+        obtido via `planning_engine.hidratar_plano()`, Estagio 2.2). Quem
+        retoma uma Missao apos um restart chama isto antes de
+        `passos_prontos()`/`executar_passo()`."""
+        self._steps_do_plano[run_id] = list(plano.steps)
+
     def get_run(self, run_id: WorkflowRunId, mission_id: MissionId | None = None) -> WorkflowRun:
         """`mission_id` (Estagio 2.1) — usado SOMENTE em cache-miss, para
         localizar a historia da Missao no Event Bus (`replay` e indexado por

@@ -332,6 +332,15 @@ class MissionRuntime:
             criado_em=criado.ocorrido_em,
         )
         for evento in historia:
+            # Fase 2 Estagio 2.5 — achado ao testar retomada ponta-a-ponta:
+            # desde que o WorkflowEngine tambem publica no MESMO EventBus
+            # sob o mesmo mission_id (Estagio 2.1), o replay() mistura
+            # eventos de Mission E de WorkflowRun. Ambos carregam uma chave
+            # "estado", mas em dominios de enum DIFERENTES (MissionState vs.
+            # EstadoWorkflowRun) — sem filtrar por emissor, um "estado":
+            # "running" do WorkflowRun quebrava `MissionState("running")`.
+            if evento.emitido_por != EmissorKernel.MISSION_RUNTIME:
+                continue
             estado_raw = evento.payload.get("estado")
             if estado_raw is not None:
                 mission.estado = MissionState(estado_raw)

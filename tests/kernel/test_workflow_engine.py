@@ -273,6 +273,38 @@ class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
         assert hidratado.plan_id == run.plan_id
         assert hidratado.tenant_id == run.tenant_id
 
+    def test_repovoar_plano_permite_continuar_apos_hidratacao(self) -> None:
+        """Fase 2 Estagio 2.5 — um WorkflowRun hidratado nao reconstroi
+        `_steps_do_plano` sozinho (Estagio 2.1 documentou essa lacuna);
+        `repovoar_plano()` a fecha, permitindo `passos_prontos()`/
+        `executar_passo()` continuarem de onde pararam."""
+        event_bus = EventBus()
+        step_a = PlanStep(capability=_ref("cap-a"))
+        step_b = PlanStep(capability=_ref("cap-b"), depende_de=[step_a.id])
+        invocador = InvocadorControlavel(
+            {
+                "cap-a": [ResultadoInvocacao(sucesso=True)],
+                "cap-b": [ResultadoInvocacao(sucesso=True)],
+            }
+        )
+        plano = _plano([step_a, step_b])
+        engine_a = WorkflowEngine(invocador, event_bus=event_bus)
+        run = engine_a.iniciar(MISSAO, plano)
+        engine_a.executar_passo(run.id, step_a)
+
+        engine_b = WorkflowEngine(invocador, event_bus=event_bus)
+        engine_b.get_run(run.id, mission_id=MISSAO)
+
+        # sem repovoar_plano, passos_prontos nao teria o plano para
+        # calcular dependencias
+        engine_b.repovoar_plano(run.id, plano)
+        prontos = engine_b.passos_prontos(run.id)
+        assert [s.id for s in prontos] == [step_b.id]
+
+        final = engine_b.executar_passo(run.id, step_b)
+        assert final.estado == "completed"
+        assert len(final.completed_steps) == 2
+
     def test_sem_event_bus_cache_miss_ainda_levanta_erro_conhecido(self) -> None:
         invocador = InvocadorControlavel({"cap-a": [ResultadoInvocacao(sucesso=True)]})
         engine = WorkflowEngine(invocador)  # sem event_bus — comportamento anterior

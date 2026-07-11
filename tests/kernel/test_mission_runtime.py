@@ -23,7 +23,7 @@ from batman_os.foundation.types import (
     StepId,
     TenantId,
 )
-from batman_os.kernel.event_bus import EventBus
+from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 from batman_os.kernel.mission_runtime import (
     Mission,
     MissionEventType,
@@ -258,6 +258,35 @@ class TestFase2Estagio21PersistenciaHibrida:
 
         with pytest.raises(KeyError):
             runtime.get_mission(MissionId("inexistente"))
+
+    def test_hidratacao_ignora_estado_de_eventos_de_outros_emissores(
+        self, event_bus: EventBus
+    ) -> None:
+        """Achado ao integrar com o WorkflowEngine (Estagio 2.5): ambos
+        publicam no MESMO EventBus sob o mesmo mission_id, e ambos carregam
+        uma chave "estado" — mas em dominios de enum DIFERENTES (MissionState
+        vs. EstadoWorkflowRun). Sem filtrar por `emitido_por`, um evento do
+        WorkflowEngine com `estado="running"` (valor valido para
+        EstadoWorkflowRun, invalido para MissionState) quebrava a
+        hidratacao."""
+        runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
+        mission = _cria(runtime_a)
+        final = runtime_a.transition(mission.id, MissionEventType.PLANNING_STARTED)
+
+        event_bus.publish(
+            KernelEvent(
+                mission_id=mission.id,
+                tenant_id=mission.tenant_id,
+                tipo="StepCompleted",
+                emitido_por=EmissorKernel.WORKFLOW_ENGINE,
+                payload={"run_id": "algum-run", "estado": "running"},
+            )
+        )
+
+        runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
+        hidratada = runtime_b.get_mission(mission.id)
+
+        assert hidratada.estado == final.estado == MissionState.PLANNING
 
     def test_hidratacao_nao_e_chamada_no_caminho_quente(
         self, runtime: MissionRuntime, monkeypatch: pytest.MonkeyPatch
