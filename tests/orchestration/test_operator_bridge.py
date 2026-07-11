@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from batman_os.capabilities.operator import (
     ExecutionContext,
     FilesystemAccess,
@@ -18,7 +16,7 @@ from batman_os.capabilities.operator import (
     SideEffectScope,
 )
 from batman_os.foundation.types import CapabilityId, MissionId, OperatorId, StepId, TenantId, agora
-from batman_os.orchestration.operator_bridge import ContextoNaoDefinido, OperadorExecutavelAdapter
+from batman_os.orchestration.operator_bridge import OperadorExecutavelAdapter
 
 
 class _ExecutorFake:
@@ -61,24 +59,43 @@ def _operator(executor: _ExecutorFake, capability_id: str = "cap-a") -> Operator
 
 
 class TestOperadorExecutavelAdapter:
-    def test_encaminha_para_operator_execute_com_o_contexto_definido(self) -> None:
+    def test_encaminha_para_operator_execute_com_o_contexto_do_construtor(self) -> None:
         executor = _ExecutorFake()
-        adapter = OperadorExecutavelAdapter(_operator(executor))
         contexto = _contexto()
-        adapter.definir_contexto(contexto)
+        adapter = OperadorExecutavelAdapter(_operator(executor), contexto)
 
         saida = adapter.executar(CapabilityId("cap-a"), {"x": 1})
 
         assert saida == {"ok": True}
         assert executor.chamadas == [(CapabilityId("cap-a"), {"x": 1}, contexto)]
 
-    def test_levanta_excecao_se_contexto_nao_definido(self) -> None:
-        adapter = OperadorExecutavelAdapter(_operator(_ExecutorFake()))
-
-        with pytest.raises(ContextoNaoDefinido):
-            adapter.executar(CapabilityId("cap-a"), {})
-
     def test_health_check_delega_ao_operator(self) -> None:
-        adapter = OperadorExecutavelAdapter(_operator(_ExecutorFake()))
+        adapter = OperadorExecutavelAdapter(_operator(_ExecutorFake()), _contexto())
 
         assert adapter.health_check().saudavel is True
+
+    def test_dois_adapters_com_contextos_diferentes_nao_vazam_estado(self) -> None:
+        """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-
+        wondering-hearth.md`), Estagio 2.3 — contexto e imutavel por
+        instancia; dois adapters concorrentes sobre o mesmo Operator nunca
+        podem ver o contexto um do outro (o bug que definir_contexto()
+        mutavel permitia antes desta mudanca)."""
+        executor = _ExecutorFake()
+        operator = _operator(executor)
+        contexto_a = _contexto()
+        contexto_b = ExecutionContext(
+            mission_id=MissionId("m-2"),
+            tenant_id=TenantId("t-2"),
+            step_id=StepId("s-2"),
+            deadline=agora(),
+        )
+        adapter_a = OperadorExecutavelAdapter(operator, contexto_a)
+        adapter_b = OperadorExecutavelAdapter(operator, contexto_b)
+
+        adapter_b.executar(CapabilityId("cap-a"), {"y": 2})
+        adapter_a.executar(CapabilityId("cap-a"), {"x": 1})
+
+        assert executor.chamadas == [
+            (CapabilityId("cap-a"), {"y": 2}, contexto_b),
+            (CapabilityId("cap-a"), {"x": 1}, contexto_a),
+        ]

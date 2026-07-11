@@ -133,9 +133,37 @@ class ExecutionEngine:
         self._validador_contrato_nao_deterministico = validador_contrato_nao_deterministico
         self._limitador = limitador or LimitadorPermissivo()
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        # Fase 2 Estagio 2.3 — pool SEPARADO do `_executor` acima. `submit()`
+        # enfileira aqui a espera bloqueante (bulkhead + result(timeout=...) +
+        # validacao); `_executor` continua exclusivo para `operador.executar`.
+        # Enfileirar as duas coisas no MESMO pool arrisca deadlock por
+        # esgotamento de workers assim que o Scheduler (Estagio 2.4) despachar
+        # mais chamadas concorrentes que `max_workers`: cada worker do
+        # "supervisor" ficaria bloqueado esperando um worker de `_executor`
+        # que nunca sobraria.
+        self._supervisor = ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="execution-engine-supervisor"
+        )
 
     def fechar(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=True)
+        self._supervisor.shutdown(wait=False, cancel_futures=True)
+
+    def submit(
+        self,
+        capability: CapabilityDefinition,
+        operador: OperadorExecutavel,
+        operator_ref: OperatorRef,
+        entrada: Any,
+        timeout_segundos: float,
+    ) -> Future[ExecutionResult]:
+        """Fase 2 Estagio 2.3 — versao nao-bloqueante de `invoke()`: retorna
+        um `Future` imediatamente, sem esperar a Capability concluir.
+        `invoke()` e um wrapper sincrono sobre este metodo — comportamento
+        identico ao anterior para todo chamador existente."""
+        return self._supervisor.submit(
+            self._invocar_bloqueante, capability, operador, operator_ref, entrada, timeout_segundos
+        )
 
     def invoke(
         self,
@@ -146,6 +174,16 @@ class ExecutionEngine:
         timeout_segundos: float,
     ) -> ExecutionResult:
         """Vol.III Cap.12, secao 12.3."""
+        return self.submit(capability, operador, operator_ref, entrada, timeout_segundos).result()
+
+    def _invocar_bloqueante(
+        self,
+        capability: CapabilityDefinition,
+        operador: OperadorExecutavel,
+        operator_ref: OperatorRef,
+        entrada: Any,
+        timeout_segundos: float,
+    ) -> ExecutionResult:
         inicio = time.monotonic()
 
         if not self._limitador.reservar(operator_ref):

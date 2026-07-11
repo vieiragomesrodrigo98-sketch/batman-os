@@ -175,3 +175,53 @@ class TestAT123BulkheadIsolaOperadoresInstaveis:
         assert limitador.reservar(ref) is True
         assert limitador.reservar(ref) is True  # sem limite real
         limitador.liberar(ref)
+
+
+class TestFase2Estagio23SubmitNaoBloqueante:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.3 — `submit()` retorna imediatamente; `invoke()`
+    e um wrapper sincrono sobre ele, comportamento inalterado (ja coberto
+    pelas classes acima, que chamam `invoke()` diretamente)."""
+
+    def test_submit_retorna_future_antes_do_operador_concluir(self) -> None:
+        engine = _engine()
+        futuro = engine.submit(
+            _capability(),
+            OperadorLento(segundos=0.5),
+            OperatorRef(operator_id="op-1"),
+            entrada={},
+            timeout_segundos=2.0,
+        )
+
+        assert not futuro.done()  # OperadorLento ainda dorme — submit() nao esperou
+        resultado = futuro.result(timeout=2.0)
+        assert resultado.status == "success"
+        engine.fechar()
+
+    def test_varias_chamadas_concorrentes_nao_deadlockam(self) -> None:
+        """Achado do Explorador 2 (investigacao Fase 2): enfileirar a espera
+        bloqueante no MESMO pool que executa o Operador arriscaria deadlock
+        assim que houver mais chamadas concorrentes que `max_workers` — cada
+        worker externo ficaria bloqueado esperando um worker interno que
+        nunca sobraria. `max_workers=2` com 5 chamadas simultaneas prova que
+        isso nao acontece mais (pool `_supervisor` separado de `_executor`)."""
+        engine = ExecutionEngine(
+            validador_schema=ValidadorSchemaChaves(),
+            validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
+            max_workers=2,
+        )
+        futuros = [
+            engine.submit(
+                _capability(),
+                OperadorLento(segundos=0.2),
+                OperatorRef(operator_id=f"op-{i}"),
+                entrada={},
+                timeout_segundos=5.0,
+            )
+            for i in range(5)
+        ]
+
+        resultados = [f.result(timeout=5.0) for f in futuros]
+
+        assert all(r.status == "success" for r in resultados)
+        engine.fechar()

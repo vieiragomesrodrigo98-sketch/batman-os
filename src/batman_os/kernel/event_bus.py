@@ -11,6 +11,7 @@ Fonte da verdade: docs/spec/02-kernel/06-event-bus-scheduler.md
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections.abc import Callable
 from enum import StrEnum
 from typing import Any
@@ -90,10 +91,20 @@ class EventBus:
     `subscribe()`/`replay()` mantêm a MESMA assinatura pública.
     Assinantes (`subscribe`) continuam em memória Python: são construção
     em tempo de execução, não fazem parte do log que precisa sobreviver a
-    reiniciar o processo."""
+    reiniciar o processo.
+
+    Thread-safety (Fase 2 do roadmap de plataforma, `.claude/plans/
+    peaceful-wondering-hearth.md`, Estagio 2.3) — `check_same_thread=False`
+    permite a mesma conexao ser usada por Missoes rodando em threads
+    diferentes (pre-requisito para o Scheduler real, Estagio 2.4); um
+    `threading.Lock()` explicito serializa toda escrita/leitura (evita
+    "database is locked" sob contencao e garante que `replay()` nunca veja
+    um estado parcialmente escrito). `WAL` melhora concorrencia leitura/
+    escrita em disco real — sem efeito (e sem custo) em `:memory:`."""
 
     def __init__(self, db_path: str = ":memory:") -> None:
-        self._conn = sqlite3.connect(db_path)
+        self._conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._lock = threading.Lock()
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS events ("
             "seq INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -101,6 +112,8 @@ class EventBus:
             "payload_json TEXT NOT NULL"
             ")"
         )
+        if db_path != ":memory:":
+            self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.commit()
         self._assinantes: list[tuple[EventFilter, EventHandler]] = []
 
@@ -109,11 +122,12 @@ class EventBus:
         e garantida por construcao: eventos da mesma missao sao sempre
         appendados na ordem em que `publish()` e chamado (`seq` autoincrement
         do SQLite preserva essa ordem para `replay()`)."""
-        self._conn.execute(
-            "INSERT INTO events (mission_id, payload_json) VALUES (?, ?)",
-            (str(event.mission_id), event.model_dump_json()),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO events (mission_id, payload_json) VALUES (?, ?)",
+                (str(event.mission_id), event.model_dump_json()),
+            )
+            self._conn.commit()
         for filtro, handler in list(self._assinantes):
             if filtro(event):
                 handler(event)
@@ -135,8 +149,10 @@ class EventBus:
         """Vol.II Cap.10, secao 10.2.3 — reconstrucao completa da historia de
         uma missao, na ordem de publicacao (AT-10.1). Retorna uma copia: o
         chamador nunca pode mutar o log interno atraves do valor retornado."""
-        cursor = self._conn.execute(
-            "SELECT payload_json FROM events WHERE mission_id = ? ORDER BY seq ASC",
-            (str(mission_id),),
-        )
-        return [KernelEvent.model_validate_json(linha[0]) for linha in cursor.fetchall()]
+        with self._lock:
+            cursor = self._conn.execute(
+                "SELECT payload_json FROM events WHERE mission_id = ? ORDER BY seq ASC",
+                (str(mission_id),),
+            )
+            linhas = cursor.fetchall()
+        return [KernelEvent.model_validate_json(linha[0]) for linha in linhas]

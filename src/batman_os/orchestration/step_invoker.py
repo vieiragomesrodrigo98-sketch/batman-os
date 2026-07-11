@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from batman_os.capabilities.operator import ExecutionContext
+from batman_os.capabilities.operator import ExecutionContext, Operator
 from batman_os.foundation.types import MissionId, OperatorRef, StepId, TenantId, agora
 from batman_os.kernel.planning_engine import PlanStep
 from batman_os.kernel.workflow_engine import ResultadoInvocacao
@@ -53,12 +53,18 @@ class InvocadorDeStepPadrao:
     Simplificação assumida neste primeiro lote: um `WorkflowEngine`/
     invocador novo por Missão, não um único de longa duração multiplexando
     vários `WorkflowRun`s concorrentes — falta o Scheduler real (Vol.II
-    Cap.10) para isso; extensão natural quando ele existir."""
+    Cap.10) para isso; extensão natural quando ele existir.
+
+    Recebe o `Operator` bruto (nao um `OperadorExecutavelAdapter` ja
+    construido) desde a Fase 2, Estagio 2.3 — um `OperadorExecutavelAdapter`
+    novo, com contexto imutavel escopado a este passo, e construido a cada
+    `invocar()`. `Operator` em si e reutilizavel entre Missoes (stateless);
+    so o contexto precisa ser por-chamada."""
 
     def __init__(
         self,
         execution_engine: ExecutionEngine,
-        adapter: OperadorExecutavelAdapter,
+        operator: Operator,
         operator_ref: OperatorRef,
         capability_registry: CapabilityRegistry,
         tabela_entradas: TabelaDeEntradasPorStep,
@@ -67,7 +73,7 @@ class InvocadorDeStepPadrao:
         timeout_segundos: float = 5.0,
     ) -> None:
         self._execution_engine = execution_engine
-        self._adapter = adapter
+        self._operator = operator
         self._operator_ref = operator_ref
         self._capability_registry = capability_registry
         self._tabela_entradas = tabela_entradas
@@ -85,10 +91,10 @@ class InvocadorDeStepPadrao:
             step_id=step.id,
             deadline=agora() + timedelta(seconds=self._timeout_segundos),
         )
-        self._adapter.definir_contexto(contexto)
+        adapter = OperadorExecutavelAdapter(self._operator, contexto)
 
         resultado = self._execution_engine.invoke(
-            capability, self._adapter, self._operator_ref, entrada, self._timeout_segundos
+            capability, adapter, self._operator_ref, entrada, self._timeout_segundos
         )
         return ResultadoInvocacao(
             sucesso=resultado.status == "success", output=resultado.output, erro=resultado.erro

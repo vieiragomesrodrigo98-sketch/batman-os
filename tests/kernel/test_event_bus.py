@@ -3,6 +3,7 @@ publish/subscribe/replay da secao 10.2-10.5 da especificacao."""
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from batman_os.foundation.types import EventId, MissionId, TenantId
@@ -151,3 +152,56 @@ class TestMilestone5PersistenciaRealViaSqlite:
         assert recuperado.tenant_id == original.tenant_id
         assert recuperado.payload == {"chave": "valor", "numero": 42}
         assert recuperado.emitido_por == EmissorKernel.MISSION_RUNTIME
+
+
+class TestFase2Estagio23ThreadSafety:
+    """Fase 2 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 2.3 — pre-requisito para o Scheduler real
+    (Estagio 2.4) rodar Missoes em threads diferentes compartilhando o
+    mesmo `EventBus`. Antes desta mudanca, `sqlite3.connect()` sem
+    `check_same_thread=False` crasharia assim que uma segunda thread
+    tocasse a conexao."""
+
+    def test_publish_concorrente_de_varias_threads_nao_perde_nenhum_evento(self) -> None:
+        bus = EventBus()
+        n_threads = 8
+        eventos_por_thread = 20
+
+        def _publicar(indice_thread: int) -> None:
+            for i in range(eventos_por_thread):
+                bus.publish(_evento(f"m-{indice_thread}", f"Evento{i}"))
+
+        threads = [threading.Thread(target=_publicar, args=(i,)) for i in range(n_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        for indice_thread in range(n_threads):
+            historia = bus.replay(MissionId(f"m-{indice_thread}"))
+            assert [e.tipo for e in historia] == [f"Evento{i}" for i in range(eventos_por_thread)]
+
+    def test_replay_concorrente_com_publish_nao_crasha(self) -> None:
+        bus = EventBus()
+        bus.publish(_evento("m-1", "MissionCreated"))
+        erros: list[Exception] = []
+
+        def _publicar() -> None:
+            for i in range(50):
+                bus.publish(_evento("m-1", f"Evento{i}"))
+
+        def _ler() -> None:
+            for _ in range(50):
+                try:
+                    bus.replay(MissionId("m-1"))
+                except Exception as exc:  # noqa: BLE001 - queremos capturar qualquer falha
+                    erros.append(exc)
+
+        escritor = threading.Thread(target=_publicar)
+        leitor = threading.Thread(target=_ler)
+        escritor.start()
+        leitor.start()
+        escritor.join()
+        leitor.join()
+
+        assert erros == []

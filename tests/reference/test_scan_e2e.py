@@ -53,7 +53,6 @@ from batman_os.kernel.mission_runtime import (
 from batman_os.kernel.planning_engine import DecisionPoint, plan
 from batman_os.kernel.workflow_engine import WorkflowEngine
 from batman_os.orchestration.implementation_registry import ExecutorViaImplementacoes
-from batman_os.orchestration.operator_bridge import OperadorExecutavelAdapter
 from batman_os.orchestration.schema_validators import (
     ValidadorContratoSempreAprova,
     ValidadorSchemaEstrutural,
@@ -138,7 +137,6 @@ class TestScanPontaAPonta:
             ),
             executor=ExecutorViaImplementacoes({definicao_ativa.id: implementacao}),
         )
-        adapter = OperadorExecutavelAdapter(operator)
 
         # 4. Mission Runtime cria a Missao de verdade.
         runtime = MissionRuntime(EventBus(), tipos=_registro_tipos())
@@ -189,7 +187,7 @@ class TestScanPontaAPonta:
         )
         invocador = InvocadorDeStepPadrao(
             execution_engine=execution_engine,
-            adapter=adapter,
+            operator=operator,
             operator_ref=OperatorRef(operator_id=operator.id),
             capability_registry=registry,
             tabela_entradas=tabela,

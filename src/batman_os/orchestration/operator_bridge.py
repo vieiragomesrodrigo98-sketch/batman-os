@@ -10,11 +10,15 @@ parâmetro `contexto` que `Operator.execute()` exige:
   entrada)` — 2 argumentos, sem contexto, consumido por
   `ExecutionEngine.invoke()`.
 
-Este módulo constrói a ponte: o `ExecutionContext` é montado pelo chamador
-(`orchestration.step_invoker`) e injetado via `definir_contexto()` antes de
-cada invocação — não é thread-safe para despacho concorrente (aceitável
-neste lote: não há Scheduler real, Vol.II Cap.10, orquestrando múltiplos
-steps em paralelo ainda).
+Este módulo constrói a ponte: o `ExecutionContext` é passado ao construtor,
+imutável para a vida da instância (Fase 2 do roadmap de plataforma,
+`.claude/plans/peaceful-wondering-hearth.md`, Estágio 2.3). Antes, o
+contexto era mutado via `definir_contexto()` num adapter reusado entre
+Missões — thread-unsafe assim que duas Missões passam a rodar em paralelo
+(Estágio 2.4): uma poderia sobrescrever o contexto da outra entre
+`definir_contexto()` e `executar()`. Quem despacha um step agora cria um
+adapter novo por invocação (`orchestration.step_invoker`); o `Operator`
+em si continua reutilizável (é stateless por contrato, Vol.IV Cap.15).
 """
 
 from __future__ import annotations
@@ -25,27 +29,15 @@ from batman_os.capabilities.operator import ExecutionContext, HealthStatus, Oper
 from batman_os.foundation.types import CapabilityId
 
 
-class ContextoNaoDefinido(Exception):
-    """Levantada se `executar()` for chamado antes de `definir_contexto()` —
-    nunca deve acontecer no fluxo normal (`InvocadorDeStepPadrao` sempre
-    define o contexto antes de invocar), mas falhar explicitamente aqui é
-    preferível a um `None` silencioso propagando para o `Operator`."""
-
-
 class OperadorExecutavelAdapter:
     """Satisfaz `runtime.execution_engine.OperadorExecutavel`."""
 
-    def __init__(self, operator: Operator) -> None:
+    def __init__(self, operator: Operator, contexto: ExecutionContext) -> None:
         self._operator = operator
-        self._contexto_atual: ExecutionContext | None = None
-
-    def definir_contexto(self, contexto: ExecutionContext) -> None:
-        self._contexto_atual = contexto
+        self._contexto = contexto
 
     def executar(self, capability_id: CapabilityId, entrada: Any) -> Any:
-        if self._contexto_atual is None:
-            raise ContextoNaoDefinido("definir_contexto() precisa ser chamado antes de executar()")
-        return self._operator.execute(capability_id, entrada, self._contexto_atual)
+        return self._operator.execute(capability_id, entrada, self._contexto)
 
     def health_check(self) -> HealthStatus:
         return self._operator.health_check()

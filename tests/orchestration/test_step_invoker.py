@@ -25,7 +25,6 @@ from batman_os.foundation.types import (
 )
 from batman_os.kernel.planning_engine import PlanStep
 from batman_os.orchestration.implementation_registry import ExecutorViaImplementacoes
-from batman_os.orchestration.operator_bridge import OperadorExecutavelAdapter
 from batman_os.orchestration.schema_validators import (
     ValidadorContratoSempreAprova,
     ValidadorSchemaEstrutural,
@@ -94,7 +93,6 @@ class TestInvocadorDeStepPadrao:
             ),
             executor=ExecutorViaImplementacoes({capability_id: implementacao}),
         )
-        adapter = OperadorExecutavelAdapter(operator)
         engine = ExecutionEngine(
             validador_schema=ValidadorSchemaEstrutural(),
             validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
@@ -105,7 +103,7 @@ class TestInvocadorDeStepPadrao:
 
         invocador = InvocadorDeStepPadrao(
             execution_engine=engine,
-            adapter=adapter,
+            operator=operator,
             operator_ref=OperatorRef(operator_id=OperatorId("op-1")),
             capability_registry=registry,
             tabela_entradas=tabela,
@@ -150,7 +148,7 @@ class TestInvocadorDeStepPadrao:
         )
         invocador = InvocadorDeStepPadrao(
             execution_engine=engine,
-            adapter=OperadorExecutavelAdapter(operator),
+            operator=operator,
             operator_ref=OperatorRef(operator_id=OperatorId("op-1")),
             capability_registry=registry,
             tabela_entradas=TabelaDeEntradasPorStep(),

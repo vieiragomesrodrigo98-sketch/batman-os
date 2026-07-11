@@ -62,7 +62,6 @@ from batman_os.kernel.mission_runtime import (
 from batman_os.kernel.planning_engine import DecisionPoint, plan
 from batman_os.kernel.workflow_engine import WorkflowEngine
 from batman_os.orchestration.implementation_registry import ExecutorViaImplementacoes
-from batman_os.orchestration.operator_bridge import OperadorExecutavelAdapter
 from batman_os.orchestration.schema_validators import (
     ValidadorContratoSempreAprova,
     ValidadorSchemaEstrutural,
@@ -288,7 +287,6 @@ def executar_scan(
         llm_gateway=_LlmNuncaChamadoNesteFluxo(),
         validador=_ValidadorSempreAprova(),
     )
-    adapter = OperadorExecutavelAdapter(operator)
     operator_ref = OperatorRef(operator_id=operator.id)
 
     resultado = ResultadoScan()
@@ -309,7 +307,7 @@ def executar_scan(
                     registry=registry,
                     decision_engine=decision_engine,
                     execution_engine=execution_engine,
-                    adapter=adapter,
+                    operator=operator,
                     operator_ref=operator_ref,
                 )
                 resultado.achados.extend(resultado_missao.achados)
@@ -343,7 +341,7 @@ def _processar_entrada(
     registry: CapabilityRegistry,
     decision_engine: DecisionEngine,
     execution_engine: ExecutionEngine,
-    adapter: OperadorExecutavelAdapter,
+    operator: Operator,
     operator_ref: OperatorRef,
 ) -> ResultadoMissao:
     """Uma Missão real, do início ao fim, para um único (arquivo, regra).
@@ -377,7 +375,7 @@ def _processar_entrada(
     tabela.registrar(plano.steps[0].id, entrada)
     invocador = InvocadorDeStepPadrao(
         execution_engine=execution_engine,
-        adapter=adapter,
+        operator=operator,
         operator_ref=operator_ref,
         capability_registry=registry,
         tabela_entradas=tabela,
