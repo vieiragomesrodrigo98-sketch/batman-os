@@ -7,17 +7,20 @@ import pytest
 from batman_os.foundation.types import (
     CapabilityId,
     CapabilityRef,
+    DecisionOption,
+    EscalationPolicy,
     HumanReviewRef,
     MissionId,
     MissionTypeId,
     PlaybookId,
     RecoveryStrategy,
+    Reversibilidade,
     StepId,
     TenantId,
     TipoRecoveryStrategy,
 )
 from batman_os.kernel.mission_runtime import MissionIntent
-from batman_os.kernel.planning_engine import PlanStepTemplate, plan
+from batman_os.kernel.planning_engine import DecisionPoint, PlanStepTemplate, plan
 from batman_os.workflow.playbooks import (
     FieldCondition,
     GapDeCertificacaoDoPlaybook,
@@ -48,6 +51,7 @@ def _playbook(
     status: StatusPlaybook = StatusPlaybook.ACTIVE,
     steps_template: list[PlanStepTemplate] | None = None,
     recovery_defaults: dict[int, object] | None = None,
+    decision_points_template: dict[int, DecisionPoint] | None = None,
     required_capabilities: list[CapabilityRef] | None = None,
     fallback_chains: list[FallbackChain] | None = None,
 ) -> PlaybookDefinition:
@@ -60,9 +64,23 @@ def _playbook(
         steps_template=steps_template or [],
         required_capabilities=required_capabilities or [],
         recovery_defaults=recovery_defaults or {},
+        decision_points_template=decision_points_template or {},
         fallback_chains=fallback_chains or [],
         status=status,
         provenance=PlaybookProvenance(origin="hand-authored", approved_by=approved_by),
+    )
+
+
+def _ponto_decisao(pergunta: str = "aprovar?") -> DecisionPoint:
+    return DecisionPoint(
+        pergunta=pergunta,
+        opcoes=[DecisionOption(id="sim", descricao="Aprovar")],
+        escalation_policy=EscalationPolicy(
+            confidence_threshold=0.8,
+            preferred_escalation="human",
+            max_llm_retries=1,
+            reversibility=Reversibilidade.REVERSIVEL,
+        ),
     )
 
 
@@ -399,3 +417,128 @@ class TestRecoveryDefaultsPropagamParaPlanStepReal:
         )
 
         assert resultado.steps[0].recovery_strategy is None
+
+
+class TestFase9Estagio92CertificacaoDeDecisionPointsTemplate:
+    """Fase 9 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 9.2 — `decision_points_template` e chaveado por
+    indice em `steps_template` (mesma convencao de `recovery_defaults`);
+    um indice fora do range nunca teria efeito (silenciosamente ignorado
+    por `_instanciar_de_playbook()`) sem esta checagem."""
+
+    def test_indice_fora_de_steps_template_reprova(self) -> None:
+        template = PlanStepTemplate(
+            capability=CapabilityRef(capability_id=CapabilityId("cap-a"), versao="1.0.0")
+        )
+        playbook = _playbook(
+            "p-1",
+            priority=1,
+            matcher=_matcher(),
+            steps_template=[template],
+            decision_points_template={5: _ponto_decisao()},
+        )
+
+        with pytest.raises(GapDeCertificacaoDoPlaybook):
+            certificar_playbook(
+                playbook,
+                outros_ativos=[],
+                capability_esta_ativa=lambda _c: True,
+                tem_efeito_colateral=lambda _c: False,
+            )
+
+    def test_indice_valido_certifica_normalmente(self) -> None:
+        template = PlanStepTemplate(
+            capability=CapabilityRef(capability_id=CapabilityId("cap-a"), versao="1.0.0")
+        )
+        playbook = _playbook(
+            "p-1",
+            priority=1,
+            matcher=_matcher(),
+            steps_template=[template],
+            decision_points_template={0: _ponto_decisao()},
+        )
+
+        certificado = certificar_playbook(
+            playbook,
+            outros_ativos=[],
+            capability_esta_ativa=lambda _c: True,
+            tem_efeito_colateral=lambda _c: False,
+        )
+        assert certificado.status == StatusPlaybook.ACTIVE
+
+    def test_sem_decision_points_template_nao_exige_nada_novo(self) -> None:
+        """Retrocompatibilidade: Playbook sem decision_points_template
+        certifica exatamente como antes desta fase."""
+        playbook = _playbook("p-1", priority=1, matcher=_matcher())
+
+        certificado = certificar_playbook(
+            playbook,
+            outros_ativos=[],
+            capability_esta_ativa=lambda _c: True,
+            tem_efeito_colateral=lambda _c: False,
+        )
+        assert certificado.status == StatusPlaybook.ACTIVE
+
+
+class TestDecisionPointsTemplatePropagamParaPlanStepReal:
+    """Mesma doutrina de `TestRecoveryDefaultsPropagamParaPlanStepReal`
+    acima, para `decision_points_template` — prova com um `PlaybookDefinition`
+    REAL (não o fake estrutural de `tests/kernel/test_planning_engine.py`)
+    que a extração funciona ponta-a-ponta através de `plan()`."""
+
+    class _RegistroCapacidadesFake:
+        def buscar_candidatos(self, intent: MissionIntent) -> list[CapabilityRef]:
+            del intent
+            return []
+
+        def versao(self) -> str:
+            return "v1"
+
+    class _RepositorioPlaybooksFake:
+        def __init__(self, playbook: PlaybookDefinition) -> None:
+            self._playbook = playbook
+
+        def encontrar_correspondente(self, intent: MissionIntent) -> PlaybookDefinition | None:
+            del intent
+            return self._playbook
+
+    def test_decision_point_chega_ao_execution_plan_real(self) -> None:
+        ponto = _ponto_decisao()
+        template = PlanStepTemplate(
+            capability=CapabilityRef(capability_id=CapabilityId("cap-a"), versao="1.0.0")
+        )
+        playbook = _playbook(
+            "p-1",
+            priority=1,
+            matcher=_matcher(),
+            steps_template=[template],
+            decision_points_template={0: ponto},
+        )
+
+        resultado = plan(
+            mission_id=MissionId("m-1"),
+            tenant_id=TenantId("t-1"),
+            intent=MissionIntent(dados={}),
+            registro=self._RegistroCapacidadesFake(),
+            repositorio_playbooks=self._RepositorioPlaybooksFake(playbook),
+        )
+
+        assert resultado.decision_points == [ponto]
+        assert resultado.steps[0].decision_point_id == ponto.id
+
+    def test_step_sem_decision_point_template_fica_none(self) -> None:
+        template = PlanStepTemplate(
+            capability=CapabilityRef(capability_id=CapabilityId("cap-a"), versao="1.0.0")
+        )
+        playbook = _playbook("p-1", priority=1, matcher=_matcher(), steps_template=[template])
+
+        resultado = plan(
+            mission_id=MissionId("m-1"),
+            tenant_id=TenantId("t-1"),
+            intent=MissionIntent(dados={}),
+            registro=self._RegistroCapacidadesFake(),
+            repositorio_playbooks=self._RepositorioPlaybooksFake(playbook),
+        )
+
+        assert resultado.decision_points == []
+        assert resultado.steps[0].decision_point_id is None

@@ -103,6 +103,9 @@ class PlaybookCandidato(Protocol):
     @property
     def recovery_defaults(self) -> dict[int, RecoveryStrategy]: ...
 
+    @property
+    def decision_points_template(self) -> dict[int, DecisionPoint]: ...
+
 
 class PlanStepTemplate(BaseModel):
     """Versao minima de um passo de Playbook (Vol.V Cap.21) — o suficiente
@@ -163,14 +166,16 @@ def plan(
     )
 
     origem: PlaybookId | None
+    decision_points_por_id: dict[DecisionPointId, DecisionPoint]
     if playbook is not None:
-        steps = _instanciar_de_playbook(playbook)
+        steps, decision_points_por_id = _instanciar_de_playbook(playbook)
         origem = playbook.id
     else:
         steps = _compor_via_grafo_capacidades(intent, registro)
+        decision_points_por_id = {}
         origem = None
 
-    decision_points = _extrair_decision_points(steps)
+    decision_points = _extrair_decision_points(steps, decision_points_por_id)
     _validar(steps)
 
     plan_hash = _hash_determinístico(intent, registro.versao())
@@ -213,22 +218,41 @@ def hidratar_plano(event_bus: EventBus, mission_id: MissionId) -> ExecutionPlan 
     return ExecutionPlan.model_validate(evento.payload["plano"])
 
 
-def _instanciar_de_playbook(playbook: PlaybookCandidato) -> list[PlanStep]:
+def _instanciar_de_playbook(
+    playbook: PlaybookCandidato,
+) -> tuple[list[PlanStep], dict[DecisionPointId, DecisionPoint]]:
     """Vol.V Cap.21, secao 21.6 (AT-21.3) — `recovery_defaults` (chaveado por
     indice em `steps_template`, mesma convencao de `depende_de_indices`)
     precisa chegar ao `PlanStep` real gerado aqui; sem isso, a certificacao
     do Playbook garantiria cobertura de recovery que a instanciacao real
-    descartaria silenciosamente."""
+    descartaria silenciosamente.
+
+    `decision_points_template` (Fase 9 do roadmap de plataforma, `.claude/
+    plans/peaceful-wondering-hearth.md`, Estagio 9.2) — mesma convencao,
+    chaveado por indice em `steps_template`. Antes desta fase,
+    `_extrair_decision_points()` sempre retornava `[]` mesmo para
+    Playbooks reais — a justificativa "bloqueado ate Volume V" estava
+    desatualizada (Volume V esta completo desde a Fase 3); o bloqueio real
+    era so a ausencia deste campo. `PlanStep.decision_point_id` (Vol.II
+    Cap.7) e populado aqui com o `DecisionPoint.id` real; o `DecisionPoint`
+    completo (pergunta/opcoes/escalation_policy/dados) e devolvido num
+    dict paralelo `StepId -> DecisionPoint`, ja que `PlanStep` so carrega a
+    REFERENCIA (id), nunca o objeto completo (mesmo raciocinio de
+    `Mission`/Event Sourcing, ADR-0003)."""
     passos: list[PlanStep] = []
+    decision_points_por_id: dict[DecisionPointId, DecisionPoint] = {}
     for indice, template in enumerate(playbook.steps_template):
-        passos.append(
-            PlanStep(
-                capability=template.capability,
-                depende_de=[passos[i].id for i in template.depende_de_indices if i < indice],
-                recovery_strategy=playbook.recovery_defaults.get(indice),
-            )
+        decision_point = playbook.decision_points_template.get(indice)
+        passo = PlanStep(
+            capability=template.capability,
+            depende_de=[passos[i].id for i in template.depende_de_indices if i < indice],
+            recovery_strategy=playbook.recovery_defaults.get(indice),
+            decision_point_id=decision_point.id if decision_point is not None else None,
         )
-    return passos
+        passos.append(passo)
+        if decision_point is not None:
+            decision_points_por_id[decision_point.id] = decision_point
+    return passos, decision_points_por_id
 
 
 def _compor_via_grafo_capacidades(
@@ -254,13 +278,22 @@ def _compor_via_grafo_capacidades(
     return passos
 
 
-def _extrair_decision_points(steps: list[PlanStep]) -> list[DecisionPoint]:
-    """Vol.II Cap.7, secao 7.4, passo 3 — nesta construção, DecisionPoints só
-    chegam via Playbook (fora de escopo); a composição via grafo de
-    Capabilities não gera nenhum por si só. Retorna sempre vazio até Playbooks
-    reais (Volume V) poderem anexar DecisionPoints aos templates."""
-    del steps
-    return []
+def _extrair_decision_points(
+    steps: list[PlanStep], decision_points_por_id: dict[DecisionPointId, DecisionPoint]
+) -> list[DecisionPoint]:
+    """Vol.II Cap.7, secao 7.4, passo 3 (`extractDecisionPoints(steps)`,
+    docs/spec/02-kernel/03-planning-engine.md) — percorre os `PlanStep`s já
+    instanciados coletando os que têm `decision_point_id` setado, resolvendo
+    cada um ao `DecisionPoint` completo (Fase 9, Estágio 9.2). DecisionPoints
+    só chegam via Playbook — a composição via grafo de Capabilities
+    (`_compor_via_grafo_capacidades`) nunca gera nenhum por si só, então
+    `decision_points_por_id` chega vazio nesse caminho e o resultado
+    aqui é sempre `[]`, exatamente como antes."""
+    return [
+        decision_points_por_id[step.decision_point_id]
+        for step in steps
+        if step.decision_point_id is not None and step.decision_point_id in decision_points_por_id
+    ]
 
 
 def _validar(steps: list[PlanStep]) -> None:

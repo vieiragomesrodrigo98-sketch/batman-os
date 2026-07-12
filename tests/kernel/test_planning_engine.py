@@ -2,14 +2,29 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 import pytest
 
-from batman_os.foundation.types import CapabilityId, CapabilityRef, MissionId, StepId, TenantId
+from batman_os.foundation.types import (
+    CapabilityId,
+    CapabilityRef,
+    DecisionOption,
+    EscalationPolicy,
+    MissionId,
+    PlaybookId,
+    RecoveryStrategy,
+    Reversibilidade,
+    StepId,
+    TenantId,
+)
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionIntent
 from batman_os.kernel.planning_engine import (
+    DecisionPoint,
     PlanningFailure,
     PlanStep,
+    PlanStepTemplate,
     RegistroCapacidades,
     _encontrar_ciclo,
     hidratar_plano,
@@ -42,6 +57,41 @@ def _ref(nome: str) -> CapabilityRef:
 
 def _registro_como_protocolo(registro: RegistroFake) -> RegistroCapacidades:
     return registro
+
+
+@dataclass
+class PlaybookFake:
+    """Satisfaz `PlaybookCandidato` (Protocol) estruturalmente — mesma
+    doutrina de `RegistroFake` acima: testes do Kernel nunca importam
+    `workflow/playbooks.py::PlaybookDefinition` (Vol.VIII Cap.32, secao
+    32.3 — kernel nunca depende de workflow), mesmo em teste."""
+
+    id: PlaybookId
+    steps_template: list[PlanStepTemplate]
+    recovery_defaults: dict[int, RecoveryStrategy] = field(default_factory=dict)
+    decision_points_template: dict[int, DecisionPoint] = field(default_factory=dict)
+
+
+class _RepositorioComUmPlaybook:
+    def __init__(self, playbook: PlaybookFake) -> None:
+        self._playbook = playbook
+
+    def encontrar_correspondente(self, intent: MissionIntent) -> PlaybookFake | None:
+        del intent
+        return self._playbook
+
+
+def _ponto_decisao(pergunta: str = "aprovar?") -> DecisionPoint:
+    return DecisionPoint(
+        pergunta=pergunta,
+        opcoes=[DecisionOption(id="sim", descricao="Aprovar")],
+        escalation_policy=EscalationPolicy(
+            confidence_threshold=0.8,
+            preferred_escalation="human",
+            max_llm_retries=1,
+            reversibility=Reversibilidade.REVERSIVEL,
+        ),
+    )
 
 
 class TestAT71PlanHashDeterministico:
@@ -181,3 +231,90 @@ class TestFase2Estagio22PersistirExecutionPlanConcreto:
         event_bus = EventBus()
 
         assert hidratar_plano(event_bus, MissionId("nunca-planejada")) is None
+
+
+class TestFase9Estagio92DecisionPointsReaisDePlaybook:
+    """Fase 9 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 9.2 — antes desta fase, `_extrair_decision_points()`
+    sempre retornava `[]`, mesmo para Playbooks reais com `decision_points_
+    template` declarado (a justificativa "bloqueado ate Volume V" estava
+    desatualizada — Volume V esta completo desde a Fase 3). Estes testes
+    provam a extracao de verdade, sem monkeypatch de `plan()` (o padrao
+    usado desde a Fase 7 exatamente por essa limitacao nao existir mais)."""
+
+    def test_step_com_decision_point_declarado_aparece_no_plano(self) -> None:
+        ponto = _ponto_decisao()
+        playbook = PlaybookFake(
+            id=PlaybookId("pb-1"),
+            steps_template=[PlanStepTemplate(capability=_ref("cap-a"))],
+            decision_points_template={0: ponto},
+        )
+        registro = _registro_como_protocolo(RegistroFake([]))
+        repo = _RepositorioComUmPlaybook(playbook)
+
+        plano = plan(
+            MISSAO_EXEMPLO,
+            TENANT_EXEMPLO,
+            MissionIntent(dados={}),
+            registro,
+            repositorio_playbooks=repo,
+        )
+
+        assert plano.decision_points == [ponto]
+        assert plano.steps[0].decision_point_id == ponto.id
+
+    def test_step_sem_decision_point_nao_gera_nenhum(self) -> None:
+        playbook = PlaybookFake(
+            id=PlaybookId("pb-2"),
+            steps_template=[PlanStepTemplate(capability=_ref("cap-a"))],
+        )
+        registro = _registro_como_protocolo(RegistroFake([]))
+        repo = _RepositorioComUmPlaybook(playbook)
+
+        plano = plan(
+            MISSAO_EXEMPLO,
+            TENANT_EXEMPLO,
+            MissionIntent(dados={}),
+            registro,
+            repositorio_playbooks=repo,
+        )
+
+        assert plano.decision_points == []
+        assert plano.steps[0].decision_point_id is None
+
+    def test_playbook_com_varios_steps_so_o_indice_declarado_gera_decision_point(self) -> None:
+        ponto = _ponto_decisao("aprovar o step do meio?")
+        playbook = PlaybookFake(
+            id=PlaybookId("pb-3"),
+            steps_template=[
+                PlanStepTemplate(capability=_ref("cap-a")),
+                PlanStepTemplate(capability=_ref("cap-b")),
+                PlanStepTemplate(capability=_ref("cap-c")),
+            ],
+            decision_points_template={1: ponto},
+        )
+        registro = _registro_como_protocolo(RegistroFake([]))
+        repo = _RepositorioComUmPlaybook(playbook)
+
+        plano = plan(
+            MISSAO_EXEMPLO,
+            TENANT_EXEMPLO,
+            MissionIntent(dados={}),
+            registro,
+            repositorio_playbooks=repo,
+        )
+
+        assert plano.decision_points == [ponto]
+        assert plano.steps[0].decision_point_id is None
+        assert plano.steps[1].decision_point_id == ponto.id
+        assert plano.steps[2].decision_point_id is None
+
+    def test_composicao_via_grafo_nunca_gera_decision_point(self) -> None:
+        """Sem Playbook (`repositorio_playbooks=None`), a composicao via
+        grafo de Capabilities continua sem gerar nenhum DecisionPoint —
+        mesmo comportamento de antes desta fase, nao uma regressao."""
+        registro = _registro_como_protocolo(RegistroFake([_ref("cap-a"), _ref("cap-b")]))
+
+        plano = plan(MISSAO_EXEMPLO, TENANT_EXEMPLO, MissionIntent(dados={}), registro)
+
+        assert plano.decision_points == []

@@ -26,7 +26,7 @@ from batman_os.foundation.types import (
     StepId,
 )
 from batman_os.kernel.mission_runtime import MissionIntent
-from batman_os.kernel.planning_engine import PlanStepTemplate
+from batman_os.kernel.planning_engine import DecisionPoint, PlanStepTemplate
 from batman_os.workflow.recovery import FallbackChain, GapDeFallbackChain, validar_fallback_chains
 
 
@@ -102,7 +102,16 @@ class PlaybookDefinition(BaseModel):
     `depende_de_indices` já referencia por índice, não por id. Chaveado
     aqui por índice em `steps_template`, consistente com essa escolha já
     feita no Planning Engine (gap mecânico, não decisão arquitetural nova).
-    """
+
+    `decision_points_template` (Fase 9 do roadmap de plataforma, `.claude/
+    plans/peaceful-wondering-hearth.md`, Estágio 9.2) — mesma convenção de
+    `recovery_defaults`: chaveado por índice em `steps_template`. Reaproveita
+    `DecisionPoint` (Vol.II Cap.7) DIRETO como template, sem um tipo
+    `DecisionPointTemplate` novo — `pergunta`/`opcoes`/`escalation_policy`/
+    `dados` já são um template autorável completo, e decision points de
+    Playbook hoje são resolvidos ANTES de qualquer step rodar (loop de
+    `plano.decision_points` em `orchestration/playbook_driver.py`), nunca
+    interpolando output de step nenhum."""
 
     id: PlaybookId
     version: str
@@ -112,6 +121,7 @@ class PlaybookDefinition(BaseModel):
     steps_template: list[PlanStepTemplate] = Field(default_factory=list)
     required_capabilities: list[CapabilityRef] = Field(default_factory=list)
     recovery_defaults: dict[int, RecoveryStrategy] = Field(default_factory=dict)
+    decision_points_template: dict[int, DecisionPoint] = Field(default_factory=dict)
     fallback_chains: list[FallbackChain] = Field(default_factory=list)
     status: StatusPlaybook = StatusPlaybook.DRAFT
     provenance: PlaybookProvenance
@@ -219,6 +229,17 @@ def certificar_playbook(
     if faltando_recovery:
         gaps.append(
             f"PlanStepTemplate com efeito colateral sem recoveryDefaults: {faltando_recovery}"
+        )
+
+    indices_invalidos = [
+        indice
+        for indice in playbook.decision_points_template
+        if indice < 0 or indice >= len(playbook.steps_template)
+    ]
+    if indices_invalidos:
+        gaps.append(
+            "decisionPointsTemplate referencia indice(s) fora de steps_template: "
+            f"{indices_invalidos}"
         )
 
     if playbook.provenance.approved_by is None:
