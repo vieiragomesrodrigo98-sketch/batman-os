@@ -51,12 +51,19 @@ def consultar_job(
             achados = entrada.resultado.achados
             relatorio = entrada.resultado.relatorio
             decision_pendente = entrada.resultado.decision_pendente
-    elif missao.estado == MissionState.AWAITING_HUMAN:
-        # Fase 10, Estagio 10.1 — cache-miss no JobStore (processo
-        # reiniciado): sem isso, decision_pendente ficaria `None` mesmo
-        # com a Missao genuinamente aguardando humano (Mission.estado
-        # sobrevive via EventBus desde a Fase 2, mas o DecisionPoint em
-        # si so existia no JobStore em memoria ate esta fase).
+
+    if decision_pendente is None and missao.estado == MissionState.AWAITING_HUMAN:
+        # Fase 10, Estagio 10.1 — cobre DOIS cenarios, nao so cache-miss
+        # (processo reiniciado): tambem a race NORMAL dentro do mesmo
+        # processo entre `runtime.transition(..., ESCALATED_TO_HUMAN)`
+        # (torna `Mission.estado` visivel de imediato) e o callback de
+        # `future.add_done_callback` popular `entrada.resultado` (so
+        # depois que a funcao em background RETORNA e o Future resolve —
+        # achado real, nao hipotetico: um GET nesse intervalo via
+        # `entrada is not None` mas `entrada.resultado is None` deixava
+        # `decision_pendente` `None` mesmo com a Missao genuinamente
+        # aguardando humano). Sem gating em `entrada is None`, a
+        # hidratacao via EventBus cobre os dois casos.
         decision_pendente = hidratar_decisao_pendente(colaboradores.event_bus, mid)
 
     return JobStatusResponse(

@@ -234,9 +234,17 @@ def continuar_missao_via_playbook(
             # A Missao PARA aqui — nenhum WorkflowRun e criado ainda, entao
             # `workflow_run_id` nao existe (ver docstring de
             # ResultadoMissaoPlaybook).
-            runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, tenant_id)
+            #
+            # Ordem deliberada (Fase 11, achado ao investigar um teste
+            # flaky sob carga): publica ANTES de transicionar. Um leitor
+            # (`GET /jobs/{id}`) so hidrata via EventBus depois de ver
+            # `Mission.estado == AwaitingHuman` — se a ordem fosse invertida,
+            # haveria uma janela (por menor que fosse) em que o estado ja
+            # seria visivel mas o evento ainda nao, fazendo a hidratacao
+            # falhar mesmo sem cache-miss nenhum no JobStore.
             if event_bus is not None:
                 _publicar_escalada_pendente(event_bus, mission.id, tenant_id, ponto)
+            runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, tenant_id)
             return ResultadoMissaoPlaybook(
                 mission_id=mission.id,
                 estado_final="awaiting_human",
