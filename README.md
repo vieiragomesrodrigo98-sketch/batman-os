@@ -116,6 +116,39 @@ batman scan --root <repo>          # roda o primeiro lote de Capabilities migrad
 batman scan --root <repo> --fail-on high   # saida 1 se houver achado high/critical
 ```
 
+## API HTTP
+
+Fases 6-8 do roadmap de plataforma (`.claude/plans/peaceful-wondering-hearth.md`)
+adicionaram uma API HTTP (FastAPI) sobre o mesmo Kernel — `pip install -e ".[api]"`
+para instalar `fastapi`/`uvicorn`/`httpx`.
+
+```bash
+uvicorn batman_os.api.app:criar_app --factory
+```
+
+Toda requisição a `/missions/*` e `/jobs/*` exige autenticação real via
+`Authorization: Bearer <chave>` — não existe mais seleção de tenant sem prova
+(Fase 8). Configure `BATMAN_API_KEYS` no `.env` (objeto JSON `tenant->chave`, ver
+`.env.example`) antes de subir o servidor; gere uma chave nova com:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Sem header válido, todo endpoint responde `401`. O tenant aplicado à Missão é
+derivado 100% da chave usada — nunca de um campo do corpo da requisição.
+
+```bash
+curl -X POST http://localhost:8000/missions/security-audit \
+  -H "Authorization: Bearer <sua-chave>" \
+  -H "Content-Type: application/json" \
+  -d '{"root": "/caminho/do/repo"}'
+# -> 202 {"mission_id": "..."}
+
+curl http://localhost:8000/jobs/<mission_id> \
+  -H "Authorization: Bearer <sua-chave>"
+```
+
 ## Portão automático (CI)
 
 Dois mecanismos rodam `pytest` + `mypy` + `ruff check` + `ruff format --check`
