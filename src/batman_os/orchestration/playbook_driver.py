@@ -34,7 +34,7 @@ from batman_os.foundation.types import (
     WorkflowRunId,
 )
 from batman_os.kernel.decision_engine import Decision, DecisionEngine
-from batman_os.kernel.event_bus import EventBus
+from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 from batman_os.kernel.mission_runtime import (
     Mission,
     MissionEventType,
@@ -101,6 +101,48 @@ class ResultadoMissaoPlaybook:
     decision_pendente: DecisionPoint | None = None
     achados: list[dict[str, Any]] = field(default_factory=list)
     relatorio: dict[str, Any] | None = None
+
+
+def _publicar_escalada_pendente(
+    event_bus: EventBus, mission_id: MissionId, tenant_id: TenantId, ponto: DecisionPoint
+) -> None:
+    """Fase 10 do roadmap de plataforma (`.claude/plans/peaceful-
+    wondering-hearth.md`, Estágio 10.1) — mesmo padrão de `_publicar_
+    plan_created()` (`kernel/planning_engine.py`, Fase 2, Estágio 2.2):
+    persiste o `DecisionPoint` que causou a escalada para que `GET /jobs/
+    {id}` (`api/routers/jobs.py`) continue mostrando `decision_pendente`
+    corretamente mesmo depois de um restart do processo — antes desta
+    fase, essa informação só existia no `JobStore` em memória
+    (`api/state.py`), perdida a cada restart mesmo com `Mission.estado`
+    sobrevivendo via `EventBus`."""
+    event_bus.publish(
+        KernelEvent(
+            mission_id=mission_id,
+            tenant_id=tenant_id,
+            tipo="HumanEscalationPending",
+            emitido_por=EmissorKernel.ORCHESTRATION,
+            payload={"decision_pendente": ponto.model_dump(mode="json")},
+        )
+    )
+
+
+def hidratar_decisao_pendente(event_bus: EventBus, mission_id: MissionId) -> DecisionPoint | None:
+    """Fase 10, Estágio 10.1 — reconstrói o `DecisionPoint` pendente a
+    partir do evento `HumanEscalationPending` persistido por
+    `_publicar_escalada_pendente()`. Retorna `None` se a Missão nunca
+    escalou com `event_bus` fornecido.
+
+    Pega sempre o ÚLTIMO evento desse tipo — seguro porque o driver não
+    suporta reescalar dentro da MESMA Missão (`retomar_missao_apos_
+    escalada()` não cria um novo `WorkflowRun` para uma Missão que já
+    tinha um; e uma Missão só chega a `AwaitingHuman` uma vez por
+    `mission_id` neste driver), então só pode existir um escalonamento
+    pendente por vez."""
+    historia = event_bus.replay(mission_id)
+    evento = next((e for e in reversed(historia) if e.tipo == "HumanEscalationPending"), None)
+    if evento is None:
+        return None
+    return DecisionPoint.model_validate(evento.payload["decision_pendente"])
 
 
 def iniciar_missao_via_playbook(
@@ -193,6 +235,8 @@ def continuar_missao_via_playbook(
             # `workflow_run_id` nao existe (ver docstring de
             # ResultadoMissaoPlaybook).
             runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, tenant_id)
+            if event_bus is not None:
+                _publicar_escalada_pendente(event_bus, mission.id, tenant_id, ponto)
             return ResultadoMissaoPlaybook(
                 mission_id=mission.id,
                 estado_final="awaiting_human",

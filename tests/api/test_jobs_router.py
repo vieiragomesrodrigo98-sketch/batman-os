@@ -321,3 +321,47 @@ class TestFluxoCompletoDeResumo:
             )
 
         assert resposta.status_code == 401
+
+
+class TestFase10Estagio101DecisaoPendenteSobreviveARestart:
+    """Fase 10 do roadmap de plataforma (`.claude/plans/peaceful-
+    wondering-hearth.md`), Estágio 10.1) — `db_path` real (não
+    `":memory:"`) compartilhado entre 2 `criar_app()` simula um restart
+    real do processo: mesmo `EventBus` (arquivo SQLite), mas `JobStore`
+    NOVO e vazio na segunda instância (nunca persistido — só o `EventBus`
+    sobrevive)."""
+
+    def test_get_jobs_mostra_decision_pendente_apos_restart_simulado(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(driver_mod, "plan", _fake_plan_com_escalada())
+        monkeypatch.setattr(auditoria_router_mod, "montar_playbook", _fake_montar_playbook)
+        db_path = str(tmp_path / "eventos.db")
+
+        app_antes_do_restart = criar_app(db_path=db_path, api_keys=_CHAVES_DE_TESTE)
+        with TestClient(app_antes_do_restart) as client_antes:
+            resposta_submit = client_antes.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("acme"),
+            )
+            mission_id = resposta_submit.json()["mission_id"]
+            corpo_antes = _poll_ate_estado(client_antes, mission_id, "acme", {"AwaitingHuman"})
+            assert corpo_antes["decision_pendente"] is not None
+
+        # "Restart": nova instancia do app, MESMO arquivo SQLite (event_bus
+        # persistido), mas JobStore novo e vazio -- simula o processo
+        # reiniciando entre a escalada e a resposta humana chegar.
+        app_depois_do_restart = criar_app(db_path=db_path, api_keys=_CHAVES_DE_TESTE)
+        with TestClient(app_depois_do_restart) as client_depois:
+            assert (
+                app_depois_do_restart.state.colaboradores.job_store.consultar(mission_id) is None
+            )  # confirma que o JobStore de fato nao sobreviveu
+
+            corpo_depois = client_depois.get(
+                f"/jobs/{mission_id}", headers=_cabecalho("acme")
+            ).json()
+
+        assert corpo_depois["estado"] == "AwaitingHuman"
+        assert corpo_depois["decision_pendente"] is not None
+        assert corpo_depois["decision_pendente"]["pergunta"] == PERGUNTA

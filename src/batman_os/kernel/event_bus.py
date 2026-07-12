@@ -29,13 +29,20 @@ from batman_os.foundation.types import (
 
 
 class EmissorKernel(StrEnum):
-    """Vol.II Cap.10, secao 10.2.2 — quem pode publicar um evento."""
+    """Vol.II Cap.10, secao 10.2.2 — quem pode publicar um evento.
+
+    `ORCHESTRATION` (Fase 10 do roadmap de plataforma, `.claude/plans/
+    peaceful-wondering-hearth.md`, Estagio 10.1) — `orchestration/
+    playbook_driver.py` publica `HumanEscalationPending` no momento da
+    escalada para humano, mesmo padrao ja usado por `PLANNING_ENGINE`
+    (`PlanCreated`)."""
 
     MISSION_RUNTIME = "MissionRuntime"
     PLANNING_ENGINE = "PlanningEngine"
     DECISION_ENGINE = "DecisionEngine"
     WORKFLOW_ENGINE = "WorkflowEngine"
     SCHEDULER = "Scheduler"
+    ORCHESTRATION = "Orchestration"
 
 
 class KernelEvent(BaseModel):

@@ -22,7 +22,12 @@ from batman_os.api.auth import TenantAutenticadoDep
 from batman_os.api.dependencies import ColaboradoresDep
 from batman_os.api.schemas import AuditoriaSegurancaAceito, JobStatusResponse, ResumoRequest
 from batman_os.foundation.types import MissionId, OperatorRef
-from batman_os.orchestration.playbook_driver import retomar_missao_apos_escalada
+from batman_os.kernel.mission_runtime import MissionState
+from batman_os.kernel.planning_engine import DecisionPoint
+from batman_os.orchestration.playbook_driver import (
+    hidratar_decisao_pendente,
+    retomar_missao_apos_escalada,
+)
 
 router = APIRouter()
 
@@ -37,7 +42,7 @@ def consultar_job(
 
     achados: list[dict[str, object]] = []
     relatorio: dict[str, object] | None = None
-    decision_pendente = None
+    decision_pendente: DecisionPoint | None = None
     erro = None
     if entrada is not None:
         if entrada.erro is not None:
@@ -46,6 +51,13 @@ def consultar_job(
             achados = entrada.resultado.achados
             relatorio = entrada.resultado.relatorio
             decision_pendente = entrada.resultado.decision_pendente
+    elif missao.estado == MissionState.AWAITING_HUMAN:
+        # Fase 10, Estagio 10.1 — cache-miss no JobStore (processo
+        # reiniciado): sem isso, decision_pendente ficaria `None` mesmo
+        # com a Missao genuinamente aguardando humano (Mission.estado
+        # sobrevive via EventBus desde a Fase 2, mas o DecisionPoint em
+        # si so existia no JobStore em memoria ate esta fase).
+        decision_pendente = hidratar_decisao_pendente(colaboradores.event_bus, mid)
 
     return JobStatusResponse(
         mission_id=str(missao.id),

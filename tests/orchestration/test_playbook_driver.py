@@ -34,6 +34,7 @@ from batman_os.foundation.types import (
     DecisionOption,
     EscalationPolicy,
     HumanReviewRef,
+    MissionId,
     MissionTypeId,
     OperatorId,
     OperatorRef,
@@ -58,6 +59,7 @@ from batman_os.orchestration.playbook_driver import (
     EspecificacaoDeStepAusente,
     PlaybookNaoResolvido,
     executar_missao_via_playbook,
+    hidratar_decisao_pendente,
 )
 from batman_os.orchestration.playbook_step_specs import RelatorioConsolidadoSpec
 from batman_os.orchestration.schema_validators import (
@@ -602,3 +604,80 @@ class TestFase7Estagio71ReconhecimentoDeEscalada:
         assert plano_hidratado.decision_points[0].pergunta == "precisa de aprovacao humana?"
 
         execution_engine.fechar()
+
+
+class TestFase10Estagio101EscaladaPendenteSobreviveARestart:
+    """Fase 10 do roadmap de plataforma (`.claude/plans/peaceful-
+    wondering-hearth.md`), Estágio 10.1 — achado de investigação: antes
+    desta correção, o `DecisionPoint` que causou uma escalada só existia
+    no `JobStore` em memória (`api/state.py`) — um restart do processo
+    entre a escalada e a resposta humana perdia essa informação, mesmo
+    com `Mission.estado` sobrevivendo via `EventBus` desde a Fase 2."""
+
+    def test_com_event_bus_decisao_pendente_e_hidratavel(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
+            _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
+        )
+        event_bus = runtime._event_bus
+        playbook_registry = PlaybookRegistry()
+        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
+        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+
+        resultado = executar_missao_via_playbook(
+            MissionIntent(dados={"tipo": "playbook-de-teste"}),
+            TIPO,
+            TENANT,
+            {},
+            runtime=runtime,
+            registro=_RegistroCapacidadesFake(),
+            registry=registry,
+            decision_engine=decision_engine,
+            execution_engine=execution_engine,
+            operator=operator,
+            operator_ref=operator_ref,
+            repositorio_playbooks=playbook_registry,
+            event_bus=event_bus,
+        )
+
+        decisao_hidratada = hidratar_decisao_pendente(event_bus, resultado.mission_id)
+        assert decisao_hidratada is not None
+        assert decisao_hidratada == resultado.decision_pendente
+
+        execution_engine.fechar()
+
+    def test_sem_event_bus_decisao_pendente_nao_e_persistida(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
+            _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
+        )
+        playbook_registry = PlaybookRegistry()
+        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
+        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        event_bus_de_verificacao = EventBus()  # instancia PROPRIA, nunca passada ao driver
+
+        resultado = executar_missao_via_playbook(
+            MissionIntent(dados={"tipo": "playbook-de-teste"}),
+            TIPO,
+            TENANT,
+            {},
+            runtime=runtime,
+            registro=_RegistroCapacidadesFake(),
+            registry=registry,
+            decision_engine=decision_engine,
+            execution_engine=execution_engine,
+            operator=operator,
+            operator_ref=operator_ref,
+            repositorio_playbooks=playbook_registry,
+            # event_bus NAO fornecido -- comportamento default preservado
+        )
+
+        assert hidratar_decisao_pendente(event_bus_de_verificacao, resultado.mission_id) is None
+        execution_engine.fechar()
+
+    def test_missao_sem_escalada_nao_tem_decisao_pendente(self) -> None:
+        event_bus = EventBus()
+
+        assert hidratar_decisao_pendente(event_bus, MissionId("nunca-escalou")) is None
