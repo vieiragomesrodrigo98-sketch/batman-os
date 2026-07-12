@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from batman_os.api.auth import ApiKeyStore
 from batman_os.api.routers.auditoria_seguranca import router as router_auditoria_seguranca
 from batman_os.api.routers.jobs import router as router_jobs
 from batman_os.api.state import ColaboradoresCompartilhados, JobStore
@@ -35,7 +36,11 @@ from batman_os.orchestration.schema_validators import (
 from batman_os.runtime.execution_engine import ExecutionEngine
 
 
-def criar_app(db_path: str = ":memory:", max_missoes_concorrentes: int = 8) -> FastAPI:
+def criar_app(
+    db_path: str = ":memory:",
+    max_missoes_concorrentes: int = 8,
+    api_keys: dict[str, str] | None = None,
+) -> FastAPI:
     """`db_path`: mesma convenção de `executar_scan`/`executar_
     auditoria_seguranca` (`":memory:"` default; um caminho real
     persiste os eventos entre restarts do processo — escolha de valor
@@ -46,11 +51,19 @@ def criar_app(db_path: str = ":memory:", max_missoes_concorrentes: int = 8) -> F
     NUNCA reaproveitando `ExecutionEngine._executor`/`_supervisor`
     (dimensionados para invocação de UMA Capability — achado de
     investigação: reentrar neles arrisca esgotar o pool sob
-    concorrência)."""
+    concorrência).
+
+    `api_keys` (Fase 8, Estágio 8.1) — mapa tenant->chave explícito,
+    mesmo padrão de `db_path`: `None` (default) carrega de `BATMAN_
+    API_KEYS` via `ApiKeyStore.carregar()` (uso real); um dict explícito
+    (uso em teste) nunca toca o `.env` real."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         registry, operator = preparar_capabilities()
+        app.state.chave_store = (
+            ApiKeyStore(api_keys) if api_keys is not None else ApiKeyStore.carregar()
+        )
         execution_engine = ExecutionEngine(
             validador_schema=ValidadorSchemaEstrutural(),
             validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
