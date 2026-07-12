@@ -18,29 +18,25 @@ aprove formalmente a mudança.
 ## Estado
 
 **Especificação completa: 39 capítulos, 10 volumes, 17 ADRs, 6 Anexos** (Volumes
-I–X). **Código: núcleo funcional completo (Volumes I–VII)** — Foundation, Kernel
-Architecture, Runtime, Capabilities, Workflow Engine, Learning Engine, Governance —
-30 capítulos (Cap.4/6-30), 363 testes cobrindo todos os `AT-X.Y` da própria
-especificação, `mypy`/`ruff` limpos. Ver `docs/spec/SUMMARY.md` para o índice
-completo. Inclui também o cenário de referência ponta a ponta do Vol.IX Cap.35
-(`tests/reference/`), provando que o sistema se compõe através de 5 volumes
-diferentes, não só capítulo a capítulo. Volumes VIII (Infrastructure) e X
-(Appendices) são volumes de topologia física e consolidação — não introduzem
-componentes de código novos a implementar (ver nota sobre o Cap.32 abaixo).
+I–X). Ver `docs/spec/SUMMARY.md` para o índice completo. Volumes VIII
+(Infrastructure) e X (Appendices) são volumes de topologia física e consolidação
+— não introduzem componentes de código novos a implementar (ver nota sobre o
+Cap.32 abaixo).
 
-**Primeiro lote de migração real (2026-07-04) — `batman scan` funciona de
-verdade.** `src/batman_os/cli/` resolve o entry point `batman` declarado em
-`pyproject.toml` (antes quebrado — apontava para um módulo inexistente).
-`batman scan --root <repo>` roda a Fase 0 "Walking Skeleton" do Vol.IX Cap.34
-(Mission → Planning → Decision → Workflow → Execution → Operator) contra um
-repositório real, usando 14 Capabilities migradas de `radar-preditivo/Batman/
-scan/rules/` — a primeira fatia real das 269 regras do Batman atual. Validado
-por comparação de fingerprint byte-a-byte contra o motor legado
-(`scripts/compare_migracao.py`): **14/14 códigos convergentes** rodando contra
-o `radar-preditivo` de verdade. As ~255 regras restantes (a maioria reutiliza a
-mesma Capability genérica "regex sobre conteúdo de arquivo" — só precisam de
-um spec de dado novo, não código) e o backlog de pendências ficam em
-`docs/governanca/BATMAN_BACKLOG.md` no repositório `radar-preditivo`.
+**Migração do catálogo Batman: 271/271 regras** (concluída em 2026-07-10),
+validada por comparação de fingerprint byte-a-byte contra o motor legado
+(`scripts/compare_migracao.py`) rodando contra o `radar-preditivo` real.
+
+**Roadmap de plataforma: Fases 1–11 concluídas** (2026-07-12) — de "Scanner
+Determinístico" a "Plataforma Operacional de Engenharia": Kernel/Runtime com
+persistência real e paralelismo (`EventBus`/`OperationalMemory` em SQLite,
+`runtime/dispatcher.py`), isolamento multi-tenant estrutural em leitura e
+mutação, Playbooks multi-step com decision points reais na autoria, Mission
+Graph (`learning/mission_reconciliation.py`), e uma API HTTP completa e
+autenticada (ver seção "API HTTP" abaixo). **1058 testes, `mypy`/`ruff`
+limpos.** Status detalhado, o que existe hoje e o backlog de trabalho futuro
+(com contexto e justificativa por item) em
+[`docs/PLATFORM_ROADMAP_BACKLOG.md`](docs/PLATFORM_ROADMAP_BACKLOG.md).
 
 ## Estrutura
 
@@ -118,7 +114,7 @@ batman scan --root <repo> --fail-on high   # saida 1 se houver achado high/criti
 
 ## API HTTP
 
-Fases 6-8 do roadmap de plataforma (`.claude/plans/peaceful-wondering-hearth.md`)
+Fases 6-8 do roadmap de plataforma ([`docs/PLATFORM_ROADMAP_BACKLOG.md`](docs/PLATFORM_ROADMAP_BACKLOG.md))
 adicionaram uma API HTTP (FastAPI) sobre o mesmo Kernel — `pip install -e ".[api]"`
 para instalar `fastapi`/`uvicorn`/`httpx`.
 
