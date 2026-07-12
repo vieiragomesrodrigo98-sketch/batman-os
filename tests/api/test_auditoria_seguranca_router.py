@@ -1,9 +1,10 @@
 """Prova ponta-a-ponta do endpoint `POST /missions/security-audit`
 (Fase 6 do roadmap de plataforma, `.claude/plans/peaceful-wondering-
-hearth.md`, Estágio 6.3; assíncrono desde a Fase 7, Estágio 7.2). Mesma
-doutrina de `tests/reference/test_security_audit_playbook_e2e.py` (zero
-mock de Kernel/Runtime/Capability), agora via requisição HTTP real
-contra o app."""
+hearth.md`, Estágio 6.3; assíncrono desde a Fase 7, Estágio 7.2;
+autenticado desde a Fase 8, Estágio 8.2). Mesma doutrina de
+`tests/reference/test_security_audit_playbook_e2e.py` (zero mock de
+Kernel/Runtime/Capability), agora via requisição HTTP real contra o
+app."""
 
 from __future__ import annotations
 
@@ -19,6 +20,12 @@ import batman_os.cli.auditoria_seguranca_command as auditoria_mod
 from batman_os.api.app import criar_app
 from batman_os.api.state import EntradaJob, JobStore
 from batman_os.foundation.types import MissionId, TenantId
+
+_CHAVES_DE_TESTE = {"local": "chave-teste-local", "acme": "chave-teste-acme"}
+
+
+def _cabecalho(tenant: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {_CHAVES_DE_TESTE[tenant]}"}
 
 
 def _plantar_repositorio_com_violacoes(root: Path) -> None:
@@ -56,11 +63,13 @@ def _aguardar_job(app: FastAPI, mission_id: MissionId, timeout: float = 5.0) -> 
 class TestEndpointSecurityAudit:
     def test_repo_com_violacoes_detecta_exatamente_as_4_esperadas(self, tmp_path: Path) -> None:
         _plantar_repositorio_com_violacoes(tmp_path)
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
 
         with TestClient(app) as client:
             resposta = client.post(
-                "/missions/security-audit", json={"root": str(tmp_path), "tenant_id": "acme"}
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("acme"),
             )
             assert resposta.status_code == 202
             mission_id = MissionId(resposta.json()["mission_id"])
@@ -78,10 +87,14 @@ class TestEndpointSecurityAudit:
     def test_repo_limpo_completa_sem_achados(self, tmp_path: Path) -> None:
         (tmp_path / "api").mkdir()
         (tmp_path / "api" / "app.py").write_text("print('ola mundo')\n", encoding="utf-8")
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
 
         with TestClient(app) as client:
-            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            resposta = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("local"),
+            )
             assert resposta.status_code == 202
             mission_id = MissionId(resposta.json()["mission_id"])
 
@@ -92,21 +105,38 @@ class TestEndpointSecurityAudit:
         assert entrada.resultado.estado_final == "completed"
         assert entrada.resultado.achados == []
 
-    def test_tenant_id_ausente_usa_local_como_default(self, tmp_path: Path) -> None:
-        app = criar_app()
+    def test_sem_header_de_autenticacao_retorna_401(self, tmp_path: Path) -> None:
+        """Fase 8 — antes desta fase, omitir `tenant_id` aplicava
+        `"local"` como default (comportamento removido: não existe mais
+        default implícito, autenticação é sempre exigida)."""
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
             resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
 
-        assert resposta.status_code == 202
-        mission_id = MissionId(resposta.json()["mission_id"])
-        missao = app.state.colaboradores.runtime.get_mission(mission_id, TenantId("local"))
-        assert missao.tenant_id == "local"
+        assert resposta.status_code == 401
 
-    def test_tenant_id_customizado_e_aplicado_na_missao(self, tmp_path: Path) -> None:
-        app = criar_app()
+    def test_chave_invalida_retorna_401(self, tmp_path: Path) -> None:
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
             resposta = client.post(
-                "/missions/security-audit", json={"root": str(tmp_path), "tenant_id": "acme"}
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers={"Authorization": "Bearer chave-que-nao-existe"},
+            )
+
+        assert resposta.status_code == 401
+
+    def test_tenant_e_derivado_da_chave_autenticada(self, tmp_path: Path) -> None:
+        """Fase 8 — `tenant_id` não é mais um campo do corpo da
+        requisição (removido de `AuditoriaSegurancaRequest`); o tenant
+        aplicado à Missão é 100% derivado de qual chave autenticou a
+        requisição."""
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
+        with TestClient(app) as client:
+            resposta = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("acme"),
             )
 
             mission_id = MissionId(resposta.json()["mission_id"])
@@ -132,13 +162,21 @@ class TestEndpointSecurityAudit:
 
         monkeypatch.setattr(auditoria_mod, "certificar", _certificar_espiao)
 
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
             chamadas_apos_startup = len(chamadas)
             assert chamadas_apos_startup == 3  # 3 Capabilities certificadas no lifespan
 
-            r1 = client.post("/missions/security-audit", json={"root": str(tmp_path)})
-            r2 = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            r1 = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("local"),
+            )
+            r2 = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("local"),
+            )
             _aguardar_job(app, MissionId(r1.json()["mission_id"]))
             _aguardar_job(app, MissionId(r2.json()["mission_id"]))
 
@@ -152,10 +190,14 @@ class TestFase7Estagio72RespostaAssincrona:
     def test_job_aparece_no_store_logo_apos_o_submit(self, tmp_path: Path) -> None:
         (tmp_path / "api").mkdir()
         (tmp_path / "api" / "app.py").write_text("print('ola mundo')\n", encoding="utf-8")
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
 
         with TestClient(app) as client:
-            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            resposta = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("local"),
+            )
             mission_id = MissionId(resposta.json()["mission_id"])
 
             # Consultado ANTES de qualquer polling/espera — a entrada ja
@@ -187,14 +229,28 @@ class TestFase7Estagio72RespostaAssincrona:
 
         monkeypatch.setattr(router_mod, "continuar_missao_via_playbook", _continuar_com_atraso)
 
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
-            inicio = time.monotonic()
-            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
-            duracao_da_resposta = time.monotonic() - inicio
-
+            resposta = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("local"),
+            )
             assert resposta.status_code == 202
-            assert duracao_da_resposta < 0.1  # bem menor que o atraso de 0.2s injetado
+
+            # Prova CAUSAL, nao wall-clock: um threshold absoluto (ex.
+            # "< 0.1s") flaka sob carga de maquina (achado real, nao
+            # hipotetico — confirmado flakando mesmo antes da Fase 8,
+            # via `git stash` contra o commit d2b3780). O que importa e
+            # que o job AINDA NAO terminou no momento em que a resposta
+            # chega — impossivel se o handler tivesse bloqueado ate o
+            # atraso artificial de 0.2s injetado acima terminar.
+            entrada_imediata = app.state.colaboradores.job_store.consultar(
+                MissionId(resposta.json()["mission_id"])
+            )
+            assert entrada_imediata is not None
+            assert entrada_imediata.resultado is None
+            assert entrada_imediata.erro is None
 
             _aguardar_job(app, MissionId(resposta.json()["mission_id"]), timeout=2.0)
 
@@ -212,9 +268,13 @@ class TestFase7Estagio72RespostaAssincrona:
 
         monkeypatch.setattr(router_mod, "continuar_missao_via_playbook", _continuar_falha)
 
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
-            resposta = client.post("/missions/security-audit", json={"root": str(tmp_path)})
+            resposta = client.post(
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("local"),
+            )
             assert resposta.status_code == 202
 
             entrada = _aguardar_job(app, MissionId(resposta.json()["mission_id"]))

@@ -1,12 +1,13 @@
 """Prova ponta-a-ponta de `POST /missions/{id}/resume` + `GET /jobs/{id}`
 (Fase 7 do roadmap de plataforma, `.claude/plans/peaceful-wondering-
-hearth.md`, Estágio 7.3). Mesma doutrina de zero mock de Kernel/Runtime/
-Capability — só `plan()` é substituído (monkeypatch, dentro do módulo
-`playbook_driver`), já que o motor real nunca produz `decision_points`
-para um Playbook real (achado de investigação, fora de escopo até
-Volume V — mesmo padrão já usado em `tests/orchestration/
-test_playbook_driver.py`, Estágio 7.1, agora aplicado através do
-endpoint HTTP real, não só chamando a função diretamente)."""
+hearth.md`, Estágio 7.3; autenticados desde a Fase 8, Estágio 8.2). Mesma
+doutrina de zero mock de Kernel/Runtime/Capability — só `plan()` é
+substituído (monkeypatch, dentro do módulo `playbook_driver`), já que o
+motor real nunca produz `decision_points` para um Playbook real (achado
+de investigação, fora de escopo até Volume V — mesmo padrão já usado em
+`tests/orchestration/test_playbook_driver.py`, Estágio 7.1, agora
+aplicado através do endpoint HTTP real, não só chamando a função
+diretamente)."""
 
 from __future__ import annotations
 
@@ -49,6 +50,12 @@ from batman_os.workflow.playbooks import (
 
 PERGUNTA = "aprovar a auditoria?"
 OPCAO = DecisionOption(id="sim", descricao="Aprovar")
+
+_CHAVES_DE_TESTE = {"acme": "chave-teste-acme", "outro-tenant": "chave-teste-outro-tenant"}
+
+
+def _cabecalho(tenant: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {_CHAVES_DE_TESTE[tenant]}"}
 
 
 def _fake_plan_com_escalada() -> Any:
@@ -158,14 +165,14 @@ def _fake_montar_playbook(root: Path) -> tuple[PlaybookDefinition, dict[int, Any
 def _poll_ate_estado(
     client: TestClient,
     mission_id: str,
-    tenant_id: str,
+    tenant: str,
     estados_aceitos: set[str],
     timeout: float = 5.0,
 ) -> dict[str, Any]:
     prazo = time.monotonic() + timeout
     ultimo_corpo: dict[str, Any] | None = None
     while time.monotonic() < prazo:
-        resposta = client.get(f"/jobs/{mission_id}", params={"tenant_id": tenant_id})
+        resposta = client.get(f"/jobs/{mission_id}", headers=_cabecalho(tenant))
         ultimo_corpo = resposta.json()
         if ultimo_corpo["estado"] in estados_aceitos:
             return ultimo_corpo
@@ -182,10 +189,12 @@ class TestFluxoCompletoDeResumo:
         monkeypatch.setattr(driver_mod, "plan", _fake_plan_com_escalada())
         monkeypatch.setattr(auditoria_router_mod, "montar_playbook", _fake_montar_playbook)
 
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
             resposta_submit = client.post(
-                "/missions/security-audit", json={"root": str(tmp_path), "tenant_id": "acme"}
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("acme"),
             )
             assert resposta_submit.status_code == 202
             mission_id = resposta_submit.json()["mission_id"]
@@ -199,11 +208,11 @@ class TestFluxoCompletoDeResumo:
             resposta_resume = client.post(
                 f"/missions/{mission_id}/resume",
                 json={
-                    "tenant_id": "acme",
                     "ponto": corpo_aguardando["decision_pendente"],
                     "opcao_escolhida": OPCAO.model_dump(),
                     "evidencia": [{"origem": "humano", "evidencias": ["aprovado no teste"]}],
                 },
+                headers=_cabecalho("acme"),
             )
             assert resposta_resume.status_code == 202
             assert resposta_resume.json()["mission_id"] == mission_id
@@ -218,18 +227,22 @@ class TestFluxoCompletoDeResumo:
     ) -> None:
         """Reaproveita o isolamento de tenant já validado na Fase 5 —
         `runtime.get_mission()` levanta a mesma exceção de "não
-        encontrado" para tenant mismatch."""
+        encontrado" para tenant mismatch. Fase 8: o "tenant errado" agora
+        é uma CHAVE de outro tenant autenticando a requisição, não mais
+        um campo de corpo divergente (o campo não existe mais)."""
         monkeypatch.setattr(driver_mod, "plan", _fake_plan_com_escalada())
         monkeypatch.setattr(auditoria_router_mod, "montar_playbook", _fake_montar_playbook)
 
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         # raise_server_exceptions=False: o TestClient por padrao RE-LEVANTA
         # excecoes nao tratadas do servidor (util para depuracao), em vez de
         # devolve-las como resposta 500 -- aqui queremos provar o codigo de
         # status HTTP de verdade que um cliente real receberia.
         with TestClient(app, raise_server_exceptions=False) as client:
             resposta_submit = client.post(
-                "/missions/security-audit", json={"root": str(tmp_path), "tenant_id": "acme"}
+                "/missions/security-audit",
+                json={"root": str(tmp_path)},
+                headers=_cabecalho("acme"),
             )
             mission_id = resposta_submit.json()["mission_id"]
             corpo_aguardando = _poll_ate_estado(client, mission_id, "acme", {"AwaitingHuman"})
@@ -237,11 +250,11 @@ class TestFluxoCompletoDeResumo:
             resposta_resume = client.post(
                 f"/missions/{mission_id}/resume",
                 json={
-                    "tenant_id": "outro-tenant",
                     "ponto": corpo_aguardando["decision_pendente"],
                     "opcao_escolhida": OPCAO.model_dump(),
                     "evidencia": [{"origem": "humano", "evidencias": ["x"]}],
                 },
+                headers=_cabecalho("outro-tenant"),
             )
 
         assert resposta_resume.status_code == 500  # KeyError nao tratado -> 500 default
@@ -250,7 +263,7 @@ class TestFluxoCompletoDeResumo:
         """`mission_id` existe no `MissionRuntime` (criado direto, sem
         passar pelo endpoint de submit) mas nunca teve entrada no
         `JobStore` — não há `especificacoes_por_indice` para retomar."""
-        app = criar_app()
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
         with TestClient(app) as client:
             mission = app.state.colaboradores.runtime.create(
                 MissionIntent(dados={"tipo": "security-audit"}),
@@ -261,7 +274,37 @@ class TestFluxoCompletoDeResumo:
             resposta_resume = client.post(
                 f"/missions/{mission.id}/resume",
                 json={
-                    "tenant_id": "acme",
+                    "ponto": {
+                        "pergunta": PERGUNTA,
+                        "opcoes": [OPCAO.model_dump()],
+                        "escalation_policy": {
+                            "confidence_threshold": 0.8,
+                            "preferred_escalation": "human",
+                            "max_llm_retries": 1,
+                            "reversibility": "reversible",
+                        },
+                    },
+                    "opcao_escolhida": OPCAO.model_dump(),
+                    "evidencia": [{"origem": "humano", "evidencias": ["x"]}],
+                },
+                headers=_cabecalho("acme"),
+            )
+
+        assert resposta_resume.status_code == 409
+
+    def test_sem_header_de_autenticacao_no_get_jobs_retorna_401(self) -> None:
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
+        with TestClient(app) as client:
+            resposta = client.get("/jobs/019f5287-4bf5-7144-8367-3f6cbaa281b1")
+
+        assert resposta.status_code == 401
+
+    def test_sem_header_de_autenticacao_no_resume_retorna_401(self) -> None:
+        app = criar_app(api_keys=_CHAVES_DE_TESTE)
+        with TestClient(app) as client:
+            resposta = client.post(
+                "/missions/019f5287-4bf5-7144-8367-3f6cbaa281b1/resume",
+                json={
                     "ponto": {
                         "pergunta": PERGUNTA,
                         "opcoes": [OPCAO.model_dump()],
@@ -277,4 +320,4 @@ class TestFluxoCompletoDeResumo:
                 },
             )
 
-        assert resposta_resume.status_code == 409
+        assert resposta.status_code == 401

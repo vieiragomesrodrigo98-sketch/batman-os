@@ -1,6 +1,7 @@
 """Endpoints `GET /jobs/{mission_id}` + `POST /missions/{mission_id}/
 resume` (Fase 7 do roadmap de plataforma, `.claude/plans/peaceful-
-wondering-hearth.md`, Estágio 7.3).
+wondering-hearth.md`, Estágio 7.3; autenticados desde a Fase 8, Estágio
+8.2).
 
 `job_id` = `mission_id` (Achado 1 da Fase 7 — `MissionState` já é a
 máquina de estados, não se inventa um `JobId` paralelo). O `DecisionPoint`
@@ -8,15 +9,19 @@ pendente devolvido por `GET /jobs/{mission_id}` (quando a Missão está
 `AwaitingHuman`) precisa ser ecoado de volta em `POST .../resume` — o
 Kernel não persiste isso em lugar nenhum (achado de investigação), só o
 `JobStore` (`api/state.py`, junto com `especificacoes_por_indice`, a
-outra peça que falta para retomar o Playbook original)."""
+outra peça que falta para retomar o Playbook original).
+
+`tenant_id: TenantAutenticadoDep` (Fase 8) — nunca mais lido de query
+param/corpo; deriva 100% da chave de API autenticada (`api/auth.py`)."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from batman_os.api.auth import TenantAutenticadoDep
 from batman_os.api.dependencies import ColaboradoresDep
 from batman_os.api.schemas import AuditoriaSegurancaAceito, JobStatusResponse, ResumoRequest
-from batman_os.foundation.types import MissionId, OperatorRef, TenantId
+from batman_os.foundation.types import MissionId, OperatorRef
 from batman_os.orchestration.playbook_driver import retomar_missao_apos_escalada
 
 router = APIRouter()
@@ -24,10 +29,10 @@ router = APIRouter()
 
 @router.get("/jobs/{mission_id}", response_model=JobStatusResponse)
 def consultar_job(
-    mission_id: str, tenant_id: str, colaboradores: ColaboradoresDep
+    mission_id: str, tenant_id: TenantAutenticadoDep, colaboradores: ColaboradoresDep
 ) -> JobStatusResponse:
     mid = MissionId(mission_id)
-    missao = colaboradores.runtime.get_mission(mid, TenantId(tenant_id))
+    missao = colaboradores.runtime.get_mission(mid, tenant_id)
     entrada = colaboradores.job_store.consultar(mid)
 
     achados: list[dict[str, object]] = []
@@ -56,10 +61,12 @@ def consultar_job(
     "/missions/{mission_id}/resume", status_code=202, response_model=AuditoriaSegurancaAceito
 )
 def resumir_missao(
-    mission_id: str, corpo: ResumoRequest, colaboradores: ColaboradoresDep
+    mission_id: str,
+    corpo: ResumoRequest,
+    colaboradores: ColaboradoresDep,
+    tenant_id: TenantAutenticadoDep,
 ) -> AuditoriaSegurancaAceito:
     mid = MissionId(mission_id)
-    tenant_id = TenantId(corpo.tenant_id)
     missao = colaboradores.runtime.get_mission(mid, tenant_id)
 
     entrada = colaboradores.job_store.consultar(mid)

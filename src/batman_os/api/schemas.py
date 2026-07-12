@@ -18,8 +18,11 @@ from batman_os.kernel.planning_engine import DecisionPoint
 
 
 class AuditoriaSegurancaRequest(BaseModel):
+    """Sem `tenant_id` desde a Fase 8 (autenticação real) — o tenant é
+    derivado 100% da chave de API autenticada (`api/auth.py::
+    TenantAutenticadoDep`), nunca mais alegado pelo chamador."""
+
     root: str
-    tenant_id: str = "local"
 
 
 class AuditoriaSegurancaAceito(BaseModel):
@@ -73,9 +76,11 @@ class ResumoRequest(BaseModel):
     produz hoje é escalada ANTES do `WorkflowEngine` existir (Estágio
     7.1) — nunca há um `WorkflowRun` prévio para referenciar. Incluir o
     campo seria enganoso (sugeriria que o chamador precisa obtê-lo de
-    algum lugar que não existe)."""
+    algum lugar que não existe).
 
-    tenant_id: str = "local"
+    Sem `tenant_id` desde a Fase 8 (mesmo raciocínio de
+    `AuditoriaSegurancaRequest`) — derivado da chave de API autenticada."""
+
     ponto: DecisionPoint
     opcao_escolhida: DecisionOption
     evidencia: list[Evidence]
