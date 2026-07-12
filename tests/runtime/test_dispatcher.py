@@ -81,7 +81,9 @@ class TestDespacharAteTerminal:
         run = wf.iniciar(MissionId("m-1"), _plano(MissionId("m-1"), passos))
         scheduler = Scheduler(capacidade_worker_pool=4)
 
-        despachar_ate_terminal(wf, scheduler, [RunAcompanhada(run_id=run.id)], max_workers=4)
+        despachar_ate_terminal(
+            wf, scheduler, [RunAcompanhada(run_id=run.id, tenant_id=TENANT)], max_workers=4
+        )
 
         final = wf.get_run(run.id)
         assert final.estado == "completed"
@@ -99,7 +101,9 @@ class TestDespacharAteTerminal:
         run = wf.iniciar(MissionId("m-1"), _plano(MissionId("m-1"), [a, b, c]))
         scheduler = Scheduler(capacidade_worker_pool=4)
 
-        despachar_ate_terminal(wf, scheduler, [RunAcompanhada(run_id=run.id)], max_workers=4)
+        despachar_ate_terminal(
+            wf, scheduler, [RunAcompanhada(run_id=run.id, tenant_id=TENANT)], max_workers=4
+        )
 
         final = wf.get_run(run.id)
         assert final.estado == "completed"
@@ -113,7 +117,7 @@ class TestDespacharAteTerminal:
             step = PlanStep(capability=_ref(f"cap-run-{i}"))
             mission_id = MissionId(f"m-{i}")
             run = wf.iniciar(mission_id, _plano(mission_id, [step], plan_id=f"p-{i}"))
-            acompanhadas.append(RunAcompanhada(run_id=run.id))
+            acompanhadas.append(RunAcompanhada(run_id=run.id, tenant_id=TENANT))
 
         scheduler = Scheduler(capacidade_worker_pool=4)
         despachar_ate_terminal(wf, scheduler, acompanhadas, max_workers=4)
@@ -140,7 +144,10 @@ class TestDespacharAteTerminal:
         despachar_ate_terminal(
             wf,
             scheduler,
-            [RunAcompanhada(run_id=run_falha.id), RunAcompanhada(run_id=run_ok.id)],
+            [
+                RunAcompanhada(run_id=run_falha.id, tenant_id=TENANT),
+                RunAcompanhada(run_id=run_ok.id, tenant_id=TENANT),
+            ],
             max_workers=4,
         )
 
@@ -177,13 +184,15 @@ class TestDespacharAteTerminalComFairness:
         for acompanhada in acompanhadas:
             assert wf.get_run(acompanhada.run_id).estado == "completed"
 
-    def test_run_sem_tenant_id_levanta_erro_claro(self) -> None:
+    def test_run_acompanhada_sem_tenant_id_e_erro_de_construcao(self) -> None:
+        """Fase 9 (Estagio 9.1, `.claude/plans/peaceful-wondering-hearth.md`)
+        tornou `tenant_id` obrigatorio em `RunAcompanhada` — antes, so
+        `despachar_ate_terminal_com_fairness` verificava isso em runtime
+        (`ValueError`); agora `WorkflowEngine.executar_passo()` tambem
+        exige `tenant_id`, entao o proprio construtor recusa faltar."""
         wf = WorkflowEngine(InvocadorComAtrasoRegistrandoJanela())
         step = PlanStep(capability=_ref("cap-a"))
         run = wf.iniciar(MissionId("m-1"), _plano(MissionId("m-1"), [step]))
-        scheduler = SchedulerComFairnessPorTenant(TenantQuotas())
 
-        with pytest.raises(ValueError):
-            despachar_ate_terminal_com_fairness(
-                wf, scheduler, [RunAcompanhada(run_id=run.id)], max_workers=1
-            )
+        with pytest.raises(TypeError):
+            RunAcompanhada(run_id=run.id)  # type: ignore[call-arg]

@@ -169,8 +169,8 @@ class TestAT143IsolamentoDeFalhaEntreWorkflowRuns:
         run_a = wf.iniciar(MissionId("m-a"), plano_a)
         run_b = wf.iniciar(MissionId("m-b"), plano_b)
 
-        resultado_a = wf.executar_passo(run_a.id, plano_a.steps[0])
-        resultado_b = wf.executar_passo(run_b.id, plano_b.steps[0])
+        resultado_a = wf.executar_passo(run_a.id, plano_a.steps[0], TENANT_A)
+        resultado_b = wf.executar_passo(run_b.id, plano_b.steps[0], TENANT_B)
 
         assert resultado_a.estado == "failed"
         assert resultado_b.estado == "completed"

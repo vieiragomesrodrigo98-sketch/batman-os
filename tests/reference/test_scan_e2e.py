@@ -152,7 +152,7 @@ class TestScanPontaAPonta:
             TIPO,
             tenant_id=TENANT,
         )
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
 
         # 5. Planning Engine compoe via grafo (nenhum Playbook existe ainda)
         # consultando o CapabilityRegistry real via find_candidates/
@@ -162,11 +162,11 @@ class TestScanPontaAPonta:
         )
         assert len(plano.steps) == 1
         assert plano.decision_points == []
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
 
         # 6. Decision Engine chamado de verdade (loop de 0 iteracoes, nao
         # contornado) - composicao via grafo nunca gera DecisionPoint.
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
         decision_engine = DecisionEngine(
             base_conhecimento=_SemConhecimento(),
             llm_gateway=_LlmNuncaChamado(),
@@ -174,7 +174,7 @@ class TestScanPontaAPonta:
         )
         for ponto in plano.decision_points:
             decision_engine.resolve(ponto, mission.id)
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
 
         # 7. Tabela de entradas por step (PlanStep nao carrega payload) +
         # Workflow/Execution Engine reais.
@@ -200,10 +200,10 @@ class TestScanPontaAPonta:
             prontos = workflow.passos_prontos(run.id)
             if not prontos:
                 break
-            workflow.executar_passo(run.id, prontos[0])
+            workflow.executar_passo(run.id, prontos[0], TENANT)
 
         assert workflow.get_run(run.id).estado == "completed"
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
         assert final.estado == MissionState.COMPLETED
 
         # 8. Achado real, produzido pelo handler puro, atravessando toda a

@@ -253,7 +253,9 @@ class WorkflowEngine:
             if s.id not in ja_processados and all(d in concluidos_ok for d in s.depende_de)
         ]
 
-    def executar_passo(self, run_id: WorkflowRunId, step: PlanStep) -> WorkflowRun:
+    def executar_passo(
+        self, run_id: WorkflowRunId, step: PlanStep, tenant_id: TenantId
+    ) -> WorkflowRun:
         """Vol.II Cap.9, secao 9.4 — executa um passo com recuperacao
         (AT-9.1: nunca reexecuta um `StepResult` ja marcado `success`).
 
@@ -266,8 +268,15 @@ class WorkflowEngine:
         é best-effort sob concorrência — com múltiplos passos em voo ao
         mesmo tempo, reflete apenas o último a iniciar, não um conjunto
         (o modelo `WorkflowRun` tem um único campo escalar, Vol.II Cap.9);
-        informativo, nunca usado para decisão de controle."""
-        run = self.get_run(run_id)
+        informativo, nunca usado para decisão de controle.
+
+        `tenant_id` obrigatorio desde a Fase 9 (Estagio 9.1) — mesmo
+        raciocinio de `MissionRuntime.transition()`. Repassado a `get_run
+        (run_id, tenant_id=tenant_id)`, que ja sabe validar (Estagio 5.1);
+        `mission_id` nao e necessario aqui porque todo chamador real
+        invoca isto logo apos `iniciar()` ter criado o run na MESMA
+        chamada (sempre cache-hit, nunca precisa de hidratacao)."""
+        run = self.get_run(run_id, tenant_id=tenant_id)
         lock = self._lock_do_run(run_id)
 
         with lock:

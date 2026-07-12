@@ -114,8 +114,10 @@ def retomar_missao(
         opcao_escolhida=resposta.opcao_escolhida,
         evidencia=resposta.evidencia,
     )
-    runtime.transition(resposta.mission_id, MissionEventType.ESCALATION_RESOLVED)
-    runtime.transition(resposta.mission_id, MissionEventType.DECISIONS_RESOLVED)
+    runtime.transition(
+        resposta.mission_id, MissionEventType.ESCALATION_RESOLVED, resposta.tenant_id
+    )
+    runtime.transition(resposta.mission_id, MissionEventType.DECISIONS_RESOLVED, resposta.tenant_id)
 
     workflow.get_run(
         resposta.workflow_run_id, mission_id=resposta.mission_id, tenant_id=resposta.tenant_id
@@ -126,15 +128,19 @@ def retomar_missao(
     despachar_ate_terminal(
         workflow,
         scheduler,
-        [RunAcompanhada(run_id=resposta.workflow_run_id)],
+        [RunAcompanhada(run_id=resposta.workflow_run_id, tenant_id=resposta.tenant_id)],
         max_workers=capacidade_execucao,
     )
 
     estado_final = workflow.get_run(resposta.workflow_run_id).estado
     if estado_final == "completed":
-        runtime.transition(resposta.mission_id, MissionEventType.WORKFLOW_COMPLETED)
+        runtime.transition(
+            resposta.mission_id, MissionEventType.WORKFLOW_COMPLETED, resposta.tenant_id
+        )
     elif estado_final == "failed":
-        runtime.transition(resposta.mission_id, MissionEventType.WORKFLOW_FAILED)
+        runtime.transition(
+            resposta.mission_id, MissionEventType.WORKFLOW_FAILED, resposta.tenant_id
+        )
 
 
 def executar_ciclo_watchdog(

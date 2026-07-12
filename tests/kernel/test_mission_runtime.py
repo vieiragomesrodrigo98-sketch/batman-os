@@ -76,69 +76,69 @@ def _cria(runtime: MissionRuntime) -> Mission:
 
 
 def _ate_executando(runtime: MissionRuntime, mission: Mission) -> Mission:
-    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
-    runtime.transition(mission.id, MissionEventType.PLAN_READY)
-    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
-    return runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
+    runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
+    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
+    return runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
 
 
 class TestAT61CognitiveDebtFlag:
     def test_missao_totalmente_autonoma_flag_autonomous(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
         _ate_executando(runtime, mission)
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         assert final.estado == MissionState.COMPLETED
         assert final.cognitive_debt_flag == CognitiveDebtFlag.AUTONOMOUS
 
     def test_missao_escalada_a_humano_flag_human(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
-        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
-        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         assert final.cognitive_debt_flag == CognitiveDebtFlag.HUMAN
 
     def test_missao_escalada_a_llm_flag_llm(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
-        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_LLM)
-        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_LLM, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         assert final.cognitive_debt_flag == CognitiveDebtFlag.LLM
 
     def test_empate_humano_e_llm_desempata_para_human(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
-        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_LLM)
-        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
-        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
-        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_LLM, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
+        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         assert final.cognitive_debt_flag == CognitiveDebtFlag.HUMAN
 
     def test_flag_tambem_definido_em_cancelled(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
-        final = runtime.transition(mission.id, MissionEventType.CANCELLATION_REQUESTED)
+        final = runtime.transition(mission.id, MissionEventType.CANCELLATION_REQUESTED, TENANT)
 
         assert final.estado == MissionState.CANCELLED
         assert final.cognitive_debt_flag == CognitiveDebtFlag.AUTONOMOUS
 
     def test_flag_so_e_atribuido_em_estado_terminal(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
-        em_planning = runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        em_planning = runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
 
         assert em_planning.cognitive_debt_flag is None
 
@@ -149,7 +149,7 @@ class TestAT62ReconciliacaoComEventBus:
     ) -> None:
         mission = _cria(runtime)
         _ate_executando(runtime, mission)
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         historia = event_bus.replay(mission.id)
         ultimo_evento = historia[-1]
@@ -164,7 +164,7 @@ class TestAT62ReconciliacaoComEventBus:
         antes = len(event_bus.replay(mission.id))
 
         with pytest.raises(TransicaoInvalida):
-            runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+            runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         assert len(event_bus.replay(mission.id)) == antes
         assert runtime.get_state(mission.id, TENANT) == MissionState.CREATED
@@ -188,9 +188,9 @@ class TestAT64CancelamentoEmTempoFinito:
     ) -> None:
         mission = _cria(runtime)
         for evento in chegar_em:
-            runtime.transition(mission.id, evento)
+            runtime.transition(mission.id, evento, TENANT)
 
-        final = runtime.transition(mission.id, MissionEventType.CANCELLATION_REQUESTED)
+        final = runtime.transition(mission.id, MissionEventType.CANCELLATION_REQUESTED, TENANT)
 
         assert final.estado == MissionState.CANCELLED
 
@@ -198,7 +198,7 @@ class TestAT64CancelamentoEmTempoFinito:
         mission = _cria(runtime)
         _ate_executando(runtime, mission)
 
-        final = runtime.transition(mission.id, MissionEventType.CANCELLATION_REQUESTED)
+        final = runtime.transition(mission.id, MissionEventType.CANCELLATION_REQUESTED, TENANT)
 
         assert final.estado == MissionState.CANCELLED
 
@@ -209,7 +209,7 @@ def test_transicao_nunca_pula_estados() -> None:
     mission = _cria(runtime)
 
     with pytest.raises(TransicaoInvalida):
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
 
 
 class TestFase2Estagio21PersistenciaHibrida:
@@ -223,7 +223,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
         mission = _cria(runtime_a)
         _ate_executando(runtime_a, mission)
-        final = runtime_a.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        final = runtime_a.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
 
         runtime_b = MissionRuntime(event_bus, tipos=_registro_tipos())
         hidratada = runtime_b.get_mission(mission.id, TENANT)
@@ -246,6 +246,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         runtime_a.transition(
             mission.id,
             MissionEventType.WORKFLOW_PARTIALLY_COMPLETED,
+            TENANT,
             degradations=[degradacao],
         )
 
@@ -273,7 +274,7 @@ class TestFase2Estagio21PersistenciaHibrida:
         hidratacao."""
         runtime_a = MissionRuntime(event_bus, tipos=_registro_tipos())
         mission = _cria(runtime_a)
-        final = runtime_a.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        final = runtime_a.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
 
         event_bus.publish(
             KernelEvent(
@@ -348,26 +349,47 @@ class TestFase5Estagio51IsolamentoDeTenantNaLeitura:
         with pytest.raises(KeyError):
             runtime.get_state(mission.id, OUTRO_TENANT)
 
-    def test_transition_continua_sem_exigir_tenant_id(self, runtime: MissionRuntime) -> None:
-        """Mutacao (`transition`) fica deliberadamente fora deste
-        Estagio — hoje so chamada por codigo interno ja confiavel. Ver
-        exclusao explicita no plano."""
+    def test_transition_com_tenant_correto_funciona(self, runtime: MissionRuntime) -> None:
         mission = _cria(runtime)
 
-        final = runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        final = runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
         assert final.estado == MissionState.PLANNING
+
+
+class TestFase9Estagio91IsolamentoDeTenantNaMutacao:
+    """Fase 9 do roadmap de plataforma (`.claude/plans/peaceful-wondering-
+    hearth.md`), Estagio 9.1 — achado de investigacao: antes da Fase 8
+    (autenticacao real da API), o gate `get_mission(mid, tenant_id)` que
+    os handlers HTTP ja chamavam antes de mutar era "teatro de seguranca"
+    (tenant_id auto-declarado pelo proprio chamador). A Fase 8 fechou
+    isso na borda; este estagio move o mesmo invariante para dentro do
+    Kernel, para que qualquer handler futuro o herde automaticamente."""
+
+    def test_transition_com_tenant_errado_levanta_keyerror(self, runtime: MissionRuntime) -> None:
+        mission = _cria(runtime)
+
+        with pytest.raises(KeyError):
+            runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, OUTRO_TENANT)
+
+    def test_transition_com_tenant_errado_nao_muda_estado(self, runtime: MissionRuntime) -> None:
+        mission = _cria(runtime)
+
+        with pytest.raises(KeyError):
+            runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, OUTRO_TENANT)
+
+        assert runtime.get_state(mission.id, TENANT) == MissionState.CREATED
 
 
 def test_awaiting_human_e_awaiting_llm_sempre_retornam_a_deciding() -> None:
     """Invariante 2 (secao 6.3.1)."""
     runtime = MissionRuntime(EventBus(), tipos=_registro_tipos())
     mission = _cria(runtime)
-    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
-    runtime.transition(mission.id, MissionEventType.PLAN_READY)
-    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
+    runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
+    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
 
-    aguardando = runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
+    aguardando = runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
     assert aguardando.estado == MissionState.AWAITING_HUMAN
 
-    de_volta = runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
+    de_volta = runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, TENANT)
     assert de_volta.estado == MissionState.DECIDING

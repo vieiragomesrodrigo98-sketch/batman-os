@@ -250,6 +250,7 @@ class MissionRuntime:
         self,
         mission_id: MissionId,
         evento: MissionEventType,
+        tenant_id: TenantId,
         payload_extra: dict[str, Any] | None = None,
         degradations: list[DegradationRecord] | None = None,
     ) -> Mission:
@@ -261,9 +262,22 @@ class MissionRuntime:
         nao-vazio quando a transicao leva a `PartiallyCompleted`; nunca um
         estado de degradacao sem evidencia (Evidence First).
 
-        Nao exige `tenant_id` do chamador (Fase 5, Estagio 5.1) — ver
-        docstring de `get_mission()`."""
+        `tenant_id` obrigatorio desde a Fase 9 do roadmap de plataforma
+        (`.claude/plans/peaceful-wondering-hearth.md`, Estagio 9.1) — antes,
+        `transition()` confiava que todo chamador ja era interno e
+        confiavel (Fase 5, Estagio 5.1); a Fase 8 (autenticacao real da
+        API) provou esse pressuposto errado na pratica: o gate `get_mission
+        (mid, tenant_id)` que os handlers HTTP ja chamavam antes de mutar
+        so era defesa real porque o `tenant_id` la vem de uma chave
+        autenticada — mas o Kernel em si nunca impunha isso, dependendo de
+        disciplina manual em cada chamador novo. Mesma semantica de erro
+        de `get_mission()`: mismatch levanta a MESMA excecao de "nao
+        encontrada", nunca uma distinta."""
         mission = self._buscar_mission(mission_id)
+        try:
+            exigir_tenant_correspondente(tenant_id, mission.tenant_id)
+        except IsolamentoDeTenantViolado as erro:
+            raise KeyError(f"Missao desconhecida: {mission_id}") from erro
         chave = (mission.estado, evento)
         se_desconhecida = chave not in _TRANSICOES
         if se_desconhecida:
@@ -317,11 +331,8 @@ class MissionRuntime:
         excecao distinta que revelaria "existe, mas nao e seu" — evita
         enumeracao entre tenants, pratica padrao de seguranca).
 
-        Deliberadamente NAO aplicado a `transition()` (mutacao) — ver
-        exclusoes do Estagio 5.1: hoje `transition()` e chamado apenas por
-        codigo interno ja confiavel (a propria orquestracao que criou/
-        retomou a Missao), nunca por um chamador externo com `tenant_id`
-        de requisicao nao confiavel."""
+        `transition()` ganhou a MESMA validacao na Fase 9, Estagio 9.1 —
+        ver sua docstring."""
         mission = self._buscar_mission(mission_id)
         try:
             exigir_tenant_correspondente(tenant_id, mission.tenant_id)
@@ -336,10 +347,10 @@ class MissionRuntime:
         processo reiniciado) hidrata a Missao via replay do Event Bus antes
         de desistir. Caminho quente (Missao ja presente) inalterado.
 
-        Busca RAW, sem checagem de tenant (Fase 5, Estagio 5.1) — usada
-        internamente por `transition()`, que nao exige `tenant_id` do
-        chamador (ver docstring de `get_mission`); `get_mission()` e a
-        unica forma publica de leitura, e essa SIM valida o tenant."""
+        Busca RAW, sem checagem de tenant — `transition()` (desde a Fase 9,
+        Estagio 9.1) e `get_mission()` fazem a validacao SEPARADAMENTE,
+        logo apos chamar esta funcao (nao delegam a checagem pra ca, pra
+        preservar esta funcao como primitivo puro de busca)."""
         if mission_id not in self._missions:
             hidratada = self._hidratar_de(mission_id)
             if hidratada is None:

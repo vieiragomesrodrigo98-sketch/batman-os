@@ -138,7 +138,7 @@ class TestRetomarMissao:
         mission = runtime_antes.create(
             MissionIntent(dados={"sintoma": "x"}), TIPO, tenant_id=TENANT
         )
-        runtime_antes.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        runtime_antes.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
 
         plano = plan(
             mission_id=mission.id,
@@ -148,18 +148,18 @@ class TestRetomarMissao:
             event_bus=event_bus,
         )
         assert len(plano.steps) == 2
-        runtime_antes.transition(mission.id, MissionEventType.PLAN_READY)
+        runtime_antes.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
 
-        runtime_antes.transition(mission.id, MissionEventType.DECIDING_STARTED)
+        runtime_antes.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
         ponto = _ponto()
         resultado = _decision_engine().resolve(ponto, mission.id)
         assert resultado.escalonado_para == "human"
-        runtime_antes.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
+        runtime_antes.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
         assert runtime_antes.get_state(mission.id, TENANT) == MissionState.AWAITING_HUMAN
 
         workflow_antes = WorkflowEngine(invocador, event_bus=event_bus)
         run = workflow_antes.iniciar(mission.id, plano)
-        workflow_antes.executar_passo(run.id, plano.steps[0])
+        workflow_antes.executar_passo(run.id, plano.steps[0], TENANT)
         assert len(workflow_antes.get_run(run.id).completed_steps) == 1
         assert invocador.chamadas == {"passo-1": 1}
 
@@ -210,7 +210,7 @@ class TestRetomarMissao:
         event_bus = EventBus()
         runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
         mission = runtime.create(MissionIntent(dados={}), TIPO, tenant_id=TENANT)
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
 
         plano = plan(
             mission_id=mission.id,
@@ -219,10 +219,10 @@ class TestRetomarMissao:
             registro=_RegistroCapacidadesFake(),
             # SEM event_bus -- plano nunca e persistido (Estagio 2.2)
         )
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
         _decision_engine().resolve(_ponto(), mission.id)
-        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
+        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
 
         workflow = WorkflowEngine(_InvocadorContavel(), event_bus=event_bus)
         workflow.iniciar(mission.id, plano)
@@ -247,7 +247,7 @@ class TestExecutarCicloWatchdog:
         event_bus = EventBus()
         runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
         mission_ok = runtime.create(MissionIntent(dados={}), TIPO, tenant_id=TENANT)
-        runtime.transition(mission_ok.id, MissionEventType.PLANNING_STARTED)
+        runtime.transition(mission_ok.id, MissionEventType.PLANNING_STARTED, TENANT)
         plano = plan(
             mission_id=mission_ok.id,
             tenant_id=TENANT,
@@ -255,11 +255,11 @@ class TestExecutarCicloWatchdog:
             registro=_RegistroCapacidadesFake(),
             event_bus=event_bus,
         )
-        runtime.transition(mission_ok.id, MissionEventType.PLAN_READY)
-        runtime.transition(mission_ok.id, MissionEventType.DECIDING_STARTED)
+        runtime.transition(mission_ok.id, MissionEventType.PLAN_READY, TENANT)
+        runtime.transition(mission_ok.id, MissionEventType.DECIDING_STARTED, TENANT)
         ponto = _ponto()
         _decision_engine().resolve(ponto, mission_ok.id)
-        runtime.transition(mission_ok.id, MissionEventType.ESCALATED_TO_HUMAN)
+        runtime.transition(mission_ok.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
 
         workflow = WorkflowEngine(_InvocadorContavel(), event_bus=event_bus)
         run_ok = workflow.iniciar(mission_ok.id, plano)

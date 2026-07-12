@@ -70,7 +70,7 @@ class TestAT102NuncaDespachaAntesDeDependenciasSatisfeitas:
         despachados = scheduler.despachar_proximos()
         assert [s.id for s in despachados] == [step_a.id]
 
-        wf.executar_passo(run.id, step_a)
+        wf.executar_passo(run.id, step_a, TENANT)
         for step in wf.passos_prontos(run.id):
             scheduler.enqueue(step, run.id, priority=1)
 

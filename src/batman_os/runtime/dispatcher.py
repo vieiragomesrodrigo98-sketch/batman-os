@@ -36,12 +36,15 @@ _ESTADOS_TERMINAIS_RUN = frozenset({"completed", "failed", "cancelled"})
 @dataclass(frozen=True)
 class RunAcompanhada:
     """Uma `WorkflowRun` sob gestão do dispatcher — `prioridade` alimenta o
-    `Scheduler` simples; `tenant_id` é obrigatório só para
-    `despachar_ate_terminal_com_fairness`."""
+    `Scheduler` simples. `tenant_id` obrigatório desde a Fase 9 (Estágio
+    9.1, `.claude/plans/peaceful-wondering-hearth.md`) — antes era
+    opcional (só `despachar_ate_terminal_com_fairness` exigia, via
+    checagem em runtime); agora `WorkflowEngine.executar_passo()` também
+    exige `tenant_id`, então as duas funções deste módulo precisam dele."""
 
     run_id: WorkflowRunId
+    tenant_id: TenantId
     prioridade: Priority = 0
-    tenant_id: TenantId | None = None
 
 
 def despachar_ate_terminal(
@@ -73,7 +76,12 @@ def despachar_ate_terminal(
                 break  # nada pronto e nada na fila -> ninguem mais progride sozinho
 
             futuros = [
-                pool.submit(workflow.executar_passo, mapa_step_para_run[step.id], step)
+                pool.submit(
+                    workflow.executar_passo,
+                    mapa_step_para_run[step.id],
+                    step,
+                    pendentes[mapa_step_para_run[step.id]].tenant_id,
+                )
                 for step in despachados
             ]
             wait(futuros)
@@ -104,11 +112,6 @@ def despachar_ate_terminal_com_fairness(
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         while pendentes:
             for acompanhada in list(pendentes.values()):
-                if acompanhada.tenant_id is None:
-                    raise ValueError(
-                        f"RunAcompanhada({acompanhada.run_id}) sem tenant_id — "
-                        "obrigatorio para despachar_ate_terminal_com_fairness"
-                    )
                 for step in workflow.passos_prontos(acompanhada.run_id):
                     if step.id not in mapa_step_para_run:
                         scheduler.enqueue(
@@ -128,7 +131,12 @@ def despachar_ate_terminal_com_fairness(
                 break
 
             futuros = [
-                pool.submit(workflow.executar_passo, mapa_step_para_run[step.id], step)
+                pool.submit(
+                    workflow.executar_passo,
+                    mapa_step_para_run[step.id],
+                    step,
+                    pendentes[mapa_step_para_run[step.id]].tenant_id,
+                )
                 for step in despachados_da_rodada
             ]
             wait(futuros)

@@ -159,15 +159,15 @@ class TestAT192FanInAguardaTodosOsPredecessores:
 
         assert consolidar not in wf.passos_prontos(run.id)
 
-        wf.executar_passo(run.id, coletar)
+        wf.executar_passo(run.id, coletar, TenantId("t-1"))
         assert consolidar not in wf.passos_prontos(run.id)
         assert cpu in wf.passos_prontos(run.id)
         assert memoria in wf.passos_prontos(run.id)
 
-        wf.executar_passo(run.id, cpu)
+        wf.executar_passo(run.id, cpu, TenantId("t-1"))
         assert consolidar not in wf.passos_prontos(run.id)  # memoria ainda nao concluiu
 
-        wf.executar_passo(run.id, memoria)
+        wf.executar_passo(run.id, memoria, TenantId("t-1"))
         assert consolidar in wf.passos_prontos(run.id)
 
 

@@ -88,13 +88,13 @@ class TestAT91NuncaReexecutaStepComSucesso:
 
         assert step_a in engine.passos_prontos(run.id)
 
-        engine.executar_passo(run.id, step_a)
+        engine.executar_passo(run.id, step_a, TENANT)
 
         assert step_a not in engine.passos_prontos(run.id)
         assert invocador.chamadas["cap-a"] == 1
 
         # reexecutar explicitamente o mesmo step nao reinvoca a Capability
-        engine.executar_passo(run.id, step_a)
+        engine.executar_passo(run.id, step_a, TENANT)
         assert invocador.chamadas["cap-a"] == 1
 
     def test_step_b_fica_pronto_somente_apos_a_concluir(self) -> None:
@@ -110,7 +110,7 @@ class TestAT91NuncaReexecutaStepComSucesso:
         run = engine.iniciar(MISSAO, _plano([step_a, step_b]))
 
         assert step_b not in engine.passos_prontos(run.id)
-        engine.executar_passo(run.id, step_a)
+        engine.executar_passo(run.id, step_a, TENANT)
         assert step_b in engine.passos_prontos(run.id)
 
 
@@ -123,7 +123,7 @@ class TestAT92FalhaSemRecuperacaoResultaEmFailed:
         engine = WorkflowEngine(invocador)
         run = engine.iniciar(MISSAO, _plano([step_a]))
 
-        resultado = engine.executar_passo(run.id, step_a)
+        resultado = engine.executar_passo(run.id, step_a, TENANT)
 
         assert resultado.estado == "failed"
         assert resultado.completed_steps[0].status == "failed"
@@ -141,7 +141,7 @@ class TestAT92FalhaSemRecuperacaoResultaEmFailed:
         engine = WorkflowEngine(invocador)
         run = engine.iniciar(MISSAO, _plano([step_a]))
 
-        resultado = engine.executar_passo(run.id, step_a)
+        resultado = engine.executar_passo(run.id, step_a, TENANT)
 
         assert resultado.estado == "failed"
         assert invocador.chamadas["cap-a"] == 3
@@ -157,7 +157,7 @@ class TestAT92FalhaSemRecuperacaoResultaEmFailed:
         engine = WorkflowEngine(invocador)
         run = engine.iniciar(MISSAO, _plano([step_a]))
 
-        resultado = engine.executar_passo(run.id, step_a)
+        resultado = engine.executar_passo(run.id, step_a, TENANT)
 
         assert resultado.completed_steps[0].status == "recovered"
         assert resultado.estado == "completed"
@@ -183,7 +183,7 @@ class TestAT93CompensacaoIdempotente:
         engine = WorkflowEngine(invocador)
         run = engine.iniciar(MISSAO, _plano([step_principal, step_compensacao]))
 
-        resultado = engine.executar_passo(run.id, step_principal)
+        resultado = engine.executar_passo(run.id, step_principal, TENANT)
 
         assert invocador.chamadas["reverter-mudanca"] == 1
         assert resultado.completed_steps[0].status == "recovered"
@@ -207,7 +207,7 @@ class TestAT93CompensacaoIdempotente:
         engine = WorkflowEngine(invocador)
         run = engine.iniciar(MISSAO, _plano([step_principal, step_compensacao]))
 
-        resultado = engine.executar_passo(run.id, step_principal)
+        resultado = engine.executar_passo(run.id, step_principal, TENANT)
 
         assert resultado.estado == "failed"
 
@@ -218,7 +218,7 @@ def test_checkpoint_criado_apos_cada_passo_bem_sucedido() -> None:
     engine = WorkflowEngine(invocador)
     run = engine.iniciar(MISSAO, _plano([step_a]))
 
-    resultado = engine.executar_passo(run.id, step_a)
+    resultado = engine.executar_passo(run.id, step_a, TENANT)
 
     assert len(resultado.checkpoints) == 1
     assert resultado.checkpoints[0].apos_step_id == step_a.id
@@ -235,7 +235,7 @@ def test_cancelamento_cooperativo_so_afeta_run_em_execucao() -> None:
 
     # run ja concluido nao "descancela"/reabre
     run2 = engine.iniciar(MISSAO, _plano([step_a]))
-    engine.executar_passo(run2.id, step_a)
+    engine.executar_passo(run2.id, step_a, TENANT)
     ainda_completo = engine.cancelar(run2.id)
     assert ainda_completo.estado == "completed"
 
@@ -259,8 +259,8 @@ class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
         )
         engine_a = WorkflowEngine(invocador, event_bus=event_bus)
         run = engine_a.iniciar(MISSAO, _plano([step_a, step_b]))
-        engine_a.executar_passo(run.id, step_a)
-        final = engine_a.executar_passo(run.id, step_b)
+        engine_a.executar_passo(run.id, step_a, TENANT)
+        final = engine_a.executar_passo(run.id, step_b, TENANT)
 
         engine_b = WorkflowEngine(invocador, event_bus=event_bus)
         hidratado = engine_b.get_run(run.id, mission_id=MISSAO)
@@ -290,7 +290,7 @@ class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
         plano = _plano([step_a, step_b])
         engine_a = WorkflowEngine(invocador, event_bus=event_bus)
         run = engine_a.iniciar(MISSAO, plano)
-        engine_a.executar_passo(run.id, step_a)
+        engine_a.executar_passo(run.id, step_a, TENANT)
 
         engine_b = WorkflowEngine(invocador, event_bus=event_bus)
         engine_b.get_run(run.id, mission_id=MISSAO)
@@ -301,7 +301,7 @@ class TestFase2Estagio21PersistenciaHibridaDoWorkflowRun:
         prontos = engine_b.passos_prontos(run.id)
         assert [s.id for s in prontos] == [step_b.id]
 
-        final = engine_b.executar_passo(run.id, step_b)
+        final = engine_b.executar_passo(run.id, step_b, TENANT)
         assert final.estado == "completed"
         assert len(final.completed_steps) == 2
 
@@ -395,7 +395,8 @@ class TestFase2Estagio24ExecucaoConcorrente:
         run = engine.iniciar(MISSAO, _plano(passos))
 
         threads = [
-            threading.Thread(target=engine.executar_passo, args=(run.id, passo)) for passo in passos
+            threading.Thread(target=engine.executar_passo, args=(run.id, passo, TENANT))
+            for passo in passos
         ]
         for t in threads:
             t.start()
@@ -414,7 +415,8 @@ class TestFase2Estagio24ExecucaoConcorrente:
         run = engine.iniciar(MISSAO, _plano(passos))
 
         threads = [
-            threading.Thread(target=engine.executar_passo, args=(run.id, passo)) for passo in passos
+            threading.Thread(target=engine.executar_passo, args=(run.id, passo, TENANT))
+            for passo in passos
         ]
         for t in threads:
             t.start()

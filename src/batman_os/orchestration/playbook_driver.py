@@ -117,7 +117,7 @@ def iniciar_missao_via_playbook(
     submeter o resto da execução (potencialmente lenta) a um pool de
     background. `continuar_missao_via_playbook()` faz o resto."""
     mission = runtime.create(intent, tipo_missao, tenant_id=tenant_id)
-    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, tenant_id)
     return mission
 
 
@@ -167,9 +167,9 @@ def continuar_missao_via_playbook(
         repositorio_playbooks=repositorio_playbooks,
     )
     if not plano.steps:
-        runtime.transition(mission.id, MissionEventType.PLAN_FAILED)
+        runtime.transition(mission.id, MissionEventType.PLAN_FAILED, tenant_id)
         raise PlaybookNaoResolvido(f"Nenhum Playbook casou com o intent {intent.dados}")
-    runtime.transition(mission.id, MissionEventType.PLAN_READY)
+    runtime.transition(mission.id, MissionEventType.PLAN_READY, tenant_id)
 
     especs_por_step_id = {
         plano.steps[i].id: espec for i, espec in especificacoes_por_indice.items()
@@ -180,7 +180,7 @@ def continuar_missao_via_playbook(
         if isinstance(espec, RelatorioConsolidadoSpec)
     }
 
-    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, tenant_id)
     decisoes: list[Decision] = []
     for ponto in plano.decision_points:
         resultado_resolucao = decision_engine.resolve(ponto, mission.id)
@@ -192,7 +192,7 @@ def continuar_missao_via_playbook(
             # A Missao PARA aqui — nenhum WorkflowRun e criado ainda, entao
             # `workflow_run_id` nao existe (ver docstring de
             # ResultadoMissaoPlaybook).
-            runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
+            runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, tenant_id)
             return ResultadoMissaoPlaybook(
                 mission_id=mission.id,
                 estado_final="awaiting_human",
@@ -200,7 +200,7 @@ def continuar_missao_via_playbook(
             )
         if resultado_resolucao.decision is not None:
             decisoes.append(resultado_resolucao.decision)
-    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, tenant_id)
 
     return _rodar_workflow_e_coletar(
         mission,
@@ -272,13 +272,13 @@ def _rodar_workflow_e_coletar(
                 if r.step_id in step.depende_de
             }
             tabela.registrar(step.id, espec.construir(outputs_dep))
-            workflow.executar_passo(run.id, step)
+            workflow.executar_passo(run.id, step, mission.tenant_id)
 
     estado_final = workflow.get_run(run.id).estado
     if estado_final == "completed":
-        runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, mission.tenant_id)
     elif estado_final == "failed":
-        runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED)
+        runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED, mission.tenant_id)
 
     if grafo_conhecimento is not None:
         reconciliar_missao(mission, decisoes, grafo_conhecimento, playbook_id=plano.source_playbook)
@@ -332,8 +332,8 @@ def retomar_missao_apos_escalada(
     decision_engine.resolver_com_resposta_humana(
         decision_pendente, mission.id, opcao_escolhida=opcao_escolhida, evidencia=evidencia
     )
-    runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
-    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+    runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, mission.tenant_id)
+    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, mission.tenant_id)
 
     plano = hidratar_plano(event_bus, mission.id)
     if plano is None:

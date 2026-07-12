@@ -155,22 +155,25 @@ class TestAT223PartiallyCompletedExigeDegradationRecord:
             )
         )
         runtime = MissionRuntime(EventBus(), tipos=registro)
+        tenant_id = TenantId("t-1")
         mission = runtime.create(
             MissionIntent(dados={}),
             MissionTypeId("investigate-incident"),
-            tenant_id=TenantId("t-1"),
+            tenant_id=tenant_id,
         )
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, tenant_id)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, tenant_id)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, tenant_id)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, tenant_id)
         return runtime, mission.id
 
     def test_sem_degradation_record_falha(self) -> None:
         runtime, mission_id = self._runtime_com_missao_executando()
 
         with pytest.raises(DegradacaoSemEvidencia):
-            runtime.transition(mission_id, MissionEventType.WORKFLOW_PARTIALLY_COMPLETED)
+            runtime.transition(
+                mission_id, MissionEventType.WORKFLOW_PARTIALLY_COMPLETED, TenantId("t-1")
+            )
 
     def test_com_degradation_record_transiciona(self) -> None:
         runtime, mission_id = self._runtime_com_missao_executando()
@@ -179,7 +182,10 @@ class TestAT223PartiallyCompletedExigeDegradationRecord:
             step_id=StepId("s-1"), exhausted_chain=[], impact=ImpactoDegradacao.COSMETIC
         )
         final = runtime.transition(
-            mission_id, MissionEventType.WORKFLOW_PARTIALLY_COMPLETED, degradations=[degradacao]
+            mission_id,
+            MissionEventType.WORKFLOW_PARTIALLY_COMPLETED,
+            TenantId("t-1"),
+            degradations=[degradacao],
         )
 
         assert final.estado == MissionState.PARTIALLY_COMPLETED
@@ -192,7 +198,10 @@ class TestAT223PartiallyCompletedExigeDegradationRecord:
         )
 
         final = runtime.transition(
-            mission_id, MissionEventType.WORKFLOW_PARTIALLY_COMPLETED, degradations=[degradacao]
+            mission_id,
+            MissionEventType.WORKFLOW_PARTIALLY_COMPLETED,
+            TenantId("t-1"),
+            degradations=[degradacao],
         )
 
         assert final.cognitive_debt_flag is not None

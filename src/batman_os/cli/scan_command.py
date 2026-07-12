@@ -386,24 +386,25 @@ def _processar_entrada(
     `chave` distinta — `saida["achados"][0]` descartava silenciosamente
     os demais)."""
     mission = runtime.create(MissionIntent(dados=entrada), TIPO_MISSAO, tenant_id=tenant_id)
-    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+    runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, tenant_id)
 
     plano = plan(
         mission_id=mission.id, tenant_id=tenant_id, intent=mission.intent, registro=registry
     )
     if not plano.steps:
-        runtime.transition(mission.id, MissionEventType.PLAN_FAILED)
+        runtime.transition(mission.id, MissionEventType.PLAN_FAILED, tenant_id)
         return ResultadoMissao()
     runtime.transition(
         mission.id,
         MissionEventType.PLAN_READY,
+        tenant_id,
         payload_extra={"capability_id": str(plano.steps[0].capability.capability_id)},
     )
 
-    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+    runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, tenant_id)
     for ponto in plano.decision_points:
         decision_engine.resolve(ponto, mission.id)
-    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+    runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, tenant_id)
 
     tabela = TabelaDeEntradasPorStep()
     tabela.registrar(plano.steps[0].id, entrada)
@@ -422,10 +423,10 @@ def _processar_entrada(
         prontos = workflow.passos_prontos(run.id)
         if not prontos:
             break
-        workflow.executar_passo(run.id, prontos[0])
+        workflow.executar_passo(run.id, prontos[0], tenant_id)
 
     if workflow.get_run(run.id).estado != "completed":
-        runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED)
+        runtime.transition(mission.id, MissionEventType.WORKFLOW_FAILED, tenant_id)
         return ResultadoMissao()
 
     step_result = workflow.get_run(run.id).completed_steps[0]
@@ -434,6 +435,7 @@ def _processar_entrada(
     runtime.transition(
         mission.id,
         MissionEventType.WORKFLOW_COMPLETED,
+        tenant_id,
         payload_extra={"capability_id": capability_id, "duracao_ms": round(duracao_ms, 3)},
     )
     saida = step_result.output

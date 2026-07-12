@@ -156,7 +156,7 @@ class TestExecucao1EscaladaParaHumano:
         )
         assert mission.estado == MissionState.CREATED
 
-        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED)
+        runtime.transition(mission.id, MissionEventType.PLANNING_STARTED, TENANT)
         plano = plan(
             mission_id=mission.id,
             tenant_id=TENANT,
@@ -164,9 +164,9 @@ class TestExecucao1EscaladaParaHumano:
             registro=_RegistroCapacidadesFake(),
         )
         assert len(plano.steps) == 2
-        runtime.transition(mission.id, MissionEventType.PLAN_READY)
+        runtime.transition(mission.id, MissionEventType.PLAN_READY, TENANT)
 
-        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED)
+        runtime.transition(mission.id, MissionEventType.DECIDING_STARTED, TENANT)
         engine = DecisionEngine(
             base_conhecimento=_SemConhecimentoInicial(),
             llm_gateway=_LlmNuncaChamado(),
@@ -175,7 +175,7 @@ class TestExecucao1EscaladaParaHumano:
         ponto = _ponto_decisao()
         resultado = engine.resolve(ponto, mission.id)
         assert resultado.escalonado_para == "human"
-        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN)
+        runtime.transition(mission.id, MissionEventType.ESCALATED_TO_HUMAN, TENANT)
         assert runtime.get_state(mission.id, TENANT) == MissionState.AWAITING_HUMAN
 
         decision = engine.resolver_com_resposta_humana(
@@ -187,8 +187,8 @@ class TestExecucao1EscaladaParaHumano:
             ],
         )
         assert decision.resolved_by == "human"
-        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED)
-        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED)
+        runtime.transition(mission.id, MissionEventType.ESCALATION_RESOLVED, TENANT)
+        runtime.transition(mission.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
         assert runtime.get_state(mission.id, TENANT) == MissionState.EXECUTING
 
         wf = WorkflowEngine(_InvocadorSempreSucesso())
@@ -197,10 +197,10 @@ class TestExecucao1EscaladaParaHumano:
             prontos = wf.passos_prontos(run.id)
             if not prontos:
                 break
-            wf.executar_passo(run.id, prontos[0])
+            wf.executar_passo(run.id, prontos[0], TENANT)
         assert wf.get_run(run.id).estado == "completed"
 
-        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED)
+        final = runtime.transition(mission.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
         assert final.estado == MissionState.COMPLETED
         assert final.cognitive_debt_flag == CognitiveDebtFlag.HUMAN
 
@@ -322,9 +322,9 @@ class TestCicloDeAprendizadoEExecucaoN:
             TIPO,
             tenant_id=TENANT,
         )
-        runtime.transition(nova_missao.id, MissionEventType.PLANNING_STARTED)
-        runtime.transition(nova_missao.id, MissionEventType.PLAN_READY)
-        runtime.transition(nova_missao.id, MissionEventType.DECIDING_STARTED)
+        runtime.transition(nova_missao.id, MissionEventType.PLANNING_STARTED, TENANT)
+        runtime.transition(nova_missao.id, MissionEventType.PLAN_READY, TENANT)
+        runtime.transition(nova_missao.id, MissionEventType.DECIDING_STARTED, TENANT)
 
         # Decision Engine agora consulta o catalogo de regras ativas (fecha o
         # ciclo Rule Evolution -> Decision Engine, achado de revisao anterior)
@@ -339,8 +339,8 @@ class TestCicloDeAprendizadoEExecucaoN:
         assert resultado_n.decision is not None
         assert resultado_n.decision.resolved_by == "knowledge"  # sem escalonamento humano
 
-        runtime.transition(nova_missao.id, MissionEventType.DECISIONS_RESOLVED)
-        final_n = runtime.transition(nova_missao.id, MissionEventType.WORKFLOW_COMPLETED)
+        runtime.transition(nova_missao.id, MissionEventType.DECISIONS_RESOLVED, TENANT)
+        final_n = runtime.transition(nova_missao.id, MissionEventType.WORKFLOW_COMPLETED, TENANT)
         assert final_n.cognitive_debt_flag == CognitiveDebtFlag.AUTONOMOUS
 
         memory.registrar(
