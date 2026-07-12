@@ -44,16 +44,13 @@ from batman_os.foundation.types import (
     TenantId,
 )
 from batman_os.kernel.decision_engine import DecisionEngine
-from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
+from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionIntent, MissionRuntime, MissionState
 from batman_os.kernel.planning_engine import (
     DecisionPoint,
-    ExecutionPlan,
-    PlanStep,
     PlanStepTemplate,
     hidratar_plano,
 )
-from batman_os.orchestration import playbook_driver as playbook_driver_mod
 from batman_os.orchestration.implementation_registry import ExecutorViaImplementacoes
 from batman_os.orchestration.playbook_driver import (
     EspecificacaoDeStepAusente,
@@ -261,7 +258,15 @@ class _RegistroCapacidadesFake:
         return "v1"
 
 
-def _playbook_2_steps(capability_id_check: CapabilityId) -> PlaybookDefinition:
+def _playbook_2_steps(
+    capability_id_check: CapabilityId,
+    decision_points_template: dict[int, DecisionPoint] | None = None,
+) -> PlaybookDefinition:
+    """`decision_points_template` (Fase 9, Estágio 9.2) — opcional, `None`
+    por padrão (preserva os testes que esperam a Missão completar sem
+    escalar); os testes de escalada (Fase 11, Estágio 11.2) passam
+    `{0: _ponto_decisao_teste()}` para forçar uma escalada REAL via
+    `DecisionEngine`, sem monkeypatch de `plan()`."""
     matcher = IntentMatcher(
         conditions=[FieldCondition(campo="tipo", operador="eq", valor="playbook-de-teste")]
     )
@@ -280,10 +285,28 @@ def _playbook_2_steps(capability_id_check: CapabilityId) -> PlaybookDefinition:
                 depende_de_indices=[0],
             ),
         ],
+        decision_points_template=decision_points_template or {},
         provenance=PlaybookProvenance(
             origin="hand-authored", approved_by=HumanReviewRef("review-1")
         ),
         status=StatusPlaybook.ACTIVE,
+    )
+
+
+def _ponto_decisao_teste() -> DecisionPoint:
+    """Fase 11, Estágio 11.2 — mesmo `DecisionPoint` que `_fake_plan_com_
+    escalada()` (removida nesta fase) produzia via monkeypatch; agora
+    declarado na autoria do Playbook (`decision_points_template`) e
+    extraído de verdade por `plan()` real (Fase 9, Estágio 9.2)."""
+    return DecisionPoint(
+        pergunta="precisa de aprovacao humana?",
+        opcoes=[DecisionOption(id="a", descricao="Aprovar")],
+        escalation_policy=EscalationPolicy(
+            confidence_threshold=0.8,
+            preferred_escalation="human",
+            max_llm_retries=1,
+            reversibility=Reversibilidade.REVERSIVEL,
+        ),
     )
 
 
@@ -414,58 +437,6 @@ class TestExecutarMissaoViaPlaybook:
         execution_engine.fechar()
 
 
-def _fake_plan_com_escalada(capability_id: CapabilityId) -> Any:
-    """Fase 7, Estágio 7.1 — `plan()` real nunca produz `decision_points`
-    para um Playbook real (`_extrair_decision_points()` sempre retorna
-    `[]`, fora de escopo até Volume V, achado de investigação). Este fake
-    substitui `plan()` DENTRO do módulo `playbook_driver` (via
-    monkeypatch) para provar que o DRIVER reage corretamente a uma
-    escalada — replica o mesmo comportamento de publicar `PlanCreated`
-    que `plan(..., event_bus=...)` já faz, sem depender da função
-    privada `_publicar_plan_created`."""
-
-    def _plan(
-        mission_id: Any,
-        tenant_id: Any,
-        intent: Any,
-        registro: Any,
-        repositorio_playbooks: Any = None,
-        event_bus: Any = None,
-    ) -> ExecutionPlan:
-        del intent, registro, repositorio_playbooks
-        plano = ExecutionPlan(
-            mission_id=mission_id,
-            tenant_id=tenant_id,
-            steps=[PlanStep(capability=CapabilityRef(capability_id=capability_id, versao="1.0.0"))],
-            decision_points=[
-                DecisionPoint(
-                    pergunta="precisa de aprovacao humana?",
-                    opcoes=[DecisionOption(id="a", descricao="Aprovar")],
-                    escalation_policy=EscalationPolicy(
-                        confidence_threshold=0.8,
-                        preferred_escalation="human",
-                        max_llm_retries=1,
-                        reversibility=Reversibilidade.REVERSIVEL,
-                    ),
-                )
-            ],
-            plan_hash="hash-escalada",
-        )
-        if event_bus is not None:
-            event_bus.publish(
-                KernelEvent(
-                    mission_id=plano.mission_id,
-                    tenant_id=plano.tenant_id,
-                    tipo="PlanCreated",
-                    emitido_por=EmissorKernel.PLANNING_ENGINE,
-                    payload={"plano": plano.model_dump(mode="json")},
-                )
-            )
-        return plano
-
-    return _plan
-
-
 class TestFase7Estagio71ReconhecimentoDeEscalada:
     """Fase 7 do roadmap de plataforma (`.claude/plans/peaceful-
     wondering-hearth.md`), Estágio 7.1 — achado de investigação: antes
@@ -474,13 +445,14 @@ class TestFase7Estagio71ReconhecimentoDeEscalada:
     DECISIONS_RESOLVED disparava incondicionalmente) e despachava o
     workflow mesmo assim."""
 
-    def test_escalada_interrompe_e_nao_cria_workflow(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_escalada_interrompe_e_nao_cria_workflow(self) -> None:
         runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
             _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
         )
         playbook_registry = PlaybookRegistry()
-        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
-        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        playbook_registry.register(
+            _playbook_2_steps(CAP_CHECK_ID, decision_points_template={0: _ponto_decisao_teste()})
+        )
 
         resultado = executar_missao_via_playbook(
             MissionIntent(dados={"tipo": "playbook-de-teste"}),
@@ -509,13 +481,14 @@ class TestFase7Estagio71ReconhecimentoDeEscalada:
 
         execution_engine.fechar()
 
-    def test_sem_event_bus_plano_nao_e_persistido(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sem_event_bus_plano_nao_e_persistido(self) -> None:
         runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
             _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
         )
         playbook_registry = PlaybookRegistry()
-        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
-        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        playbook_registry.register(
+            _playbook_2_steps(CAP_CHECK_ID, decision_points_template={0: _ponto_decisao_teste()})
+        )
         event_bus_de_verificacao = EventBus()  # instancia PROPRIA, nunca passada ao driver
 
         resultado = executar_missao_via_playbook(
@@ -537,9 +510,7 @@ class TestFase7Estagio71ReconhecimentoDeEscalada:
         assert hidratar_plano(event_bus_de_verificacao, resultado.mission_id) is None
         execution_engine.fechar()
 
-    def test_com_event_bus_plano_e_persistido_e_hidratavel(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_com_event_bus_plano_e_persistido_e_hidratavel(self) -> None:
         event_bus = EventBus()
         runtime = MissionRuntime(event_bus, tipos=_registro_tipos())
         definicao_check = _capability_check(CAP_CHECK_ID, _handler_check_sucesso)
@@ -579,8 +550,9 @@ class TestFase7Estagio71ReconhecimentoDeEscalada:
         )
         operator_ref = OperatorRef(operator_id=operator.id)
         playbook_registry = PlaybookRegistry()
-        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
-        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        playbook_registry.register(
+            _playbook_2_steps(CAP_CHECK_ID, decision_points_template={0: _ponto_decisao_teste()})
+        )
 
         resultado = executar_missao_via_playbook(
             MissionIntent(dados={"tipo": "playbook-de-teste"}),
@@ -614,16 +586,15 @@ class TestFase10Estagio101EscaladaPendenteSobreviveARestart:
     entre a escalada e a resposta humana perdia essa informação, mesmo
     com `Mission.estado` sobrevivendo via `EventBus` desde a Fase 2."""
 
-    def test_com_event_bus_decisao_pendente_e_hidratavel(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_com_event_bus_decisao_pendente_e_hidratavel(self) -> None:
         runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
             _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
         )
         event_bus = runtime._event_bus
         playbook_registry = PlaybookRegistry()
-        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
-        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        playbook_registry.register(
+            _playbook_2_steps(CAP_CHECK_ID, decision_points_template={0: _ponto_decisao_teste()})
+        )
 
         resultado = executar_missao_via_playbook(
             MissionIntent(dados={"tipo": "playbook-de-teste"}),
@@ -647,15 +618,14 @@ class TestFase10Estagio101EscaladaPendenteSobreviveARestart:
 
         execution_engine.fechar()
 
-    def test_sem_event_bus_decisao_pendente_nao_e_persistida(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_sem_event_bus_decisao_pendente_nao_e_persistida(self) -> None:
         runtime, registry, decision_engine, execution_engine, operator, operator_ref = (
             _montar_infra(_handler_check_sucesso, CAP_CHECK_ID)
         )
         playbook_registry = PlaybookRegistry()
-        playbook_registry.register(_playbook_2_steps(CAP_CHECK_ID))
-        monkeypatch.setattr(playbook_driver_mod, "plan", _fake_plan_com_escalada(CAP_CHECK_ID))
+        playbook_registry.register(
+            _playbook_2_steps(CAP_CHECK_ID, decision_points_template={0: _ponto_decisao_teste()})
+        )
         event_bus_de_verificacao = EventBus()  # instancia PROPRIA, nunca passada ao driver
 
         resultado = executar_missao_via_playbook(

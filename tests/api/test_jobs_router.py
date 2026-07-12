@@ -1,13 +1,13 @@
 """Prova ponta-a-ponta de `POST /missions/{id}/resume` + `GET /jobs/{id}`
 (Fase 7 do roadmap de plataforma, `.claude/plans/peaceful-wondering-
 hearth.md`, Estágio 7.3; autenticados desde a Fase 8, Estágio 8.2). Mesma
-doutrina de zero mock de Kernel/Runtime/Capability — só `plan()` é
-substituído (monkeypatch, dentro do módulo `playbook_driver`), já que o
-motor real nunca produz `decision_points` para um Playbook real (achado
-de investigação, fora de escopo até Volume V — mesmo padrão já usado em
-`tests/orchestration/test_playbook_driver.py`, Estágio 7.1, agora
-aplicado através do endpoint HTTP real, não só chamando a função
-diretamente)."""
+doutrina de zero mock de Kernel/Runtime/Capability — só `montar_playbook`
+é substituído (monkeypatch, dentro do módulo `auditoria_seguranca`), já
+que usar o `montar_playbook` real produziria 7 especificações (Playbook
+real de auditoria) em vez de 1 (achado de investigação, Fase 7). `plan()`
+em si NÃO é mais mockado desde a Fase 11 (Estágio 11.2) — o Playbook
+fake declara `decision_points_template` (mecanismo real da Fase 9,
+Estágio 9.2), e o `DecisionEngine` real escala de verdade."""
 
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 import batman_os.api.routers.auditoria_seguranca as auditoria_router_mod
-import batman_os.orchestration.playbook_driver as driver_mod
 from batman_os.api.app import criar_app
 from batman_os.cli.auditoria_seguranca_command import CAP_REGEX_AGREGADOR, TIPO_MISSAO
 from batman_os.foundation.types import (
@@ -32,14 +31,8 @@ from batman_os.foundation.types import (
     Reversibilidade,
     TenantId,
 )
-from batman_os.kernel.event_bus import EmissorKernel, EventBus, KernelEvent
 from batman_os.kernel.mission_runtime import MissionIntent
-from batman_os.kernel.planning_engine import (
-    DecisionPoint,
-    ExecutionPlan,
-    PlanStep,
-    PlanStepTemplate,
-)
+from batman_os.kernel.planning_engine import DecisionPoint, PlanStepTemplate
 from batman_os.workflow.playbooks import (
     FieldCondition,
     IntentMatcher,
@@ -58,56 +51,17 @@ def _cabecalho(tenant: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {_CHAVES_DE_TESTE[tenant]}"}
 
 
-def _fake_plan_com_escalada() -> Any:
-    """Mesmo padrão de `tests/orchestration/test_playbook_driver.py::
-    _fake_plan_com_escalada` (Estágio 7.1) — reusa `CAP_REGEX_AGREGADOR`
-    (Capability REAL, já certificada no `lifespan` do app) para que o
-    step exista de verdade no `CapabilityRegistry` compartilhado."""
-
-    def _plan(
-        mission_id: Any,
-        tenant_id: Any,
-        intent: Any,
-        registro: Any,
-        repositorio_playbooks: Any = None,
-        event_bus: EventBus | None = None,
-    ) -> ExecutionPlan:
-        del intent, registro, repositorio_playbooks
-        plano = ExecutionPlan(
-            mission_id=mission_id,
-            tenant_id=tenant_id,
-            steps=[
-                PlanStep(
-                    capability=CapabilityRef(capability_id=CAP_REGEX_AGREGADOR, versao="1.0.0")
-                )
-            ],
-            decision_points=[
-                DecisionPoint(
-                    pergunta=PERGUNTA,
-                    opcoes=[OPCAO],
-                    escalation_policy=EscalationPolicy(
-                        confidence_threshold=0.8,
-                        preferred_escalation="human",
-                        max_llm_retries=1,
-                        reversibility=Reversibilidade.REVERSIVEL,
-                    ),
-                )
-            ],
-            plan_hash="hash-escalada-jobs-router",
-        )
-        if event_bus is not None:
-            event_bus.publish(
-                KernelEvent(
-                    mission_id=plano.mission_id,
-                    tenant_id=plano.tenant_id,
-                    tipo="PlanCreated",
-                    emitido_por=EmissorKernel.PLANNING_ENGINE,
-                    payload={"plano": plano.model_dump(mode="json")},
-                )
-            )
-        return plano
-
-    return _plan
+def _ponto_decisao_teste() -> DecisionPoint:
+    return DecisionPoint(
+        pergunta=PERGUNTA,
+        opcoes=[OPCAO],
+        escalation_policy=EscalationPolicy(
+            confidence_threshold=0.8,
+            preferred_escalation="human",
+            max_llm_retries=1,
+            reversibility=Reversibilidade.REVERSIVEL,
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -129,16 +83,13 @@ class _EntradaVaziaParaAgregador:
 
 
 def _fake_montar_playbook(root: Path) -> tuple[PlaybookDefinition, dict[int, Any]]:
-    """`plan()` é substituído por `_fake_plan_com_escalada()` acima e
-    IGNORA `repositorio_playbooks` inteiramente — o `PlaybookDefinition`
-    devolvido aqui só precisa ser aceitável por `PlaybookRegistry.
-    register()` (`status=ACTIVE`). O ponto real deste fake é devolver
-    `especificacoes` com a MESMA cardinalidade do plano fake (1 step,
-    índice 0): usar o `montar_playbook` REAL produziria 7 especificações
-    (6 checks + 1 relatório do Playbook real de auditoria) para um plano
-    fake de 1 step — `especs_por_step_id = {plano.steps[i].id: ... for i
-    in especificacoes_por_indice}` (`playbook_driver.py`) então indexaria
-    `plano.steps[1..6]` fora do range."""
+    """`montar_playbook` real produziria 7 especificações (6 checks + 1
+    relatório do Playbook real de auditoria) — este fake devolve só 1
+    step (índice 0), mesma cardinalidade das `especificacoes` devolvidas
+    (achado de investigação, Fase 7). `decision_points_template`
+    (Fase 11, Estágio 11.2) declara uma escalada real na autoria — `plan()`
+    real (não mockado desde esta fase) extrai e o `DecisionEngine` real
+    escala de verdade, sem monkeypatch de `plan()`."""
     del root
     matcher = IntentMatcher(
         conditions=[FieldCondition(campo="tipo", operador="eq", valor="security-audit")]
@@ -154,6 +105,7 @@ def _fake_montar_playbook(root: Path) -> tuple[PlaybookDefinition, dict[int, Any
                 capability=CapabilityRef(capability_id=CAP_REGEX_AGREGADOR, versao="1.0.0")
             )
         ],
+        decision_points_template={0: _ponto_decisao_teste()},
         provenance=PlaybookProvenance(
             origin="hand-authored", approved_by=HumanReviewRef("review-fake-jobs-router")
         ),
@@ -186,7 +138,6 @@ class TestFluxoCompletoDeResumo:
     def test_submit_escala_resume_e_completa(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        monkeypatch.setattr(driver_mod, "plan", _fake_plan_com_escalada())
         monkeypatch.setattr(auditoria_router_mod, "montar_playbook", _fake_montar_playbook)
 
         app = criar_app(api_keys=_CHAVES_DE_TESTE)
@@ -230,7 +181,6 @@ class TestFluxoCompletoDeResumo:
         encontrado" para tenant mismatch. Fase 8: o "tenant errado" agora
         é uma CHAVE de outro tenant autenticando a requisição, não mais
         um campo de corpo divergente (o campo não existe mais)."""
-        monkeypatch.setattr(driver_mod, "plan", _fake_plan_com_escalada())
         monkeypatch.setattr(auditoria_router_mod, "montar_playbook", _fake_montar_playbook)
 
         app = criar_app(api_keys=_CHAVES_DE_TESTE)
@@ -334,7 +284,6 @@ class TestFase10Estagio101DecisaoPendenteSobreviveARestart:
     def test_get_jobs_mostra_decision_pendente_apos_restart_simulado(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        monkeypatch.setattr(driver_mod, "plan", _fake_plan_com_escalada())
         monkeypatch.setattr(auditoria_router_mod, "montar_playbook", _fake_montar_playbook)
         db_path = str(tmp_path / "eventos.db")
 
