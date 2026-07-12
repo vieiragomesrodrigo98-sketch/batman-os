@@ -12,15 +12,21 @@ qualquer capítulo/ADR) — espaço de design livre.
 Mecanismo escolhido: 1 API key estática por tenant, enviada via
 `Authorization: Bearer <chave>` (`fastapi.security.HTTPBearer`, já
 disponível sem dependência nova — confirmado por import real contra o
-FastAPI instalado). Hashing de chave em repouso fica para quando houver
-deploy real (hoje o batman-os é 100% local/desenvolvimento, mesmo
-tratamento do `ANTHROPIC_API_KEY` em texto puro no `.env`,
-`.gitignore`d) — proporcional ao resto do projeto, não uma lacuna
-esquecida.
+FastAPI instalado).
+
+Hashing de chave em repouso (Fase 11 do roadmap de plataforma, `.claude/
+plans/peaceful-wondering-hearth.md`, Estágio 11.1) — antes desta fase,
+`ApiKeyStore` guardava a chave em texto puro em memória, comparada via
+`dict.get()` direto. `BATMAN_API_KEYS` no `.env` continua em texto puro
+(mesmo tratamento do `ANTHROPIC_API_KEY`, `.gitignore`d — o batman-os
+ainda é 100% local/desenvolvimento) — o hash aqui é só da representação
+EM MEMÓRIA do processo, defesa em profundidade contra um dump de memória
+revelar as chaves em claro.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from collections.abc import Mapping
@@ -36,18 +42,26 @@ from batman_os.foundation.types import TenantId
 _esquema_bearer = HTTPBearer(auto_error=False)
 
 
+def _hash(chave: str) -> str:
+    return hashlib.sha256(chave.encode("utf-8")).hexdigest()
+
+
 class ApiKeyStore:
     """Constrói a partir do formato de autoria natural (tenant→chave) e
     inverte para lookup por chave (o sentido em que a autenticação
-    precisa resolver: dada uma chave recebida, qual tenant ela prova)."""
+    precisa resolver: dada uma chave recebida, qual tenant ela prova).
+
+    Guarda o HASH da chave (SHA-256), nunca a chave em texto puro — a
+    própria comparação por hash já resolve o timing attack do `dict.get()`
+    direto contra uma string secreta (Estágio 11.1)."""
 
     def __init__(self, chaves_por_tenant: Mapping[str, str]) -> None:
-        self._tenant_por_chave: dict[str, TenantId] = {
-            chave: TenantId(tenant) for tenant, chave in chaves_por_tenant.items()
+        self._tenant_por_hash: dict[str, TenantId] = {
+            _hash(chave): TenantId(tenant) for tenant, chave in chaves_por_tenant.items()
         }
 
     def resolver(self, chave: str) -> TenantId | None:
-        return self._tenant_por_chave.get(chave)
+        return self._tenant_por_hash.get(_hash(chave))
 
     @classmethod
     def carregar(

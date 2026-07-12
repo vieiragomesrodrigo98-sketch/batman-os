@@ -19,6 +19,19 @@ class TestApiKeyStore:
         assert store.resolver("chave-acme") == "acme"
         assert store.resolver("chave-globex") == "globex"
 
+    def test_chave_nunca_e_guardada_em_texto_puro(self) -> None:
+        """Fase 11 (Estágio 11.1) — `ApiKeyStore` guarda o hash SHA-256 da
+        chave, nunca a chave crua. Introspecciona o dict interno (mesmo
+        padrão de teste de invariante interno já usado no projeto) para
+        confirmar que a string original não aparece em lugar nenhum."""
+        store = ApiKeyStore({"acme": "chave-super-secreta"})
+
+        valores_internos = list(store._tenant_por_hash.keys())  # noqa: SLF001
+        assert "chave-super-secreta" not in valores_internos
+        assert all(chave != "chave-super-secreta" for chave in valores_internos)
+        # ainda resolve corretamente, apesar de guardado como hash
+        assert store.resolver("chave-super-secreta") == "acme"
+
     def test_chave_desconhecida_resolve_none(self) -> None:
         store = ApiKeyStore({"acme": "chave-acme"})
 
