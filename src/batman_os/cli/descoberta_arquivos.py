@@ -27,9 +27,14 @@ toca disco/processo.
 
 from __future__ import annotations
 
+import fnmatch
 import json
+import os
 import subprocess
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +95,14 @@ from batman_os.capabilities.rules.be013_http200_em_except import (
     construir_implementacao as construir_implementacao_be013,
 )
 from batman_os.capabilities.rules.be013_loader import carregar_especificacoes_be013
+from batman_os.capabilities.rules.comp008_loader import carregar_especificacoes_comp008
+from batman_os.capabilities.rules.comp008_relatorio_impacto_sem_disclaimer import (
+    EntradaComp008,
+    RegraComp008Spec,
+)
+from batman_os.capabilities.rules.comp008_relatorio_impacto_sem_disclaimer import (
+    construir_implementacao as construir_implementacao_comp008,
+)
 from batman_os.capabilities.rules.cs003_except_pass import EntradaCs003, RegraCs003Spec
 from batman_os.capabilities.rules.cs003_except_pass import (
     construir_implementacao as construir_implementacao_cs003,
@@ -158,6 +171,14 @@ from batman_os.capabilities.rules.fin005_backtest_sem_oos import (
     construir_implementacao as construir_implementacao_fin005,
 )
 from batman_os.capabilities.rules.fin005_loader import carregar_especificacoes_fin005
+from batman_os.capabilities.rules.fin006_loader import carregar_especificacoes_fin006
+from batman_os.capabilities.rules.fin006_significancia_sem_cluster import (
+    EntradaFin006,
+    RegraFin006Spec,
+)
+from batman_os.capabilities.rules.fin006_significancia_sem_cluster import (
+    construir_implementacao as construir_implementacao_fin006,
+)
 from batman_os.capabilities.rules.git_comando_interpretado import (
     EntradaGitInterpretado,
     RegraComparacaoNumericaSpec,
@@ -199,6 +220,14 @@ from batman_os.capabilities.rules.ora005_fallback_silencioso import (
     construir_implementacao as construir_implementacao_ora005,
 )
 from batman_os.capabilities.rules.ora005_loader import carregar_especificacoes_ora005
+from batman_os.capabilities.rules.ora006_loader import carregar_especificacoes_ora006
+from batman_os.capabilities.rules.ora006_proxy_medicao_silenciosa import (
+    EntradaOra006,
+    RegraOra006Spec,
+)
+from batman_os.capabilities.rules.ora006_proxy_medicao_silenciosa import (
+    construir_implementacao as construir_implementacao_ora006,
+)
 from batman_os.capabilities.rules.pd001_empty_state_sem_cta import EntradaPd001, RegraPd001Spec
 from batman_os.capabilities.rules.pd001_empty_state_sem_cta import (
     construir_implementacao as construir_implementacao_pd001,
@@ -333,6 +362,141 @@ from batman_os.capabilities.rules.ui002_inline_style_estatico import (
 from batman_os.capabilities.rules.ui002_loader import carregar_especificacoes_ui002
 
 _cache_subprocess: dict[tuple[str, ...], tuple[int, str, str]] = {}
+
+
+# Nomes de diretório podados por padrão em TODA travessia recursiva deste
+# módulo — poda a DESCIDA (o diretório nunca é listado), não filtra depois.
+# Existe porque `batman scan --root <repo>` varria a árvore INTEIRA: medido
+# contra o radar-preditivo real (S161, 2026-07-29) — 90.943 arquivos
+# enumerados quando só 1.133 são rastreados pelo git, a maior parte vindo
+# de `.venv`/`node_modules`/`data/*.parquet` sob `__pycache__`/`dist`/caches
+# de lint e tipo. `Path.rglob()`/`Path.glob()` não têm como podar (sempre
+# descem em tudo e só filtram depois de já ter enumerado) — por isso toda
+# travessia recursiva aqui passa por `_caminhar_arquivos_podado()` em vez de
+# `rglob` direto. Cada entrada é um nome literal (".venv") ou um padrão glob
+# simples por segmento ("*.egg-info", via `fnmatch`) — ver `_dir_excluida`.
+# CLI (`batman.py::_montar_parser`): `--exclude NOME` soma a esta lista
+# (repetível); `--no-default-excludes` é o escape hatch que a zera.
+DEFAULT_EXCLUDED_DIRS: frozenset[str] = frozenset(
+    {
+        ".git",
+        ".venv",
+        "venv",
+        "node_modules",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "dist",
+        "build",
+        "*.egg-info",
+        ".batman-os",
+        "unsloth_compiled_cache",
+        ".worktrees",
+    }
+)
+
+_excluir_dirs_atual: frozenset[str] = DEFAULT_EXCLUDED_DIRS
+
+
+def definir_exclusao_de_diretorios(excluir_dirs: frozenset[str]) -> None:
+    """Define o conjunto de nomes de diretório podado por TODAS as
+    travessias recursivas deste módulo até a próxima chamada.
+
+    É um setter global — não um parâmetro repassado por toda a cadeia de
+    chamada — porque a cadeia passa por ~50 wrappers `entradas_<regra>_
+    para_regra` (um por Capability migrada); mudar a assinatura de todos
+    não paga o ganho. Seguro sob `executar_scan(paralelo=True)`: é escrito
+    uma única vez ANTES do `ThreadPoolExecutor` processar qualquer Missão
+    e nunca mutado durante o scan (mesmo raciocínio de `_cache_subprocess`
+    acima — leituras concorrentes, escrita serializada). Quem chama:
+    `scan_command.py::executar_scan`, no início de cada execução."""
+    global _excluir_dirs_atual
+    _excluir_dirs_atual = excluir_dirs
+
+
+def exclusao_de_diretorios_atual() -> frozenset[str]:
+    """O conjunto de nomes de diretório podado neste momento — default
+    `DEFAULT_EXCLUDED_DIRS` (chamadas diretas de teste a `arquivos_para_
+    regra`/`entradas_para_regra`, sem passar por `executar_scan`, herdam a
+    poda padrão em vez de variar entre "cru" e "podado" por acidente)."""
+    return _excluir_dirs_atual
+
+
+@contextmanager
+def escopo_de_exclusao_de_diretorios(excluir_dirs: frozenset[str]) -> Iterator[None]:
+    """Aplica `excluir_dirs` só durante o bloco `with` e restaura o valor
+    anterior ao sair (mesmo em exceção) — usado por `executar_scan` para
+    nunca vazar a configuração de uma chamada para a próxima, e por testes
+    que precisam de um conjunto de exclusão customizado sem afetar os
+    demais testes do módulo."""
+    anterior = _excluir_dirs_atual
+    definir_exclusao_de_diretorios(excluir_dirs)
+    try:
+        yield
+    finally:
+        definir_exclusao_de_diretorios(anterior)
+
+
+def _dir_excluida(nome: str, padroes: frozenset[str]) -> bool:
+    """`nome` bate contra `padroes` por igualdade literal (".venv") ou por
+    padrão glob simples de um segmento ("*.egg-info", via `fnmatch`)."""
+    return any(fnmatch.fnmatch(nome, padrao) for padrao in padroes)
+
+
+def _caminhar_arquivos_podado(base: Path) -> Iterator[Path]:
+    """Enumera todo arquivo sob `base`, recursivamente, podando a DESCIDA
+    em qualquer diretório cujo nome bata `exclusao_de_diretorios_atual()`
+    — nunca lista o conteúdo de `.venv`/`node_modules`/etc, em vez de
+    enumerar tudo e filtrar depois (a diferença de performance que motivou
+    `DEFAULT_EXCLUDED_DIRS`: `Path.rglob()` sempre desce em tudo). Usa
+    `os.walk` porque é a única API da stdlib que permite podar `dirnames`
+    in-place durante a própria travessia — `pathlib` não oferece isso até
+    o `Path.walk()` do 3.12 (este projeto mira 3.11)."""
+    excluir_dirs = exclusao_de_diretorios_atual()
+    if not base.exists():
+        return
+    for dirpath, dirnames, filenames in os.walk(base):
+        dirnames[:] = [d for d in dirnames if not _dir_excluida(d, excluir_dirs)]
+        dirpath_path = Path(dirpath)
+        for nome_arquivo in filenames:
+            yield dirpath_path / nome_arquivo
+
+
+@dataclass(frozen=True)
+class EstatisticasDeDescoberta:
+    """Visibilidade de UMA varredura completa de `root` — não o que cada
+    Capability efetivamente lê (isso depende do `scope_dirs` de cada
+    regra), mas o tamanho real da árvore antes/depois da poda, para expor
+    regressão (ex.: um `scope_dirs` novo apontando pra raiz sem querer, ou
+    uma exclusão nova quebrada). Logado por `scan_command.py::
+    executar_scan` no início de cada execução — silêncio aqui esconde
+    regressão de performance."""
+
+    arquivos_enumerados: int
+    diretorios_podados: int
+
+
+def calcular_estatisticas_de_descoberta(
+    root: Path, excluir_dirs: frozenset[str] | None = None
+) -> EstatisticasDeDescoberta:
+    """Uma varredura única e independente de `root` (não usa `scope_dirs`
+    de regra nenhuma) só para visibilidade — ver `EstatisticasDeDescoberta`."""
+    excludes = excluir_dirs if excluir_dirs is not None else exclusao_de_diretorios_atual()
+    arquivos = 0
+    podados = 0
+    if not root.exists():
+        return EstatisticasDeDescoberta(arquivos_enumerados=0, diretorios_podados=0)
+    for _dirpath, dirnames, filenames in os.walk(root):
+        mantidos = []
+        for nome in dirnames:
+            if _dir_excluida(nome, excludes):
+                podados += 1
+            else:
+                mantidos.append(nome)
+        dirnames[:] = mantidos
+        arquivos += len(filenames)
+    return EstatisticasDeDescoberta(arquivos_enumerados=arquivos, diretorios_podados=podados)
 
 
 class TipoDescobertaDesconhecido(Exception):
@@ -837,6 +1001,43 @@ def entradas_ora005_para_regra(
     ]
 
 
+def entradas_ora006_para_regra(
+    root: Path, regra: RegraOra006Spec, descoberta: dict[str, Any]
+) -> list[EntradaOra006]:
+    """Mesmo espírito de `entradas_ora005_para_regra`, para a Capability
+    bespoke ORA-006 — mesma descoberta `"arvore"` (1 Missão por arquivo),
+    só o handler é bespoke."""
+    return [
+        EntradaOra006(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_comp008_para_regra(
+    root: Path, regra: RegraComp008Spec, descoberta: dict[str, Any]
+) -> list[EntradaComp008]:
+    """Mesmo espírito de `entradas_a11y003_para_regra`, para a Capability
+    bespoke COMP-008 — reaproveita a descoberta genérica `"arvore"` (os 2
+    alvos do legado, frontend .ts/.tsx e `api/services` .py, viram 2
+    entradas de spec no mesmo diretório `specs/comp008/`)."""
+    return [
+        EntradaComp008(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_fin006_para_regra(
+    root: Path, regra: RegraFin006Spec, descoberta: dict[str, Any]
+) -> list[EntradaFin006]:
+    """Mesmo espírito de `entradas_fin005_para_regra`, para a Capability
+    bespoke FIN-006 — descoberta `"arvore"` com `scripts/` além de
+    `src_dirs` (o diretório do caso motivador, ver docstring da regra)."""
+    return [
+        EntradaFin006(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
 def entradas_ora004_para_regra(
     root: Path, regra: RegraOra004Spec, descoberta: dict[str, Any]
 ) -> list[EntradaOra004]:
@@ -1280,7 +1481,7 @@ def _resultado_rev005(root: Path, descoberta: dict[str, Any]) -> list[tuple[str,
         base = root / escopo
         if not base.exists():
             continue
-        for caminho in sorted(base.rglob("*.py")):
+        for caminho in sorted(c for c in _caminhar_arquivos_podado(base) if c.suffix == ".py"):
             rel = str(caminho.relative_to(root))
             if "test" in rel or "migration" in rel or "alembic" in rel:
                 continue
@@ -1369,7 +1570,7 @@ def _arquivos_py_como_dict(root: Path, base: Path) -> dict[str, str]:
         return {}
     return {
         str(caminho.relative_to(root)).replace("\\", "/"): _ler_texto(caminho)
-        for caminho in sorted(base.rglob("*.py"))
+        for caminho in sorted(c for c in _caminhar_arquivos_podado(base) if c.suffix == ".py")
     }
 
 
@@ -1468,9 +1669,12 @@ def _resultado_de_subprocess(
     padroes_teste = descoberta.get("glob_arquivos_teste")
     if padroes_teste and requer_dir and dir_requerido_existe:
         base = root / requer_dir
+        arquivos_base = list(_caminhar_arquivos_podado(base))
         for padrao in padroes_teste:
             arquivos_teste_encontrados.extend(
-                str(p.relative_to(root)).replace("\\", "/") for p in base.rglob(padrao)
+                str(p.relative_to(root)).replace("\\", "/")
+                for p in arquivos_base
+                if p.match(padrao)
             )
 
     if requer_dir and dir_requerido_existe is False:
@@ -1543,8 +1747,8 @@ def _condicao_glob_existe(root: Path, item: dict[str, Any]) -> CondicaoAdicional
     excludes = item.get("excluir_caminho_contem", [])
     encontrado = any(
         not _excluido_por_substring(_rel_posix(root, caminho), excludes)
-        for caminho in root.rglob(padrao)
-        if caminho.is_file()
+        for caminho in _caminhar_arquivos_podado(root)
+        if caminho.match(padrao)
     )
     return CondicaoAdicional(
         caminho=padrao,
@@ -1555,14 +1759,19 @@ def _condicao_glob_existe(root: Path, item: dict[str, Any]) -> CondicaoAdicional
 
 def _arquivos_em_arvore(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
     resultado: list[tuple[str, str | None]] = []
+    extensoes = tuple(descoberta.get("extensoes", []))
     for escopo in descoberta.get("scope_dirs", []):
         base = root / escopo
         if not base.exists():
             continue
-        candidatos: set[Path] = set()
-        for extensao in descoberta.get("extensoes", []):
-            candidatos.update(base.rglob(f"*{extensao}"))
-        for caminho in sorted(candidatos):
+        # Uma única travessia podada de `base`, filtrando por extensão em
+        # memória, em vez de um `base.rglob(f"*{extensao}")` por extensão
+        # (que repetiria a travessia inteira N vezes) — ver
+        # `_caminhar_arquivos_podado`.
+        candidatos = sorted(
+            caminho for caminho in _caminhar_arquivos_podado(base) if caminho.suffix in extensoes
+        )
+        for caminho in candidatos:
             rel = _rel_posix(root, caminho)
             if _excluido(rel, caminho.name, descoberta):
                 continue
@@ -1585,9 +1794,12 @@ def _arquivos_via_glob(root: Path, descoberta: dict[str, Any]) -> list[tuple[str
     padrao_recursivo = descoberta.get("padrao_recursivo")
     if padrao_recursivo:
         excludes = descoberta.get("excluir_caminho_contem", [])
-        for caminho in sorted(root.rglob(padrao_recursivo)):
-            if not caminho.is_file():
-                continue
+        candidatos_recursivos = sorted(
+            caminho
+            for caminho in _caminhar_arquivos_podado(root)
+            if caminho.match(padrao_recursivo)
+        )
+        for caminho in candidatos_recursivos:
             rel = _rel_posix(root, caminho)
             if _excluido_por_substring(rel, excludes):
                 continue
@@ -1647,7 +1859,7 @@ def _rel_posix(root: Path, caminho: Path) -> str:
 
 
 def registrar_capabilities_conhecidas() -> None:
-    """Registra as 47 Capabilities conhecidas (46 bespoke/específicas +
+    """Registra as 50 Capabilities conhecidas (49 bespoke/específicas +
     a genérica `regex-sobre-conteudo-de-arquivo`, alimentada por 3 lotes
     de specs) no `registry_sdk` — chamado uma única vez por
     `cli/scan_command.py::_preparar_capabilities()`. Único ponto de
@@ -1736,6 +1948,13 @@ def registrar_capabilities_conhecidas() -> None:
         construir_implementacao=construir_implementacao_be013,
         carregar_especificacoes=carregar_especificacoes_be013,
         entradas_para_regra=entradas_be013_para_regra,
+    )
+    registrar(
+        tipo="comp008",
+        regra_cls=RegraComp008Spec,
+        construir_implementacao=construir_implementacao_comp008,
+        carregar_especificacoes=carregar_especificacoes_comp008,
+        entradas_para_regra=entradas_comp008_para_regra,
     )
     registrar(
         tipo="cs003",
@@ -1829,6 +2048,13 @@ def registrar_capabilities_conhecidas() -> None:
         entradas_para_regra=entradas_fin005_para_regra,
     )
     registrar(
+        tipo="fin006",
+        regra_cls=RegraFin006Spec,
+        construir_implementacao=construir_implementacao_fin006,
+        carregar_especificacoes=carregar_especificacoes_fin006,
+        entradas_para_regra=entradas_fin006_para_regra,
+    )
+    registrar(
         tipo="git_interpretado",
         regra_cls=RegraComparacaoNumericaSpec,
         construir_implementacao=construir_implementacao_git_interpretado,
@@ -1876,6 +2102,13 @@ def registrar_capabilities_conhecidas() -> None:
         construir_implementacao=construir_implementacao_ora005,
         carregar_especificacoes=carregar_especificacoes_ora005,
         entradas_para_regra=entradas_ora005_para_regra,
+    )
+    registrar(
+        tipo="ora006",
+        regra_cls=RegraOra006Spec,
+        construir_implementacao=construir_implementacao_ora006,
+        carregar_especificacoes=carregar_especificacoes_ora006,
+        entradas_para_regra=entradas_ora006_para_regra,
     )
     registrar(
         tipo="pd001",

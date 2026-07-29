@@ -15,6 +15,7 @@ foco virar performance: uma Capability que aceita lote de arquivos numa
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -39,7 +40,13 @@ from batman_os.capabilities.operator import (
     SandboxPolicy,
     SideEffectScope,
 )
-from batman_os.cli.descoberta_arquivos import registrar_capabilities_conhecidas
+from batman_os.cli.descoberta_arquivos import (
+    DEFAULT_EXCLUDED_DIRS,
+    EstatisticasDeDescoberta,
+    calcular_estatisticas_de_descoberta,
+    escopo_de_exclusao_de_diretorios,
+    registrar_capabilities_conhecidas,
+)
 from batman_os.foundation.types import (
     CapabilityId,
     Criticidade,
@@ -53,6 +60,7 @@ from batman_os.foundation.types import (
     TenantId,
     agora,
 )
+from batman_os.governance.inbox import AchadoInboxEntrada
 from batman_os.kernel.decision_engine import DecisionEngine, RespostaLlmCandidata
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import (
@@ -74,6 +82,8 @@ from batman_os.workflow.missions import MissionTypeDefinition, MissionTypeRegist
 
 TIPO_MISSAO = MissionTypeId("scan-estatico")
 TENANT_PADRAO = TenantId("local")
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -98,6 +108,7 @@ class AchadoScan:
 class ResultadoScan:
     achados: list[AchadoScan] = field(default_factory=list)
     duracoes_por_capability: dict[str, list[float]] = field(default_factory=dict)
+    estatisticas_de_descoberta: EstatisticasDeDescoberta | None = None
 
     def contagem_por_severidade(self) -> dict[str, int]:
         contagem: dict[str, int] = {}
@@ -121,6 +132,32 @@ class ResultadoScan:
                 "max_ms": max(duracoes),
             }
         return resumo
+
+
+def achados_para_inbox(resultado: ResultadoScan) -> list[AchadoInboxEntrada]:
+    """Adaptador `AchadoScan` -> `AchadoInboxEntrada` (`governance/
+    inbox.py`, capacidade "Inbox" de fila persistente de achados). Vive
+    AQUI, não em `governance/inbox.py`, porque `governance/` nunca importa
+    de `cli/` (Vol.VIII Cap.32, seção 32.3 — mesma disciplina de camadas
+    que "workflow depende de kernel, nunca o contrário"); quem conhece
+    `AchadoScan` é este módulo, então o adaptador mora do lado de quem já
+    conhece o tipo concreto.
+
+    `chave_dominio` = `codigo|arquivo|chave` — identidade de domínio do
+    achado dentro do scan (`chave` já é o discriminador que várias regras
+    usam para distinguir múltiplos achados da MESMA dupla (regra,
+    arquivo), ex.: `fe001_export_duplicado.py`, `feapi_rota_sem_
+    frontend.py` — "" quando a regra produz no máximo um achado por
+    arquivo)."""
+    return [
+        AchadoInboxEntrada(
+            chave_dominio=f"{achado.codigo}|{achado.arquivo}|{achado.chave}",
+            severidade=Criticidade(achado.severidade),
+            titulo=f"{achado.codigo} {achado.arquivo}: {achado.titulo}",
+            detalhe=achado.descricao or achado.titulo,
+        )
+        for achado in resultado.achados
+    ]
 
 
 class _SemConhecimentoAinda:
@@ -264,6 +301,8 @@ def executar_scan(
     paralelo: bool = False,
     max_workers: int = 8,
     tenant_id: TenantId = TENANT_PADRAO,
+    excluir_dirs: frozenset[str] | None = None,
+    usar_excludes_padrao: bool = True,
 ) -> ResultadoScan:
     """Vol.IX Cap.34 -- roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa os specs de todas as Capabilities registradas
@@ -291,68 +330,94 @@ def executar_scan(
 
     `tenant_id` (Fase 5 do roadmap de plataforma, Estagio 5.3) -- opcional,
     default `TENANT_PADRAO` preserva 100% do comportamento atual; CLI:
-    `--tenant`."""
-    if not registry_sdk.registry():
-        registrar_capabilities_conhecidas()
-    especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
+    `--tenant`.
 
-    registry, operator = _preparar_capabilities()
-    dispatch_por_regra = registry_sdk.registry_por_regra_cls()
-    execution_engine = ExecutionEngine(
-        validador_schema=ValidadorSchemaEstrutural(),
-        validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
+    `excluir_dirs`/`usar_excludes_padrao` -- nomes de diretorio podados da
+    travessia de TODA descoberta recursiva (`descoberta_arquivos.py::
+    DEFAULT_EXCLUDED_DIRS` -- `.venv`, `node_modules`, `__pycache__`, ...).
+    `usar_excludes_padrao=True` (default) aplica `DEFAULT_EXCLUDED_DIRS`;
+    `excluir_dirs` (default `None` == nenhum extra) SOMA a ela. CLI:
+    `--exclude NOME` (repetivel) preenche `excluir_dirs`; `--no-default-
+    excludes` vira `usar_excludes_padrao=False` (escape hatch -- volta a
+    travessia completa desta funcao antes desta mudanca, ou uma lista
+    100% customizada se combinado com `--exclude`)."""
+    excludes_finais = (DEFAULT_EXCLUDED_DIRS if usar_excludes_padrao else frozenset[str]()) | (
+        excluir_dirs or frozenset[str]()
     )
-    runtime = MissionRuntime(EventBus(db_path=db_path), tipos=_registro_tipos())
-    decision_engine = DecisionEngine(
-        base_conhecimento=_SemConhecimentoAinda(),
-        llm_gateway=_LlmNuncaChamadoNesteFluxo(),
-        validador=_ValidadorSempreAprova(),
-    )
-    operator_ref = OperatorRef(operator_id=operator.id)
+    with escopo_de_exclusao_de_diretorios(excludes_finais):
+        # Visibilidade obrigatoria no inicio do scan -- silencio aqui
+        # esconde regressao de performance (ex.: um `scope_dirs` novo
+        # apontando pra raiz sem querer, ou uma exclusao nova quebrada).
+        estatisticas = calcular_estatisticas_de_descoberta(root, excludes_finais)
+        logger.info(
+            "scan %s: %d arquivo(s) enumerados, %d diretorio(s) podado(s) (exclusoes=%s)",
+            root,
+            estatisticas.arquivos_enumerados,
+            estatisticas.diretorios_podados,
+            sorted(excludes_finais) if excludes_finais else "nenhuma",
+        )
 
-    resultado = ResultadoScan()
-    try:
-        entradas_para_processar: list[dict[str, object]] = []
-        for item in especificacoes:
-            regra = item["regra"]
-            plugin = dispatch_por_regra.get(type(regra))
-            if plugin is None:
-                raise ValueError(
-                    f"regra do tipo {type(regra).__name__} nao tem Capability registrada "
-                    "(ver descoberta_arquivos.py::registrar_capabilities_conhecidas)"
+        if not registry_sdk.registry():
+            registrar_capabilities_conhecidas()
+        especificacoes = especificacoes if especificacoes is not None else _todas_especificacoes()
+
+        registry, operator = _preparar_capabilities()
+        dispatch_por_regra = registry_sdk.registry_por_regra_cls()
+        execution_engine = ExecutionEngine(
+            validador_schema=ValidadorSchemaEstrutural(),
+            validador_contrato_nao_deterministico=ValidadorContratoSempreAprova(),
+        )
+        runtime = MissionRuntime(EventBus(db_path=db_path), tipos=_registro_tipos())
+        decision_engine = DecisionEngine(
+            base_conhecimento=_SemConhecimentoAinda(),
+            llm_gateway=_LlmNuncaChamadoNesteFluxo(),
+            validador=_ValidadorSempreAprova(),
+        )
+        operator_ref = OperatorRef(operator_id=operator.id)
+
+        resultado = ResultadoScan(estatisticas_de_descoberta=estatisticas)
+        try:
+            entradas_para_processar: list[dict[str, object]] = []
+            for item in especificacoes:
+                regra = item["regra"]
+                plugin = dispatch_por_regra.get(type(regra))
+                if plugin is None:
+                    raise ValueError(
+                        f"regra do tipo {type(regra).__name__} nao tem Capability registrada "
+                        "(ver descoberta_arquivos.py::registrar_capabilities_conhecidas)"
+                    )
+                entradas = plugin.entradas_para_regra(root, regra, item["descoberta"])
+                entradas_para_processar.extend(entrada.model_dump() for entrada in entradas)
+
+            def _processar(entrada: dict[str, object]) -> ResultadoMissao:
+                return _processar_entrada(
+                    entrada,
+                    runtime=runtime,
+                    registry=registry,
+                    decision_engine=decision_engine,
+                    execution_engine=execution_engine,
+                    operator=operator,
+                    operator_ref=operator_ref,
+                    tenant_id=tenant_id,
                 )
-            entradas = plugin.entradas_para_regra(root, regra, item["descoberta"])
-            entradas_para_processar.extend(entrada.model_dump() for entrada in entradas)
 
-        def _processar(entrada: dict[str, object]) -> ResultadoMissao:
-            return _processar_entrada(
-                entrada,
-                runtime=runtime,
-                registry=registry,
-                decision_engine=decision_engine,
-                execution_engine=execution_engine,
-                operator=operator,
-                operator_ref=operator_ref,
-                tenant_id=tenant_id,
-            )
+            if paralelo:
+                with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                    resultados_missao = list(pool.map(_processar, entradas_para_processar))
+            else:
+                resultados_missao = [_processar(entrada) for entrada in entradas_para_processar]
 
-        if paralelo:
-            with ThreadPoolExecutor(max_workers=max_workers) as pool:
-                resultados_missao = list(pool.map(_processar, entradas_para_processar))
-        else:
-            resultados_missao = [_processar(entrada) for entrada in entradas_para_processar]
-
-        for resultado_missao in resultados_missao:
-            resultado.achados.extend(resultado_missao.achados)
-            if resultado_missao.capability_id is not None and (
-                resultado_missao.duracao_ms is not None
-            ):
-                resultado.duracoes_por_capability.setdefault(
-                    resultado_missao.capability_id, []
-                ).append(resultado_missao.duracao_ms)
-    finally:
-        execution_engine.fechar()
-    return resultado
+            for resultado_missao in resultados_missao:
+                resultado.achados.extend(resultado_missao.achados)
+                if resultado_missao.capability_id is not None and (
+                    resultado_missao.duracao_ms is not None
+                ):
+                    resultado.duracoes_por_capability.setdefault(
+                        resultado_missao.capability_id, []
+                    ).append(resultado_missao.duracao_ms)
+        finally:
+            execution_engine.fechar()
+        return resultado
 
 
 @dataclass
