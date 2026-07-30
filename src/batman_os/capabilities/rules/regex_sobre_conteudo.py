@@ -273,7 +273,7 @@ def avaliar_regra_regex(entrada: Any, contexto: ExecutionContext) -> Any:
             tem_padrao = _busca_presenca(regra.pattern, dados.conteudo, flags)
             tem_mitigacao = bool(
                 regra.pattern_mitigacao
-                and re.search(regra.pattern_mitigacao, dados.conteudo, flags) is not None
+                and _busca_presenca(regra.pattern_mitigacao, dados.conteudo, flags)
             )
             disparado = tem_padrao and not tem_mitigacao
     elif regra.modo == ModoAvaliacao.AUSENCIA and regra.pattern_escopo:
@@ -283,7 +283,7 @@ def avaliar_regra_regex(entrada: Any, contexto: ExecutionContext) -> Any:
         if dados.conteudo is None:
             disparado = False
         else:
-            em_escopo = re.search(regra.pattern_escopo, dados.conteudo, flags) is not None
+            em_escopo = _busca_presenca(regra.pattern_escopo, dados.conteudo, flags)
             disparado = em_escopo and _condicao_simples_satisfeita(
                 dados.conteudo, ModoAvaliacao.AUSENCIA, regra.pattern, ic
             )
