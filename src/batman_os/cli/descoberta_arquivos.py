@@ -393,6 +393,11 @@ DEFAULT_EXCLUDED_DIRS: frozenset[str] = frozenset(
         ".batman-os",
         "unsloth_compiled_cache",
         ".worktrees",
+        # Incidente 2026-07-29: data/ do radar-preditivo (parquets, SQLite,
+        # .jsonl de dezenas de MB) não é código — varrê-lo custava horas.
+        # Regras `arquivo_fixo` que apontam para data/<arquivo> continuam
+        # funcionando (leem por caminho direto, não pela travessia).
+        "data",
     }
 )
 
@@ -1844,8 +1849,17 @@ def _ler_ou_marcar_presente(root: Path, caminho_rel: str) -> str | None:
     return _ler_texto(caminho)
 
 
+MAX_BYTES_LEITURA = 1_000_000
+"""Cap de leitura por arquivo (incidente 2026-07-29): sem limite, .jsonl de
+28 MB do repo-alvo entravam inteiros no payload das Missões (evento de 4 MB
+no estado.db) e alimentavam regex quadráticas. Arquivo acima do cap é tratado
+como sem conteúdo textual avaliável — regras de presença não disparam nele."""
+
+
 def _ler_texto(caminho: Path) -> str:
     try:
+        if caminho.stat().st_size > MAX_BYTES_LEITURA:
+            return ""
         return caminho.read_text(encoding="utf-8")
     except Exception:
         return ""

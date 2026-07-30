@@ -143,6 +143,67 @@ def _computar_fingerprint(
     return hashlib.sha1(bruto.encode("utf-8")).hexdigest()
 
 
+_PREFIXO_LOOKAHEAD_DOTALL = "(?=[\\s\\S]*?"
+
+
+def _decompor_lookaheads_conjuntivos(pattern: str) -> list[str] | None:
+    """Decompõe padrões que são PURA concatenação de lookaheads dot-all
+    preguiçosos — ``(?=[\\s\\S]*?A)(?=[\\s\\S]*?B)...`` — na lista de corpos
+    ``[A, B, ...]``.
+
+    Motivo (incidente 2026-07-29): esse idioma significa apenas "o conteúdo
+    contém A E contém B", mas avaliado como regex único ele re-tenta os
+    lookaheads em CADA posição do arquivo quando alguma parte falta —
+    backtracking catastrófico que fez a CRO-005 segurar o scan do
+    radar-preditivo por HORAS num .tsx grande. Buscar cada corpo
+    separadamente tem semântica IDÊNTICA (no primeiro offset, ``[\\s\\S]*?``
+    já alcança o arquivo inteiro) e custo linear.
+
+    Devolve ``None`` (sem decomposição) para qualquer padrão que não seja
+    exatamente essa forma — conservador por construção: parênteses são
+    balanceados respeitando escapes ``\\(`` e classes ``[...]``.
+    """
+    corpos: list[str] = []
+    i = 0
+    n = len(pattern)
+    while i < n:
+        if not pattern.startswith(_PREFIXO_LOOKAHEAD_DOTALL, i):
+            return None
+        j = i + len(_PREFIXO_LOOKAHEAD_DOTALL)
+        profundidade = 1  # o "(" do "(?="
+        em_classe = False
+        inicio_corpo = j
+        while j < n and profundidade > 0:
+            ch = pattern[j]
+            if ch == "\\":
+                j += 2
+                continue
+            if em_classe:
+                if ch == "]":
+                    em_classe = False
+            elif ch == "[":
+                em_classe = True
+            elif ch == "(":
+                profundidade += 1
+            elif ch == ")":
+                profundidade -= 1
+            j += 1
+        if profundidade != 0:
+            return None
+        corpos.append(pattern[inicio_corpo : j - 1])
+        i = j
+    return corpos if len(corpos) >= 2 else None
+
+
+def _busca_presenca(pattern: str, conteudo: str, flags: int) -> bool:
+    """``re.search(pattern) is not None`` com a decomposição acima quando
+    aplicável — único ponto de avaliação de presença do handler."""
+    corpos = _decompor_lookaheads_conjuntivos(pattern)
+    if corpos is not None:
+        return all(re.search(corpo, conteudo, flags) is not None for corpo in corpos)
+    return re.search(pattern, conteudo, flags) is not None
+
+
 def _condicao_simples_satisfeita(
     conteudo: str | None, modo: ModoAvaliacao, pattern: str | None, ignore_case: bool
 ) -> bool:
@@ -158,7 +219,7 @@ def _condicao_simples_satisfeita(
     if modo == ModoAvaliacao.PRESENCA:
         if conteudo is None or not pattern:
             return False
-        return re.search(pattern, conteudo, flags) is not None
+        return _busca_presenca(pattern, conteudo, flags)
     if modo == ModoAvaliacao.AUSENCIA:
         if conteudo is None:
             # Arquivo ausente -> nao ha conteudo para confirmar a ausencia do
@@ -173,7 +234,7 @@ def _condicao_simples_satisfeita(
             return False
         if not pattern:
             return True
-        return re.search(pattern, conteudo, flags) is None
+        return not _busca_presenca(pattern, conteudo, flags)
     raise ValueError(
         f"modo '{modo}' so e valido como condicao principal, nao em condicoes_adicionais"
     )
@@ -209,7 +270,7 @@ def avaliar_regra_regex(entrada: Any, contexto: ExecutionContext) -> Any:
         if dados.conteudo is None or not regra.pattern:
             disparado = False
         else:
-            tem_padrao = re.search(regra.pattern, dados.conteudo, flags) is not None
+            tem_padrao = _busca_presenca(regra.pattern, dados.conteudo, flags)
             tem_mitigacao = bool(
                 regra.pattern_mitigacao
                 and re.search(regra.pattern_mitigacao, dados.conteudo, flags) is not None
