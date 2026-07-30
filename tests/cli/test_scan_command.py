@@ -10,11 +10,13 @@ repositório sintético e quebrar as contagens exatas abaixo."""
 from __future__ import annotations
 
 import logging
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from batman_os.capabilities.rules.lote_01 import carregar_lote_01
+from batman_os.cli import scan_command
 from batman_os.cli.scan_command import (
     AchadoScan,
     ResultadoScan,
@@ -408,3 +410,221 @@ class TestAchadosParaInbox:
 
     def test_lista_vazia_produz_lista_vazia(self) -> None:
         assert achados_para_inbox(ResultadoScan(achados=[])) == []
+
+
+class TestPacote3ScanIncrementalArquivosAlterados:
+    """Pacote 3 do roadmap de CLI (`--changed`) -- `executar_scan(
+    arquivos_alterados=...)` filtra so as entradas de descoberta
+    `"arvore"`/`"glob"` (`_TIPOS_FILTRAVEIS_POR_ARQUIVO`); os demais tipos
+    (aqui, VPS-001 -- `arquivo_fixo`) sempre rodam, alterados ou nao --
+    decisao de design documentada em `scan_command.py`."""
+
+    def test_filtra_arvore_para_so_o_arquivo_alterado(self, tmp_path: Path) -> None:
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "a.py").write_text(
+            "SECRET_KEY = 'valor-literal-de-verdade'\n", encoding="utf-8"
+        )
+        (tmp_path / "api" / "b.py").write_text(
+            "SECRET_KEY = 'outro-valor-literal'\n", encoding="utf-8"
+        )
+
+        resultado = executar_scan(
+            tmp_path,
+            especificacoes=carregar_lote_01(),
+            arquivos_alterados=frozenset({"api/a.py"}),
+        )
+
+        red007 = [a for a in resultado.achados if a.codigo == "RED-007"]
+        assert {a.arquivo for a in red007} == {"api/a.py"}
+
+    def test_regra_arquivo_fixo_roda_sempre_mesmo_com_arquivos_alterados_vazio(
+        self, tmp_path: Path
+    ) -> None:
+        resultado = executar_scan(
+            tmp_path,
+            especificacoes=carregar_lote_01(),
+            arquivos_alterados=frozenset(),  # nenhum arquivo "mudou"
+        )
+
+        codigos = {a.codigo for a in resultado.achados}
+        assert "VPS-001" in codigos  # arquivo_fixo -- roda mesmo sem nenhum arquivo alterado
+
+    def test_arquivos_alterados_none_preserva_comportamento_default(self, tmp_path: Path) -> None:
+        """Retrocompatibilidade: sem passar `arquivos_alterados` (default
+        `None`), o comportamento e identico a antes desta mudanca -- nenhum
+        arquivo e filtrado."""
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "a.py").write_text(
+            "SECRET_KEY = 'valor-literal-de-verdade'\n", encoding="utf-8"
+        )
+        (tmp_path / "api" / "b.py").write_text(
+            "SECRET_KEY = 'outro-valor-literal'\n", encoding="utf-8"
+        )
+
+        resultado = executar_scan(tmp_path, especificacoes=carregar_lote_01())
+
+        red007 = [a for a in resultado.achados if a.codigo == "RED-007"]
+        assert {a.arquivo for a in red007} == {"api/a.py", "api/b.py"}
+
+
+class TestPacote3RastreadorDeProgresso:
+    """Pacote 3 do roadmap de CLI -- progresso + ETA sem custo mensuravel
+    por Missao (so contador + `time.monotonic()`); loga a cada ~5% do
+    total de Missoes OU a cada 30s, o que vier primeiro."""
+
+    def test_loga_a_cada_5_por_cento_nao_a_cada_missao(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        relogio = iter([0.0] * 300)
+        monkeypatch.setattr("batman_os.cli.scan_command.time.monotonic", lambda: next(relogio))
+
+        rastreador = scan_command._RastreadorDeProgresso(total=200, quiet=False)
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            for _ in range(200):
+                rastreador.registrar(0)
+
+        mensagens = [r.message for r in caplog.records if r.message.startswith("scan:")]
+        # passo = 5% de 200 = 10 -- loga nos marcos 10,20,...,200 = 20 linhas, nao 200
+        assert len(mensagens) == 20
+        assert "200/200 missões (100%)" in mensagens[-1]
+
+    def test_loga_a_cada_30_segundos_mesmo_sem_atingir_o_percentual(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        tempos = iter([0.0, 0.0, 31.0])
+        monkeypatch.setattr("batman_os.cli.scan_command.time.monotonic", lambda: next(tempos))
+
+        rastreador = scan_command._RastreadorDeProgresso(total=1000, quiet=False)
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            rastreador.registrar(0)  # so 0.1% do total -- nao atinge o marco de 5%
+            rastreador.registrar(0)  # 31s depois -- atinge o limiar de tempo
+
+        mensagens = [r.message for r in caplog.records if r.message.startswith("scan:")]
+        assert len(mensagens) == 1
+
+    def test_quiet_nao_loga_nada(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr("batman_os.cli.scan_command.time.monotonic", lambda: 0.0)
+
+        rastreador = scan_command._RastreadorDeProgresso(total=10, quiet=True)
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            for _ in range(10):
+                rastreador.registrar(1)
+
+        assert not [r for r in caplog.records if r.message.startswith("scan:")]
+
+    def test_total_zero_nao_loga_nada(self, caplog: pytest.LogCaptureFixture) -> None:
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            scan_command._RastreadorDeProgresso(total=0, quiet=False)
+
+        assert not caplog.records
+
+    def test_contador_de_achados_acumula_entre_chamadas(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr("batman_os.cli.scan_command.time.monotonic", lambda: 0.0)
+
+        rastreador = scan_command._RastreadorDeProgresso(total=2, quiet=False)
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            rastreador.registrar(3)
+            rastreador.registrar(2)
+
+        assert "achados até aqui: 5" in caplog.records[-1].message
+
+    def test_formato_da_mensagem(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        tempos = iter([0.0, 192.0])  # 3m12s decorridos
+        monkeypatch.setattr("batman_os.cli.scan_command.time.monotonic", lambda: next(tempos))
+
+        rastreador = scan_command._RastreadorDeProgresso(total=4, quiet=False)
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            rastreador.registrar(2)
+
+        mensagem = caplog.records[-1].message
+        assert mensagem == (
+            "scan: 1/4 missões (25%) · 3m12s decorridos · ETA ~9m36s · achados até aqui: 2"
+        )
+
+
+class TestArquivosAlteradosViaGit:
+    """`arquivos_alterados_via_git` (Pacote 3, usada por `--changed` da
+    CLI) -- uniao de `git status --porcelain` (working tree, inclui
+    untracked) com `git diff --name-only <ref>` (default `HEAD`)."""
+
+    def _git(self, root: Path, *args: str) -> None:
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+
+    def _init_repo(self, tmp_path: Path) -> None:
+        self._git(tmp_path, "init")
+        self._git(tmp_path, "config", "user.email", "teste@example.com")
+        self._git(tmp_path, "config", "user.name", "Teste")
+        (tmp_path / "base.txt").write_text("x", encoding="utf-8")
+        self._git(tmp_path, "add", "-A")
+        self._git(tmp_path, "commit", "-m", "inicial")
+
+    def test_arquivo_untracked_aparece_no_conjunto(self, tmp_path: Path) -> None:
+        self._init_repo(tmp_path)
+        (tmp_path / "novo.py").write_text("x", encoding="utf-8")
+
+        alterados = scan_command.arquivos_alterados_via_git(tmp_path)
+
+        assert "novo.py" in alterados
+
+    def test_arquivo_modificado_aparece_no_conjunto(self, tmp_path: Path) -> None:
+        self._init_repo(tmp_path)
+        (tmp_path / "base.txt").write_text("y", encoding="utf-8")
+
+        alterados = scan_command.arquivos_alterados_via_git(tmp_path)
+
+        assert "base.txt" in alterados
+
+    def test_arquivo_nao_alterado_nao_aparece(self, tmp_path: Path) -> None:
+        self._init_repo(tmp_path)
+        (tmp_path / "novo.py").write_text("x", encoding="utf-8")
+
+        alterados = scan_command.arquivos_alterados_via_git(tmp_path)
+
+        assert "base.txt" not in alterados
+
+    def test_rename_usa_o_caminho_novo(self, tmp_path: Path) -> None:
+        self._init_repo(tmp_path)
+        (tmp_path / "velho.py").write_text("conteudo estavel\n" * 5, encoding="utf-8")
+        self._git(tmp_path, "add", "-A")
+        self._git(tmp_path, "commit", "-m", "arquivo original")
+
+        (tmp_path / "velho.py").rename(tmp_path / "novo.py")
+        self._git(tmp_path, "add", "-A")
+
+        alterados = scan_command.arquivos_alterados_via_git(tmp_path)
+
+        assert "novo.py" in alterados
+        assert "velho.py" not in alterados
+
+    def test_changed_ref_customizado_compara_contra_outro_commit(self, tmp_path: Path) -> None:
+        self._init_repo(tmp_path)
+        primeiro_commit = subprocess.run(
+            ["git", "-C", str(tmp_path), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        (tmp_path / "arquivo_a.py").write_text("a", encoding="utf-8")
+        self._git(tmp_path, "add", "-A")
+        self._git(tmp_path, "commit", "-m", "segundo commit")
+
+        # vs HEAD (default): o segundo commit ja esta em HEAD, nada mudou
+        # desde entao no working tree -- so vs o PRIMEIRO commit aparece.
+        alterados_vs_head = scan_command.arquivos_alterados_via_git(tmp_path)
+        alterados_vs_primeiro = scan_command.arquivos_alterados_via_git(
+            tmp_path, ref=primeiro_commit
+        )
+
+        assert "arquivo_a.py" not in alterados_vs_head
+        assert "arquivo_a.py" in alterados_vs_primeiro
+
+    def test_sem_repositorio_git_levanta_raiz_sem_git(self, tmp_path: Path) -> None:
+        with pytest.raises(scan_command.RaizSemGitError):
+            scan_command.arquivos_alterados_via_git(tmp_path)

@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -312,3 +313,140 @@ class TestFlagsDeExclusaoDeDiretorios:
         assert codigo == 0
         mensagens = " ".join(registro.message for registro in caplog.records)
         assert "1 diretorio(s) podado(s)" in mensagens
+
+
+class TestPacote3ProgressoEResumoDePerformance:
+    """Pacote 3 do roadmap de CLI -- progresso+ETA e `resumo_de_
+    performance()` (ja calculado, so nunca impresso) ligados na saida de
+    `batman scan`; `--quiet` desliga os dois, sem afetar o log de
+    descoberta (pre-existente) nem a lista de achados."""
+
+    def test_resumo_de_performance_e_impresso_por_padrao(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        main(["scan", "--root", str(tmp_path), "--db", ":memory:"])
+
+        saida = capsys.readouterr().out
+        assert "resumo de performance" in saida
+
+    def test_quiet_desliga_o_resumo_de_performance(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        main(["scan", "--root", str(tmp_path), "--db", ":memory:", "--quiet"])
+
+        saida = capsys.readouterr().out
+        assert "resumo de performance" not in saida
+
+    def test_progresso_aparece_no_log_por_padrao(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            main(["scan", "--root", str(tmp_path), "--db", ":memory:"])
+
+        mensagens = [registro.message for registro in caplog.records]
+        assert any(m.startswith("scan:") and "missões" in m for m in mensagens)
+
+    def test_quiet_desliga_o_log_de_progresso_mas_nao_o_log_de_descoberta(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.INFO, logger="batman_os.cli.scan_command"):
+            main(["scan", "--root", str(tmp_path), "--db", ":memory:", "--quiet"])
+
+        mensagens = [registro.message for registro in caplog.records]
+        assert not any(m.startswith("scan:") and "missões" in m for m in mensagens)
+        assert any("arquivo(s) enumerados" in m for m in mensagens)
+
+
+class TestPacote3FlagChanged:
+    """Pacote 3 do roadmap de CLI (`--changed`) -- scan incremental: so
+    arquivos alterados vs git entram nas regras por-arquivo (descoberta
+    `"arvore"`/`"glob"`); regras de projeto/arvore inteira (`arquivo_
+    fixo`, agregadas, ...) sempre rodam. NAO substitui o scan completo de
+    governanca -- so um atalho de pre-push."""
+
+    def _git(self, root: Path, *args: str) -> None:
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+
+    def _init_repo(self, tmp_path: Path) -> None:
+        self._git(tmp_path, "init")
+        self._git(tmp_path, "config", "user.email", "teste@example.com")
+        self._git(tmp_path, "config", "user.name", "Teste")
+
+    def test_changed_filtra_regra_por_arquivo_para_so_o_arquivo_alterado(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._init_repo(tmp_path)
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "committed.py").write_text(
+            "SECRET_KEY = 'valor-literal-de-verdade'\n", encoding="utf-8"
+        )
+        self._git(tmp_path, "add", "-A")
+        self._git(tmp_path, "commit", "-m", "adiciona committed.py")
+
+        (tmp_path / "api" / "changed.py").write_text(
+            "SECRET_KEY = 'outro-valor-literal'\n", encoding="utf-8"
+        )
+
+        main(["scan", "--root", str(tmp_path), "--db", ":memory:", "--quiet"])
+        saida_completa = capsys.readouterr().out
+        assert "api/committed.py" in saida_completa
+        assert "api/changed.py" in saida_completa
+
+        main(["scan", "--root", str(tmp_path), "--db", ":memory:", "--quiet", "--changed"])
+        saida_changed = capsys.readouterr().out
+        assert "api/changed.py" in saida_changed
+        assert "api/committed.py" not in saida_changed
+        # regra global (VPS-001, tipo arquivo_fixo) roda sempre, --changed ou nao
+        assert "VPS-001" in saida_changed
+
+    def test_changed_sem_repositorio_git_retorna_erro_claro(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        codigo = main(["scan", "--root", str(tmp_path), "--db", ":memory:", "--changed"])
+
+        assert codigo == 1
+        saida = capsys.readouterr().out
+        assert "erro:" in saida
+        assert "--changed" in saida
+
+    def test_changed_ref_customizado_e_aceito_pela_cli(self, tmp_path: Path) -> None:
+        self._init_repo(tmp_path)
+        (tmp_path / "base.txt").write_text("x", encoding="utf-8")
+        self._git(tmp_path, "add", "-A")
+        self._git(tmp_path, "commit", "-m", "inicial")
+
+        codigo = main(
+            [
+                "scan",
+                "--root",
+                str(tmp_path),
+                "--db",
+                ":memory:",
+                "--quiet",
+                "--changed",
+                "--changed-ref",
+                "HEAD",
+            ]
+        )
+
+        assert codigo == 0
+
+    def test_sem_flag_changed_o_comportamento_e_identico_a_antes(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Retrocompatibilidade: `batman scan` sem `--changed` continua
+        escaneando TODOS os arquivos, mesmo dentro de um repositorio git
+        com arquivos ja commitados e sem nenhuma alteracao pendente."""
+        self._init_repo(tmp_path)
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "a.py").write_text(
+            "SECRET_KEY = 'valor-literal-de-verdade'\n", encoding="utf-8"
+        )
+        self._git(tmp_path, "add", "-A")
+        self._git(tmp_path, "commit", "-m", "inicial")
+
+        codigo = main(["scan", "--root", str(tmp_path), "--db", ":memory:", "--quiet"])
+
+        assert codigo == 0
+        saida = capsys.readouterr().out
+        assert "api/a.py" in saida

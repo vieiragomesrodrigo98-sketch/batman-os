@@ -25,7 +25,13 @@ from batman_os.cli.monitor_command import (
     resolver_manifest_path,
 )
 from batman_os.cli.observe_command import observar_para_sempre
-from batman_os.cli.scan_command import TENANT_PADRAO, achados_para_inbox, executar_scan
+from batman_os.cli.scan_command import (
+    TENANT_PADRAO,
+    RaizSemGitError,
+    achados_para_inbox,
+    arquivos_alterados_via_git,
+    executar_scan,
+)
 from batman_os.foundation.types import TenantId
 from batman_os.governance.inbox import (
     AchadoInboxDesconhecido,
@@ -59,12 +65,23 @@ def _comando_scan(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     db_path = _resolver_db_path(root, args.db)
     excluir_dirs = frozenset(args.exclude) if args.exclude else None
+
+    arquivos_alterados = None
+    if args.changed:
+        try:
+            arquivos_alterados = arquivos_alterados_via_git(root, args.changed_ref)
+        except RaizSemGitError as exc:
+            print(f"erro: {exc}")
+            return 1
+
     resultado = executar_scan(
         root,
         db_path=db_path,
         tenant_id=TenantId(args.tenant),
         excluir_dirs=excluir_dirs,
         usar_excludes_padrao=not args.no_default_excludes,
+        arquivos_alterados=arquivos_alterados,
+        quiet=args.quiet,
     )
 
     for achado in resultado.achados:
@@ -72,6 +89,9 @@ def _comando_scan(args: argparse.Namespace) -> int:
 
     contagem = resultado.contagem_por_severidade()
     print(f"\n{len(resultado.achados)} achado(s) — {contagem}")
+
+    if not args.quiet:
+        _imprimir_resumo_de_performance(resultado.resumo_de_performance())
 
     _ingerir_no_inbox_se_persistente(
         db_path,
@@ -85,6 +105,27 @@ def _comando_scan(args: argparse.Namespace) -> int:
     ):
         return 1
     return 0
+
+
+def _imprimir_resumo_de_performance(resumo: dict[str, dict[str, float]]) -> None:
+    """`ResultadoScan.resumo_de_performance()` ja existia (Fase 1 do
+    roadmap de plataforma, "Capability Timeline") mas nunca era impresso
+    -- Pacote 3 do roadmap de CLI so liga a saida (atras de `--quiet`, ver
+    `_comando_scan`). Ordenado por `total_ms` decrescente (top
+    capabilities por tempo total); limitado as 15 primeiras para nao
+    afogar o terminal num scan com dezenas de Capabilities -- a estrutura
+    completa continua disponivel a quem chamar `resumo_de_performance()`
+    programaticamente."""
+    if not resumo:
+        return
+    print("\nresumo de performance (top capabilities por tempo total):")
+    ordenado = sorted(resumo.items(), key=lambda item: item[1]["total_ms"], reverse=True)
+    for capability_id, metricas in ordenado[:15]:
+        print(
+            f"  {capability_id}: {metricas['chamadas']:.0f} chamada(s) · "
+            f"total={metricas['total_ms']:.1f}ms · media={metricas['media_ms']:.1f}ms · "
+            f"max={metricas['max_ms']:.1f}ms"
+        )
 
 
 def _ingerir_no_inbox_se_persistente(
@@ -193,6 +234,31 @@ def _montar_parser() -> argparse.ArgumentParser:
             "com --exclude para uma lista 100%% customizada, ou sozinho para voltar "
             "a travessia completa de antes desta mudanca"
         ),
+    )
+    scan_parser.add_argument(
+        "--changed",
+        action="store_true",
+        help=(
+            "Scan incremental: so arquivos alterados vs git ('git status --porcelain' "
+            "+ 'git diff --name-only' vs --changed-ref/HEAD) entram nas regras "
+            "por-arquivo (descoberta 'arvore'/'glob'); regras de projeto/arvore inteira "
+            "(arquivo_fixo, agregadas, subprocess, ...) sempre rodam. Uso: pre-push "
+            "rapido — NAO substitui o scan completo de governanca"
+        ),
+    )
+    scan_parser.add_argument(
+        "--changed-ref",
+        default=None,
+        metavar="REF",
+        help=(
+            "Ref git para 'git diff --name-only' em --changed (default: 'HEAD', "
+            "ou seja working tree vs HEAD); ignorado sem --changed"
+        ),
+    )
+    scan_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Desliga o log de progresso/ETA do scan e a impressao do resumo de performance",
     )
     scan_parser.set_defaults(func=_comando_scan)
 

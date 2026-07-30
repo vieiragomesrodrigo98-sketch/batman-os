@@ -16,6 +16,8 @@ foco virar performance: uma Capability que aceita lote de arquivos numa
 from __future__ import annotations
 
 import logging
+import subprocess
+import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -160,6 +162,152 @@ def achados_para_inbox(resultado: ResultadoScan) -> list[AchadoInboxEntrada]:
     ]
 
 
+class RaizSemGitError(Exception):
+    """`--changed` (CLI, Pacote 3 do roadmap de CLI) exige um repositório
+    git real em `root` para saber o que mudou -- levantada por
+    `arquivos_alterados_via_git` quando `git` não está no PATH, `root` não
+    é um repositório git, ou o `ref` pedido não resolve (ex.: repositório
+    sem nenhum commit ainda, onde `git diff --name-only HEAD` falha). Sem
+    isso, a única opção segura é pedir o scan completo (`batman scan` sem
+    `--changed`) -- `batman.py::_comando_scan` captura e imprime a
+    mensagem, retornando código de saída 1."""
+
+
+def arquivos_alterados_via_git(root: Path, ref: str | None = None) -> frozenset[str]:
+    """Conjunto de caminhos relativos (posix, mesmo formato de
+    `descoberta_arquivos.py::_rel_posix`) alterados em `root` -- união de
+    `git status --porcelain` (working tree: modificados + staged +
+    untracked) com `git diff --name-only <ref>` (`ref` default `"HEAD"`,
+    ou seja "working tree vs HEAD"; `--changed-ref` da CLI sobrescreve
+    para comparar contra outro ponto, ex. a branch base de um PR).
+
+    A união existe porque `git diff --name-only HEAD` sozinho NÃO lista
+    arquivos untracked (novos, nunca adicionados ao índice) -- só
+    `status --porcelain` os enxerga; e `status --porcelain` sozinho não
+    cobre comparar contra um ref diferente de HEAD. Usado por
+    `executar_scan(arquivos_alterados=...)` para filtrar as entradas de
+    descoberta `"arvore"`/`"glob"` (ver `_TIPOS_FILTRAVEIS_POR_ARQUIVO`)."""
+    ref_efetivo = ref if ref is not None else "HEAD"
+    alterados: set[str] = set()
+    alterados.update(_arquivos_via_status_porcelain(root))
+    alterados.update(_arquivos_via_diff(root, ref_efetivo))
+    return frozenset(alterados)
+
+
+def _rodar_git(root: Path, *args: str) -> str:
+    try:
+        resultado = subprocess.run(
+            ["git", "-C", str(root), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise RaizSemGitError(
+            "'git' não encontrado no PATH -- '--changed' exige git instalado; "
+            "rode 'batman scan' sem '--changed' para o scan completo"
+        ) from exc
+    if resultado.returncode != 0:
+        raise RaizSemGitError(
+            f"'git {' '.join(args)}' falhou em '{root}' ({resultado.stderr.strip()}) -- "
+            "'--changed' exige um repositório git válido (com pelo menos um commit); "
+            "rode 'batman scan' sem '--changed' para o scan completo"
+        )
+    return resultado.stdout
+
+
+def _arquivos_via_status_porcelain(root: Path) -> set[str]:
+    saida = _rodar_git(root, "status", "--porcelain")
+    alterados: set[str] = set()
+    for linha in saida.splitlines():
+        if not linha:
+            continue
+        caminho = linha[3:]
+        if " -> " in caminho:  # rename/copy: "<status> old -> new"
+            caminho = caminho.split(" -> ", 1)[1]
+        alterados.add(_normalizar_caminho_git(caminho))
+    return alterados
+
+
+def _arquivos_via_diff(root: Path, ref: str) -> set[str]:
+    saida = _rodar_git(root, "diff", "--name-only", ref)
+    return {_normalizar_caminho_git(linha) for linha in saida.splitlines() if linha}
+
+
+def _normalizar_caminho_git(caminho: str) -> str:
+    caminho = caminho.strip()
+    if len(caminho) >= 2 and caminho[0] == '"' and caminho[-1] == '"':
+        caminho = caminho[1:-1]
+    return caminho
+
+
+_INTERVALO_LOG_PROGRESSO_SEGUNDOS = 30.0
+_FRACAO_LOG_PROGRESSO_PERCENTUAL = 0.05  # ~1x a cada 5% do total de Missões
+
+
+class _RastreadorDeProgresso:
+    """Progresso + ETA do scan (Pacote 3 do roadmap de CLI) -- loga a cada
+    ~5% do total de Missões OU a cada 30s (o que vier primeiro), sem custo
+    mensurável por Missão: só um contador e uma chamada a
+    `time.monotonic()` em `registrar()`, nenhuma I/O extra -- o log em si
+    (a única parte com custo real) só roda quando um dos dois limiares é
+    cruzado. Silencioso quando `quiet=True` ou quando não há nenhuma
+    Missão a processar (`total == 0`)."""
+
+    def __init__(self, total: int, quiet: bool) -> None:
+        self._total = total
+        self._quiet = quiet or total == 0
+        self._concluidas = 0
+        self._achados = 0
+        self._inicio = time.monotonic()
+        self._ultimo_log = self._inicio
+        self._passo_percentual = max(1, round(total * _FRACAO_LOG_PROGRESSO_PERCENTUAL))
+        self._proximo_marco = self._passo_percentual
+
+    def registrar(self, novos_achados: int) -> None:
+        self._concluidas += 1
+        self._achados += novos_achados
+        if self._quiet:
+            return
+        agora = time.monotonic()
+        e_a_ultima = self._concluidas >= self._total
+        atingiu_percentual = self._concluidas >= self._proximo_marco
+        atingiu_tempo = (agora - self._ultimo_log) >= _INTERVALO_LOG_PROGRESSO_SEGUNDOS
+        if not (e_a_ultima or atingiu_percentual or atingiu_tempo):
+            return
+        self._logar(agora)
+        self._ultimo_log = agora
+        while self._proximo_marco <= self._concluidas:
+            self._proximo_marco += self._passo_percentual
+
+    def _logar(self, agora: float) -> None:
+        decorrido = agora - self._inicio
+        percentual = round((self._concluidas / self._total) * 100)
+        restantes = self._total - self._concluidas
+        eta = (decorrido / self._concluidas) * restantes if self._concluidas else 0.0
+        logger.info(
+            "scan: %s/%s missões (%d%%) · %s decorridos · ETA ~%s · achados até aqui: %d",
+            _formatar_milhar(self._concluidas),
+            _formatar_milhar(self._total),
+            percentual,
+            _formatar_duracao(decorrido),
+            _formatar_duracao(eta),
+            self._achados,
+        )
+
+
+def _formatar_milhar(numero: int) -> str:
+    return f"{numero:,}".replace(",", ".")
+
+
+def _formatar_duracao(segundos: float) -> str:
+    total_segundos = max(0, int(segundos))
+    minutos, segs = divmod(total_segundos, 60)
+    if minutos:
+        return f"{minutos}m{segs:02d}s"
+    return f"{segs}s"
+
+
 class _SemConhecimentoAinda:
     """Vol.II Cap.8 — nenhuma regra migrada do Learning Engine (Vol.VI)
     alimenta o Decision Engine ainda para este fluxo; irrelevante na
@@ -294,6 +442,20 @@ def _todas_especificacoes() -> list[Any]:
     return especificacoes
 
 
+_TIPOS_FILTRAVEIS_POR_ARQUIVO = frozenset({"arvore", "glob"})
+"""Tipos de descoberta (`descoberta_arquivos.py::arquivos_para_regra`) que
+enumeram arquivos individuais sob `scope_dirs`/`padroes` -- 230 dos 282
+specs atuais (medido 2026-07, `grep` sobre `specs/**/*.json`), a maioria
+esmagadora das Missões de um scan real. São os únicos filtrados por
+`executar_scan(arquivos_alterados=...)` (`--changed` da CLI): os demais
+tipos (`arquivo_fixo`, `git`, `subprocess`, `toml_dependencias`,
+`regex_agregado`, e as ~13 bespoke tipo `de003`/`ora004`/`feapi`/...) são
+checagens de projeto/árvore inteira -- existência de UM arquivo fixo,
+comando único, agregação através de TODOS os arquivos -- que não têm como
+se decompor em "só este arquivo mudou" sem mudar o que a regra significa,
+então rodam sempre (decisão de design do Pacote 3 do roadmap de CLI)."""
+
+
 def executar_scan(
     root: Path,
     especificacoes: Sequence[Any] | None = None,
@@ -303,6 +465,8 @@ def executar_scan(
     tenant_id: TenantId = TENANT_PADRAO,
     excluir_dirs: frozenset[str] | None = None,
     usar_excludes_padrao: bool = True,
+    arquivos_alterados: frozenset[str] | None = None,
+    quiet: bool = False,
 ) -> ResultadoScan:
     """Vol.IX Cap.34 -- roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa os specs de todas as Capabilities registradas
@@ -340,7 +504,23 @@ def executar_scan(
     `--exclude NOME` (repetivel) preenche `excluir_dirs`; `--no-default-
     excludes` vira `usar_excludes_padrao=False` (escape hatch -- volta a
     travessia completa desta funcao antes desta mudanca, ou uma lista
-    100% customizada se combinado com `--exclude`)."""
+    100% customizada se combinado com `--exclude`).
+
+    `arquivos_alterados` (Pacote 3 do roadmap de CLI, `--changed`) --
+    quando informado (nao `None`), filtra as entradas de descoberta
+    `"arvore"`/`"glob"` para so as cujo `caminho` aparece neste conjunto
+    (ver `_TIPOS_FILTRAVEIS_POR_ARQUIVO` para a decisao de design de quais
+    tipos sao filtraveis); default `None` preserva 100% do comportamento
+    anterior (nenhuma flag existia antes desta mudanca). CLI: `--changed`
+    popula via `arquivos_alterados_via_git`.
+
+    `quiet` (Pacote 3) -- desliga o log de progresso/ETA
+    (`_RastreadorDeProgresso`, a cada ~5% do total de Missoes ou 30s, o
+    que vier primeiro); `batman.py::_comando_scan` reaproveita a mesma
+    flag para tambem desligar a impressao do `resumo_de_performance()` ao
+    final. Default `False` preserva o comportamento anterior (o log de
+    progresso e novo nesta mudanca -- sem flag nenhuma antes, o unico
+    comportamento possivel era "logar")."""
     excludes_finais = (DEFAULT_EXCLUDED_DIRS if usar_excludes_padrao else frozenset[str]()) | (
         excluir_dirs or frozenset[str]()
     )
@@ -380,13 +560,21 @@ def executar_scan(
             entradas_para_processar: list[dict[str, object]] = []
             for item in especificacoes:
                 regra = item["regra"]
+                descoberta = item["descoberta"]
                 plugin = dispatch_por_regra.get(type(regra))
                 if plugin is None:
                     raise ValueError(
                         f"regra do tipo {type(regra).__name__} nao tem Capability registrada "
                         "(ver descoberta_arquivos.py::registrar_capabilities_conhecidas)"
                     )
-                entradas = plugin.entradas_para_regra(root, regra, item["descoberta"])
+                entradas = plugin.entradas_para_regra(root, regra, descoberta)
+                if (
+                    arquivos_alterados is not None
+                    and descoberta.get("tipo") in _TIPOS_FILTRAVEIS_POR_ARQUIVO
+                ):
+                    entradas = [
+                        entrada for entrada in entradas if entrada.caminho in arquivos_alterados
+                    ]
                 entradas_para_processar.extend(entrada.model_dump() for entrada in entradas)
 
             def _processar(entrada: dict[str, object]) -> ResultadoMissao:
@@ -401,11 +589,18 @@ def executar_scan(
                     tenant_id=tenant_id,
                 )
 
+            rastreador = _RastreadorDeProgresso(total=len(entradas_para_processar), quiet=quiet)
+            resultados_missao: list[ResultadoMissao] = []
             if paralelo:
                 with ThreadPoolExecutor(max_workers=max_workers) as pool:
-                    resultados_missao = list(pool.map(_processar, entradas_para_processar))
+                    for resultado_missao in pool.map(_processar, entradas_para_processar):
+                        resultados_missao.append(resultado_missao)
+                        rastreador.registrar(len(resultado_missao.achados))
             else:
-                resultados_missao = [_processar(entrada) for entrada in entradas_para_processar]
+                for entrada in entradas_para_processar:
+                    resultado_missao = _processar(entrada)
+                    resultados_missao.append(resultado_missao)
+                    rastreador.registrar(len(resultado_missao.achados))
 
             for resultado_missao in resultados_missao:
                 resultado.achados.extend(resultado_missao.achados)
