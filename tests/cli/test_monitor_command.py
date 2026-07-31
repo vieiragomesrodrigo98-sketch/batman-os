@@ -113,9 +113,7 @@ class TestExecutarDadosSentinela:
         )
         arq = _escrever_manifesto_dados(
             tmp_path,
-            fontes_jsonl=[
-                {"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}
-            ],
+            fontes_jsonl=[{"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}],
         )
         manifest, alertas = executar_dados_sentinela(arq, governance=GovernanceEngine())
         assert manifest.tenant_id == TenantId("acme")
@@ -134,9 +132,7 @@ class TestExecutarDadosSentinela:
         arq = _escrever_manifesto_dados(
             tmp_path,
             root_dir=str(tmp_path / "nao-existe"),
-            fontes_jsonl=[
-                {"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}
-            ],
+            fontes_jsonl=[{"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}],
         )
         manifest, alertas = executar_dados_sentinela(
             arq, root_dir_override=str(outro_root), governance=GovernanceEngine()
@@ -204,7 +200,9 @@ class TestWiringCli:
         assert "dados-sentinela" not in saida
 
     def test_com_dados_manifest_dados_sentinela_roda_e_alerta(
-        self, tmp_path: Path, capsys  # type: ignore[no-untyped-def]
+        self,
+        tmp_path: Path,
+        capsys,  # type: ignore[no-untyped-def]
     ) -> None:
         arq_http = _escrever_manifesto(
             tmp_path,
@@ -226,9 +224,7 @@ class TestWiringCli:
         )
         arq_dados = _escrever_manifesto_dados(
             tmp_path,
-            fontes_jsonl=[
-                {"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}
-            ],
+            fontes_jsonl=[{"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}],
         )
         codigo = main(
             [

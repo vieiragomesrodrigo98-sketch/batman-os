@@ -59,11 +59,7 @@ class TestSpecFalho:
                     "title": "A-01-1 badge visivel",
                     "ok": False,
                     "tests": [
-                        {
-                            "results": [
-                                {"status": "failed", "error": {"message": "Timed out"}}
-                            ]
-                        }
+                        {"results": [{"status": "failed", "error": {"message": "Timed out"}}]}
                     ],
                 }
             ]
@@ -164,9 +160,10 @@ class TestBloqueadoPrd:
         saida = avaliar_qavis001(entrada, _contexto())
         assert len(saida["achados"]) == 1
         assert saida["achados"][0]["severidade"] == "low"
-        assert "PRODUÇÃO" in saida["achados"][0]["descricao"] or "producao" in saida[
-            "achados"
-        ][0]["descricao"].lower()
+        assert (
+            "PRODUÇÃO" in saida["achados"][0]["descricao"]
+            or "producao" in saida["achados"][0]["descricao"].lower()
+        )
 
 
 class TestFrontendDirAusente:

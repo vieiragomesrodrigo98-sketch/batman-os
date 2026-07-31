@@ -759,9 +759,7 @@ class TestResultadoPlaywright:
             capturado.update(kwargs)
             return _ProcessoFake([(json.dumps({"suites": []}), "")])
 
-        monkeypatch.setattr(
-            "batman_os.cli.descoberta_arquivos.subprocess.Popen", _popen_fake
-        )
+        monkeypatch.setattr("batman_os.cli.descoberta_arquivos.subprocess.Popen", _popen_fake)
         resultado = arquivos_para_regra(tmp_path, self._descoberta())
         payload = json.loads(resultado[0][1])
 

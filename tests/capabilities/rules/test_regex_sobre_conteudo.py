@@ -69,9 +69,7 @@ class TestIgnorarComentarios:
         entrada = {
             "caminho": "api/routers/checkout.py",
             "conteudo": self._TRECHO_REAL_CHECKOUT,
-            "regra": _regra(
-                modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True
-            ),
+            "regra": _regra(modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True),
         }
         saida = avaliar_regra_regex(entrada, _contexto())
         assert saida["achados"] == []
@@ -95,9 +93,7 @@ class TestIgnorarComentarios:
         entrada = {
             "caminho": "api/routers/algo.py",
             "conteudo": "raise HTTPException(status_code=500, detail=str(exc))",
-            "regra": _regra(
-                modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True
-            ),
+            "regra": _regra(modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True),
         }
         saida = avaliar_regra_regex(entrada, _contexto())
         assert len(saida["achados"]) == 1
@@ -106,9 +102,7 @@ class TestIgnorarComentarios:
         entrada = {
             "caminho": "api/routers/nao_existe.py",
             "conteudo": None,
-            "regra": _regra(
-                modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True
-            ),
+            "regra": _regra(modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True),
         }
         saida = avaliar_regra_regex(entrada, _contexto())
         assert saida["achados"] == []

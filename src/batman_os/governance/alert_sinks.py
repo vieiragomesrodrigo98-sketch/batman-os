@@ -203,9 +203,9 @@ class DiscordAlertSink:
         # derruba feature / e vulnerabilidade (CRITICAL). WARNING espaca mais;
         # INFO/telemetria (heartbeat, porta loopback benigna) vira 1x/dia.
         self._janelas: dict[SeveridadeAlerta, float] = janelas_por_severidade or {
-            SeveridadeAlerta.CRITICAL: 3600.0,    # 1h — outage/vulnerabilidade ATIVA
-            SeveridadeAlerta.WARNING: 21600.0,    # 6h
-            SeveridadeAlerta.INFO: 86400.0,       # 24h — telemetria/benigno
+            SeveridadeAlerta.CRITICAL: 3600.0,  # 1h — outage/vulnerabilidade ATIVA
+            SeveridadeAlerta.WARNING: 21600.0,  # 6h
+            SeveridadeAlerta.INFO: 86400.0,  # 24h — telemetria/benigno
         }
         self._janela_maxima = max(self._janelas.values(), default=janela_repeticao_s)
         self._estado: dict[str, dict[str, Any]] = self._carregar_estado()
@@ -219,13 +219,16 @@ class DiscordAlertSink:
         try:
             dados = json.loads(self._caminho_estado.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            logger.warning("estado de dedup ilegivel (%s), comecando limpo: %s",
-                           self._caminho_estado, exc)
+            logger.warning(
+                "estado de dedup ilegivel (%s), comecando limpo: %s", self._caminho_estado, exc
+            )
             return {}
         agora = time.time()
         return {
-            k: v for k, v in dados.items()
-            if isinstance(v, dict) and isinstance(v.get("ts"), (int, float))
+            k: v
+            for k, v in dados.items()
+            if isinstance(v, dict)
+            and isinstance(v.get("ts"), (int, float))
             and (agora - float(v["ts"])) < self._janela_maxima
         }
 
@@ -300,8 +303,12 @@ class DiscordAlertSink:
         janela = self._janelas.get(alert.severity, self._janela_repeticao_s)
         idade = agora - float(anterior["ts"]) if anterior else None
         if idade is not None and idade < janela:
-            logger.debug("alerta repetido suprimido (throttle %.0fs, sev=%s): %s",
-                         janela, alert.severity.value, chave)
+            logger.debug(
+                "alerta repetido suprimido (throttle %.0fs, sev=%s): %s",
+                janela,
+                alert.severity.value,
+                chave,
+            )
             return
 
         try:

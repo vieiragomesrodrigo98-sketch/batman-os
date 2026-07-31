@@ -297,7 +297,7 @@ class TestIgnorarKwargLiteral:
         "class CautoPositionTable(Base, TimestampMixin):\n"
         '    __tablename__ = "pb_cauto_positions"\n\n'
         "    id: Mapped[int] = mapped_column(primary_key=True)\n"
-        "    account_id: Mapped[int] = mapped_column(ForeignKey(\"pb_cauto_accounts.id\"))\n"
+        '    account_id: Mapped[int] = mapped_column(ForeignKey("pb_cauto_accounts.id"))\n'
         "    signal_id: Mapped[int] = mapped_column(Integer)\n\n"
         "    __table_args__ = (\n"
         '        UniqueConstraint("account_id", "signal_id", '
@@ -337,8 +337,7 @@ class TestIgnorarKwargLiteral:
         entrada = {
             "caminho": "a.py",
             "conteudo": (
-                "class ApiTokenTable(Base):\n"
-                "    name: Mapped[str] = mapped_column(String(100))\n"
+                "class ApiTokenTable(Base):\n    name: Mapped[str] = mapped_column(String(100))\n"
             ),
             "regra": _regra(
                 seletor_include=r"Table$",
