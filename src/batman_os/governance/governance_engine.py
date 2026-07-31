@@ -14,7 +14,9 @@ Fonte da verdade: docs/spec/07-governance/01-governance-engine.md
 
 from __future__ import annotations
 
+import logging
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -29,6 +31,11 @@ from batman_os.foundation.types import (
     novo_uuid7,
 )
 
+if TYPE_CHECKING:
+    from batman_os.governance.alert_sinks import AlertSink
+
+logger = logging.getLogger(__name__)
+
 
 class FonteAlerta(StrEnum):
     """Vol.VII Cap.27, secao 27.4 — `GovernanceAlert.source`."""
@@ -39,6 +46,23 @@ class FonteAlerta(StrEnum):
     HUMAN_REVIEW_BACKLOG = "human-review-backlog"
     RULE_DRIFT = "rule-drift"
     ADDENDUM_REVIEW_REQUEST = "addendum-review-request"
+    # Observabilidade de runtime/infra (Anexo Cap.27/30 — subsistema
+    # `batman_os.observe`, paridade com o observe/daemon do Batman legado).
+    # Extensao do StrEnum: nunca reinterpreta valores existentes.
+    INFRA_SATURATION = "infra-saturation"
+    ENDPOINT_DOWN = "endpoint-down"
+    ENDPOINT_LATENCY = "endpoint-latency"
+    ENDPOINT_ERROR_RATE = "endpoint-error-rate"
+    SERVICE_DOWN = "service-down"
+    SECURITY_INTRUSION = "security-intrusion"
+    OBSERVE_HEARTBEAT = "observe-heartbeat"
+    # Monitor funcional / sintetico (docs/observe/MONITOR_FUNCIONAL.md — exercita
+    # a jornada do usuario e falha quando a funcionalidade nao e entregue, mesmo
+    # com CPU baixo e HTTP 200). Extensao do StrEnum: nunca reinterpreta valores
+    # existentes.
+    FEATURE_DOWN = "feature-down"
+    FEATURE_RECOVERED = "feature-recovered"
+    MANIFEST_DRIFT = "manifest-drift"
 
 
 class SeveridadeAlerta(StrEnum):
@@ -86,8 +110,12 @@ class GovernanceEngine:
     componentes (Event Bus, Operational Memory, Knowledge Graph); nunca
     publica algo que o Kernel consome de volta (secao 27.5)."""
 
-    def __init__(self) -> None:
+    def __init__(self, sink: AlertSink | None = None) -> None:
         self._alertas: dict[AlertId, GovernanceAlert] = {}
+        # Entrega externa opcional (Discord etc.). None = comportamento
+        # original: alerta so vive em memoria. O sink NUNCA e do kernel
+        # (ADR-0012) — recebe um GovernanceAlert ja pronto.
+        self._sink = sink
 
     def raise_alert(self, alert: GovernanceAlert) -> None:
         """AT-27.1."""
@@ -97,6 +125,14 @@ class GovernanceEngine:
                 "levantado sem evidence (Evidence First)"
             )
         self._alertas[alert.id] = alert
+        if self._sink is not None:
+            # Entrega best-effort: uma falha de webhook JAMAIS pode impedir
+            # que o alerta seja registrado/consultavel (mesma disciplina do
+            # `_post` legado e do CostTracker.registrar).
+            try:
+                self._sink.enviar(alert)
+            except Exception as exc:  # defesa em profundidade
+                logger.error("sink de alerta falhou (alerta persiste): %s", exc)
 
     def get_open_alerts(
         self,

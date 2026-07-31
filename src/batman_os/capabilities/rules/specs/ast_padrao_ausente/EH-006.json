@@ -4,13 +4,15 @@
     "agente": "ethical-hacker",
     "severidade": "high",
     "categoria": "access-control",
-    "titulo": "Schema Pydantic de update expõe campo 'role' — risco de escalada de privilégio",
-    "causa": "Modelo de atualização (*Update, *Patch) que aceita o campo 'role' permite que qualquer usuário autenticado envie {\"role\": \"admin\"} e escale privilégios se o endpoint não filtrar campos explicitamente. Detectado no Bloco E-03 do plano de QA.",
-    "remediacao": "Remover 'role' do schema de update comum; criar endpoint admin-only separado para atualização de role. DoD: schemas *Update/*Patch não contêm campo role.",
+    "titulo": "Schema Pydantic de update expõe campo de privilégio (role/is_admin/…) — escalada",
+    "causa": "Modelo de atualização (*Update, *Patch) que aceita um campo de privilégio (role, is_admin, is_active, is_staff, is_superuser, is_propagador) permite que qualquer usuário autenticado envie {\"is_admin\": true} ou {\"role\": \"admin\"} e escale privilégios se o endpoint não filtrar campos explicitamente (mass assignment). Detectado no Bloco E-03 do plano de QA; ampliado além de 'role' após o sweep ethical-hacker (S158) — só 'role' deixava passar as flags booleanas de privilégio.",
+    "remediacao": "Remover o campo de privilégio do schema de update comum; criar endpoint admin-only separado com allowlist explícita de campos. DoD: schemas *Update/*Patch não contêm role/is_admin/is_active/is_staff/is_superuser/is_propagador.",
     "seletor_tipo": "classdef",
     "seletor_include": "(Update|Patch|Modify|Edit)$",
     "corpo_padrao": "role",
-    "campo_estrutural": "role"
+    "campos_estruturais": ["role", "is_admin", "is_staff", "is_superuser", "is_super_admin", "is_propagador"],
+    "campo_estrutural_condicional": "is_active",
+    "seletor_condicional": "(?i)(User|Account|Member|Profile|Perfil|Conta|Usuario)"
   },
   "descoberta": {
     "tipo": "arvore",

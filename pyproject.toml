@@ -25,6 +25,16 @@ api = [
     "uvicorn[standard]>=0.32",
     "httpx>=0.27",
 ]
+local-llm = [
+    "llama-cpp-python>=0.3",
+]
+observe = [
+    # Coleta de infra/portas/processos. Dependencia OPCIONAL (como
+    # `llama-cpp-python` e do `local-llm`): o subsistema `observe` funciona
+    # com collectors injetados e so exige psutil para a coleta real na VPS.
+    # O EndpointCollector usa `urllib` (stdlib) — sem dependencia nova.
+    "psutil>=5.9",
+]
 
 [project.scripts]
 batman = "batman_os.cli.batman:main"
@@ -40,6 +50,14 @@ python_version = "3.11"
 strict = true
 mypy_path = "src"
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "llama_cpp.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "psutil.*"
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

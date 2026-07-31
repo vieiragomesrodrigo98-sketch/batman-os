@@ -26,6 +26,11 @@ _PRECOS_USD_POR_MILHAO: dict[str, dict[str, float]] = {
     "claude-haiku-4-5": {"input": 1.0, "output": 5.0, "cache_write": 1.25, "cache_read": 0.1},
     "claude-sonnet-5": {"input": 3.0, "output": 15.0, "cache_write": 3.75, "cache_read": 0.3},
     "claude-opus-4": {"input": 5.0, "output": 25.0, "cache_write": 6.25, "cache_read": 0.5},
+    # Modelos locais (prefixo "local-", ex.: `local_gateway.MODELO_LOCAL`):
+    # custo de API zero POR DESIGN. Sem esta entrada, `_preco_para` cairia
+    # em `_PRECO_PADRAO` (preço de Haiku) e o teto diário seria consumido
+    # por chamadas que não custam nada.
+    "local-": {"input": 0.0, "output": 0.0, "cache_write": 0.0, "cache_read": 0.0},
 }
 _PRECO_PADRAO = _PRECOS_USD_POR_MILHAO["claude-haiku-4-5"]
 

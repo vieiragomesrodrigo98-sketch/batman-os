@@ -9,7 +9,7 @@
     "remediacao": "Comparar user_id com current_user.id e retornar 403 se diferente, ou exigir require_admin para endpoints que cruzam usuários. DoD: nenhum endpoint aceita user_id em Query sem ownership check ou require_admin.",
     "modo": "ausencia",
     "pattern": "require_admin|is_admin\\s*\\(|role\\s*==\\s*['\"]admin|current_user\\.id\\s*[!=]=\\s*user_id|user_id\\s*[!=]=\\s*current_user\\.id",
-    "pattern_escopo": "(?=[\\s\\S]*?user_id\\s*:\\s*(?:Optional\\[)?(?:int|str))(?=[\\s\\S]*?(?:=\\s*Query\\s*\\(|Query\\[))",
+    "pattern_escopo": "\\buser_id[^\\S\\n]*:[^=\\n]*=[^\\S\\n]*Query[^\\S\\n]*\\(",
     "ignore_case": true
   },
   "descoberta": {

@@ -1,7 +1,7 @@
 """Configuração do LLM Gateway (Milestone 6 desta construção).
 
 `Settings.carregar()` é o ÚNICO ponto que lê variável de ambiente para
-estas 5 chaves — o restante do pacote `llm/` recebe uma instância de
+estas chaves — o restante do pacote `llm/` recebe uma instância de
 `Settings` já construída, nunca `os.getenv()` espalhado (mesmo padrão de
 `radar-preditivo/config/settings.py`, sem trazer a dependência extra de
 `pydantic-settings` para um caso desse tamanho).
@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -26,6 +27,14 @@ class Settings(BaseModel):
     llm_max_tokens: int = Field(default=1024, gt=0)
     llm_timeout: float = Field(default=30.0, gt=0)
     max_daily_llm_cost_usd: float = Field(default=10.0, gt=0)
+    # LLM local (extra `local-llm`) — `"anthropic"` preserva o comportamento
+    # anterior; ver `fallback_gateway.construir_llm_gateway` para as
+    # composições `local-first`/`local-shadow`/`local-only`.
+    llm_provider: Literal["anthropic", "local-first", "local-shadow", "local-only"] = "anthropic"
+    llm_local_gguf_path: str = ""
+    llm_local_timeout: float = Field(default=60.0, gt=0)
+    llm_local_min_confidence: float = Field(default=0.75, ge=0.0, le=1.0)
+    llm_local_n_threads: int = Field(default=4, gt=0)
 
     @classmethod
     def carregar(
@@ -65,4 +74,14 @@ class Settings(BaseModel):
             kwargs["llm_timeout"] = fonte["LLM_TIMEOUT"]
         if "MAX_DAILY_LLM_COST_USD" in fonte:
             kwargs["max_daily_llm_cost_usd"] = fonte["MAX_DAILY_LLM_COST_USD"]
+        if "LLM_PROVIDER" in fonte:
+            kwargs["llm_provider"] = fonte["LLM_PROVIDER"]
+        if "LLM_LOCAL_GGUF_PATH" in fonte:
+            kwargs["llm_local_gguf_path"] = fonte["LLM_LOCAL_GGUF_PATH"]
+        if "LLM_LOCAL_TIMEOUT" in fonte:
+            kwargs["llm_local_timeout"] = fonte["LLM_LOCAL_TIMEOUT"]
+        if "LLM_LOCAL_MIN_CONFIDENCE" in fonte:
+            kwargs["llm_local_min_confidence"] = fonte["LLM_LOCAL_MIN_CONFIDENCE"]
+        if "LLM_LOCAL_N_THREADS" in fonte:
+            kwargs["llm_local_n_threads"] = fonte["LLM_LOCAL_N_THREADS"]
         return cls(**kwargs)

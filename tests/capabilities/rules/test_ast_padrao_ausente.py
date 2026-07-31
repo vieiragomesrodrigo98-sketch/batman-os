@@ -265,6 +265,95 @@ class TestCampoEstrutural:
         assert saida["achados"] == []
 
 
+class TestCamposEstruturaisECondicional:
+    """Paridade com o EH-006 ENDURECIDO do legado (commit `2b803eca`):
+    qualquer flag de privilégio da lista dispara, e `is_active` só conta
+    quando o nome do schema indica um principal (User/Account/...) — em
+    recurso (Coupon/Plan/Faq) é "recurso habilitado", uso legítimo (S158)."""
+
+    @staticmethod
+    def _regra_eh006() -> dict[str, object]:
+        return _regra(
+            seletor_include=r"(Update|Patch|Modify|Edit)$",
+            corpo_padrao="ignorado",
+            campos_estruturais=[
+                "role",
+                "is_admin",
+                "is_staff",
+                "is_superuser",
+                "is_super_admin",
+                "is_propagador",
+            ],
+            campo_estrutural_condicional="is_active",
+            seletor_condicional="(?i)(User|Account|Member|Profile|Perfil|Conta|Usuario)",
+        )
+
+    def test_dispara_para_is_admin_em_schema_de_update(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class FooUpdate:\n    is_admin: bool\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_dispara_para_is_propagador(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class FooUpdate:\n    is_propagador: bool\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_role_continua_disparando(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class FooUpdate:\n    role: str\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_is_active_dispara_em_schema_de_principal(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class UserUpdate:\n    is_active: bool\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_is_active_nao_dispara_em_schema_de_recurso(self) -> None:
+        # o falso positivo real que motivou o refino no legado:
+        # FaqUpdate/CouponUpdate/PlanUpdate.is_active (S158).
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class CouponUpdate:\n    is_active: bool\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_nao_dispara_para_campo_comum(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class UserUpdate:\n    nome: str\n    email: str\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_nao_dispara_fora_de_schema_de_update(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class UserResponse:\n    is_admin: bool\n",
+            "regra": self._regra_eh006(),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+
 class TestSeletorFunctionDef:
     def test_dispara_quando_decorator_bate_e_corpo_sem_padrao(self) -> None:
         entrada = {

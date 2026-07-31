@@ -47,6 +47,24 @@ class TestCarregarEspecificacoesAst:
         for item in specs:
             assert item["descoberta"]["tipo"] in _TIPOS_DESCOBERTA_VALIDOS
 
+    def test_eh006_cobre_flags_de_privilegio_e_is_active_condicional(self) -> None:
+        # paridade com o legado endurecido (commit `2b803eca`): antes só
+        # `role`; agora todas as flags de privilégio + is_active condicional
+        # a schema de principal.
+        specs = carregar_especificacoes_ast()
+
+        [eh006] = [item["regra"] for item in specs if item["regra"].codigo == "EH-006"]
+        assert set(eh006.campos_estruturais) == {
+            "role",
+            "is_admin",
+            "is_staff",
+            "is_superuser",
+            "is_super_admin",
+            "is_propagador",
+        }
+        assert eh006.campo_estrutural_condicional == "is_active"
+        assert eh006.seletor_condicional == "(?i)(User|Account|Member|Profile|Perfil|Conta|Usuario)"
+
     def test_sem_codigos_duplicados(self) -> None:
         specs = carregar_especificacoes_ast()
 

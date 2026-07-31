@@ -16,7 +16,6 @@ teste deste módulo faz uma chamada de rede real."""
 
 from __future__ import annotations
 
-import copy
 from typing import Any, Protocol
 
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
@@ -24,18 +23,11 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 from batman_os.kernel.decision_engine import LlmGatewayIndisponivel, RespostaLlmCandidata
 from batman_os.kernel.planning_engine import DecisionPoint
 from batman_os.llm.cost_tracker import CostTracker
+from batman_os.llm.prompts import SYSTEM_PROMPT, mensagem_usuario
+from batman_os.llm.schema_utils import flatten_refs
 from batman_os.llm.settings import Settings
 
 _NOME_DA_TOOL = "resolver_decision_point"
-
-_SYSTEM_PROMPT = (
-    "Voce e o LLM Gateway do Batman OS, o ultimo recurso na hierarquia "
-    "Knowledge First -> Human Last -> LLM Last (Vol.I Principio 6). Voce "
-    "resolve um DecisionPoint apenas quando nem uma regra ativa nem um "
-    "humano puderam resolve-lo a tempo. Escolha exatamente uma das opcoes "
-    "fornecidas, nunca invente uma opcao nova, e retorne sua confianca "
-    "real (0.0 a 1.0) e o raciocinio que te levou a escolha."
-)
 
 
 class _UsoAnthropicComoAssinatura(Protocol):
@@ -76,40 +68,6 @@ def _e_transitorio(exc: BaseException) -> bool:
     return not _e_erro_de_limite_de_conta(exc)
 
 
-def _flatten_refs(schema: dict[str, Any]) -> dict[str, Any]:
-    """Resolve `$ref` inline — Pydantic gera `$defs` para tipos aninhados
-    (ex.: `DecisionOption` dentro de `RespostaLlmCandidata`); a Anthropic
-    aceita `$defs`, mas resolver explicitamente evita edge cases (lógica
-    genérica, sem acoplamento a domínio — adaptada quase literal do
-    radar-preditivo)."""
-    schema = copy.deepcopy(schema)
-    defs = schema.pop("$defs", {})
-    if not defs:
-        return schema
-
-    def resolve(obj: Any) -> Any:
-        if isinstance(obj, dict):
-            if "$ref" in obj:
-                nome_ref = obj["$ref"].rsplit("/", 1)[-1]
-                return resolve(defs.get(nome_ref, obj))
-            return {k: resolve(v) for k, v in obj.items()}
-        if isinstance(obj, list):
-            return [resolve(i) for i in obj]
-        return obj
-
-    resolved: dict[str, Any] = resolve(schema)
-    return resolved
-
-
-def _mensagem_usuario(ponto: DecisionPoint) -> str:
-    opcoes = "\n".join(f"- {opcao.id}: {opcao.descricao}" for opcao in ponto.opcoes)
-    return (
-        f"Pergunta: {ponto.pergunta}\n\n"
-        f"Opcoes disponiveis:\n{opcoes}\n\n"
-        f"Contexto adicional: {ponto.dados}"
-    )
-
-
 class AnthropicLlmGateway:
     """Vol.II Cap.8, secao 8.5 / Vol.III Cap.12 — satisfaz `LlmGateway`
     (`kernel/decision_engine.py`)."""
@@ -145,7 +103,7 @@ class AnthropicLlmGateway:
                 f"Teto diario de custo LLM atingido (${self._settings.max_daily_llm_cost_usd})"
             )
 
-        schema = _flatten_refs(RespostaLlmCandidata.model_json_schema())
+        schema = flatten_refs(RespostaLlmCandidata.model_json_schema())
 
         def _chamar() -> _RespostaAnthropicComoAssinatura:
             return self._client.messages.create(
@@ -154,11 +112,11 @@ class AnthropicLlmGateway:
                 system=[
                     {
                         "type": "text",
-                        "text": _SYSTEM_PROMPT,
+                        "text": SYSTEM_PROMPT,
                         "cache_control": {"type": "ephemeral"},
                     }
                 ],
-                messages=[{"role": "user", "content": _mensagem_usuario(ponto)}],
+                messages=[{"role": "user", "content": mensagem_usuario(ponto)}],
                 tools=[
                     {
                         "name": _NOME_DA_TOOL,

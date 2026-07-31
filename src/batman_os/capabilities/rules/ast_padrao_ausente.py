@@ -69,6 +69,15 @@ presente, não ausente):
   `get_source_segment` não é preciso o bastante (precisa achar um campo
   declarado de verdade, não uma menção em comentário/docstring). Ignora
   `corpo_padrao`/`corpo_escopo`/`inverte_disparo` quando setado.
+- `campos_estruturais` (paridade com o EH-006 endurecido pós-migração,
+  commit legado `2b803eca`) — mesma semântica de `campo_estrutural`, mas
+  QUALQUER campo da lista declarado dispara (role/is_admin/is_staff/
+  is_superuser/is_super_admin/is_propagador). `campo_estrutural_condicional`
+  + `seletor_condicional` cobrem o caso `is_active`, que só é privilégio
+  quando o NOME da classe indica um principal (regex `seletor_condicional`
+  sobre `node.name`; case-insensitivity via `(?i)` inline no spec, já que o
+  seletor principal do EH-006 é case-sensitive) — em recurso (coupon, plan,
+  faq) `is_active` significa "recurso habilitado", uso legítimo (S158).
 """
 
 from __future__ import annotations
@@ -118,6 +127,9 @@ class RegraAstSpec(BaseModel):
     corpo_escopo: str | None = None
     inverte_disparo: bool = False
     campo_estrutural: str | None = None
+    campos_estruturais: list[str] = Field(default_factory=list)
+    campo_estrutural_condicional: str | None = None
+    seletor_condicional: str | None = None
     metodos_call: list[str] = Field(default_factory=list)
     janela_linhas: int = 10
     precondicao_arquivo: str | None = None
@@ -218,6 +230,12 @@ def _avaliar_classdef(tree: ast.AST, texto: str, regra: RegraAstSpec) -> bool:
     bases_exclude_rx = (
         re.compile(regra.seletor_bases_exclude, flags) if regra.seletor_bases_exclude else None
     )
+    condicional_rx = (
+        re.compile(regra.seletor_condicional, flags) if regra.seletor_condicional else None
+    )
+    modo_estrutural = bool(
+        regra.campo_estrutural or regra.campos_estruturais or regra.campo_estrutural_condicional
+    )
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.ClassDef):
@@ -230,11 +248,23 @@ def _avaliar_classdef(tree: ast.AST, texto: str, regra: RegraAstSpec) -> bool:
             bases_exclude_rx.search(nome) for nome in _nomes_das_bases(node)
         ):
             continue
-        if regra.campo_estrutural:
+        if modo_estrutural:
             # inverso dos demais modos: aqui disparo = campo INDESEJADO
             # presente (ex.: EH-006 — campo "role" editavel num schema de
             # update é o proprio risco, nao a ausencia de protecao).
-            if _tem_campo_estrutural(node, regra.campo_estrutural):
+            campos = list(regra.campos_estruturais)
+            if regra.campo_estrutural:
+                campos.append(regra.campo_estrutural)
+            # campo condicional (EH-006 endurecido: is_active) so conta
+            # quando o nome da classe casa `seletor_condicional` (schema
+            # de principal — User/Account/... — nao de recurso).
+            if (
+                regra.campo_estrutural_condicional
+                and condicional_rx is not None
+                and condicional_rx.search(node.name)
+            ):
+                campos.append(regra.campo_estrutural_condicional)
+            if any(_tem_campo_estrutural(node, campo) for campo in campos):
                 return True
             continue
         corpo = ast.get_source_segment(texto, node) or ""

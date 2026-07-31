@@ -10,3 +10,4 @@ dist/
 .env
 .batman-os/
 data/llm_cost*.jsonl
+data/llm_local/
