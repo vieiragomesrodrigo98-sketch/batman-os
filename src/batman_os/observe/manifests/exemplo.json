@@ -1,0 +1,169 @@
+{
+  "_nota": "Manifesto funcional do exemplo.test (monitor sintetico). Convertido de docs/observe/seed_manifest_exemplo.json para o formato FeatureManifest tipado. As credenciais NAO ficam aqui: auth.env_* apontam para variaveis de ambiente (cofre/env). ATUALIZAR sempre que o site mudar (a salvaguarda de drift cobra isso).",
+  "tenant_id": "exemplo",
+  "base_url": "https://exemplo.test",
+  "revisado_em": "2026-07-22",
+  "site_version": null,
+  "auth": {
+    "tipo": "login-cpf",
+    "endpoint": "/api/auth/login",
+    "campo_credencial": "cpf",
+    "campo_senha": "password",
+    "token_em": "access_token",
+    "env_credencial": "BATMAN_MONITOR_EXEMPLO_CPF",
+    "env_senha": "BATMAN_MONITOR_EXEMPLO_SENHA",
+    "env_credencial_prime": "BATMAN_MONITOR_EXEMPLO_PRIME_CPF",
+    "env_senha_prime": "BATMAN_MONITOR_EXEMPLO_PRIME_SENHA",
+    "timeout_s": 8
+  },
+  "features": [
+    {
+      "id": "syn-api-health",
+      "descricao": "API viva",
+      "metodo": "GET",
+      "caminho": "/api/health",
+      "espera_status": 200,
+      "espera_conteudo": ".status == \"ok\" && .service exists && .timestamp exists",
+      "auth": "none",
+      "severidade_se_cair": "critical",
+      "timeout_s": 5
+    },
+    {
+      "id": "syn-web-login-page",
+      "descricao": "Pagina de login carrega",
+      "metodo": "GET",
+      "caminho": "/login",
+      "espera_status": 200,
+      "espera_conteudo": "contains:<!doctype html && contains:pt-BR",
+      "auth": "none",
+      "severidade_se_cair": "critical",
+      "timeout_s": 8
+    },
+    {
+      "id": "syn-auth-login",
+      "descricao": "Login do usuario funciona (gera sessao)",
+      "metodo": "POST",
+      "caminho": "/api/auth/login",
+      "espera_status": 200,
+      "espera_conteudo": ".access_token is nonempty && .role exists",
+      "auth": "none",
+      "severidade_se_cair": "critical",
+      "timeout_s": 8,
+      "corpo": {"cpf": "<cpf>", "password": "<senha>"},
+      "obs": "corpo montado da credencial sintetica (env); credencial ausente => check nao roda (config, nao outage). rate_limit_login 5/min."
+    },
+    {
+      "id": "syn-recurso-a-list",
+      "descricao": "Lista de sinais/area-c",
+      "metodo": "GET",
+      "caminho": "/api/recurso-a",
+      "espera_status": 200,
+      "espera_conteudo": ". is array && [*].asset_ticker exists && [*].score_total is number && [*].trilha exists",
+      "auth": "sessao",
+      "severidade_se_cair": "critical",
+      "timeout_s": 8,
+      "obs": "array vazio e valido (usuario sem sinais). NAO checar entry_price — plan gating mascara campos."
+    },
+    {
+      "id": "syn-recurso-b",
+      "descricao": "Top oportunidades do Home",
+      "metodo": "GET",
+      "caminho": "/api/recurso-b",
+      "espera_status": 200,
+      "espera_conteudo": ". is array && [*].asset_ticker exists && [*].score_total exists",
+      "auth": "sessao",
+      "severidade_se_cair": "warning",
+      "timeout_s": 8
+    },
+    {
+      "id": "syn-recurso-d-chat",
+      "descricao": "Assistente Assistente responde",
+      "metodo": "POST",
+      "caminho": "/api/recurso-d/message",
+      "espera_status": 200,
+      "espera_conteudo": ".reply is nonempty && .session_id exists",
+      "auth": "sessao",
+      "severidade_se_cair": "critical",
+      "timeout_s": 60,
+      "corpo": {"session_id": "<uuid4>", "message": "ping de monitor sintetico"},
+      "status_tolerados": [429],
+      "obs": "corpo exige session_id uuidv4 + message 1-2000 chars. quota diaria por plano (429) tolerada como nao-outage. 503 (LLM caiu) permanece alerta CRITICAL. timeout 60s: Assistente LOCAL faz inferencia em CPU 2vCPU (threads=1 p/ nao starvar a API), resposta cheia ~21s morna/37s fria — enquanto o streaming SSE nao entra, 60s cobre sem falso-positivo. Rebaixar quando /chat/stream permitir checar 1o-byte."
+    },
+    {
+      "id": "syn-recurso-h",
+      "descricao": "Regime de mercado",
+      "metodo": "GET",
+      "caminho": "/api/recurso-h",
+      "espera_status": 200,
+      "espera_conteudo": ".regime is string && .confidence is number && .sentimento in [\"favoravel\", \"cauteloso\", \"alerta\"]",
+      "auth": "sessao",
+      "severidade_se_cair": "warning",
+      "timeout_s": 8
+    },
+    {
+      "id": "syn-planos-catalogo",
+      "descricao": "Catalogo de planos (billing visivel)",
+      "metodo": "GET",
+      "caminho": "/api/recurso-e",
+      "espera_status": 200,
+      "espera_conteudo": ". is nonempty && [0].name is string && [0].price_brl is number",
+      "auth": "none",
+      "severidade_se_cair": "warning",
+      "timeout_s": 8
+    },
+    {
+      "id": "syn-recurso-e-me",
+      "descricao": "Assinatura do usuario",
+      "metodo": "GET",
+      "caminho": "/api/recurso-e/me",
+      "espera_status": 200,
+      "espera_conteudo": null,
+      "auth": "sessao",
+      "severidade_se_cair": "info",
+      "timeout_s": 8,
+      "obs": "corpo pode ser objeto (.status,.plan_id) ou null — sem asercao de conteudo, so status 200."
+    },
+    {
+      "id": "syn-recurso-c-exposicao",
+      "descricao": "Carteira declarada (Prime)",
+      "metodo": "GET",
+      "caminho": "/api/recurso-c",
+      "espera_status": 200,
+      "espera_conteudo": ".valor_total exists && .por_setor is array && .disclaimer exists",
+      "auth": "sessao-prime",
+      "severidade_se_cair": "info",
+      "timeout_s": 8,
+      "status_tolerados": [403, 503],
+      "obs": "com Prime: valor_total/por_setor/disclaimer. 403 (nao-Prime) e 503 (sem chave) NAO sao outage."
+    },
+    {
+      "id": "syn-recurso-f",
+      "descricao": "Newsletter do dia",
+      "metodo": "GET",
+      "caminho": "/api/recurso-f",
+      "espera_status": 200,
+      "espera_conteudo": null,
+      "auth": "sessao",
+      "severidade_se_cair": "info",
+      "timeout_s": 8
+    },
+    {
+      "id": "syn-recurso-g",
+      "descricao": "Calendario economico",
+      "metodo": "GET",
+      "caminho": "/api/recurso-g",
+      "espera_status": 200,
+      "espera_conteudo": ". is array",
+      "auth": "none",
+      "severidade_se_cair": "info",
+      "timeout_s": 8
+    }
+  ],
+  "drift": {
+    "ciclos_para_confirmar_removida": 3,
+    "rotas_ignoradas": [
+      "^/api/admin/(pipeline|scheduler|export|newsletter|motor-config|walkforward|metricas|deploy)",
+      "^/api/metrics/"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "_nota": "Manifesto-semente do monitor funcional (docs/observe/MONITOR_FUNCIONAL.md). Descoberto do codigo real do radar-preditivo em 2026-07-22. Vira FeatureManifest tipado na implementacao. ATUALIZAR sempre que o site mudar (a salvaguarda de drift do monitor cobra isso).",
+  "tenant_id": "exemplo",
+  "base_url": "https://exemplo.test",
+  "revisado_em": "2026-07-22",
+  "site_version": null,
+  "auth": {
+    "tipo": "login-cpf",
+    "endpoint": "/api/auth/login",
+    "corpo": {"cpf": "<somente-digitos>", "password": "<segredo-fora-do-repo>"},
+    "token_em": "corpo.access_token (tambem Set-Cookie access_token)",
+    "reuso": "Authorization: Bearer <access_token>",
+    "conta_monitor": "viewer dedicada; NAO admin (admin forca 2FA e impede login nao-interativo); reCAPTCHA desabilitado nesse ambiente; Prime se for cobrir carteira",
+    "rate_limit_login": "5/min — espacar",
+    "segredo": "CPF+senha em cofre/env, nunca no repo"
+  },
+  "features": [
+    {"id": "syn-api-health", "descricao": "API viva", "metodo": "GET", "caminho": "/api/health", "espera_status": 200, "espera_conteudo": ".status == 'ok' e .service e .timestamp presentes", "auth": "none", "severidade_se_cair": "CRITICAL", "timeout_s": 5},
+    {"id": "syn-web-login-page", "descricao": "Pagina de login carrega", "metodo": "GET", "caminho": "/login", "espera_status": 200, "espera_conteudo": "Content-Type text/html; corpo contem 'Radar Preditivo' e botao 'Entrar'", "auth": "none", "severidade_se_cair": "CRITICAL", "timeout_s": 8},
+    {"id": "syn-auth-login", "descricao": "Login do usuario funciona (gera sessao)", "metodo": "POST", "caminho": "/api/auth/login", "espera_status": 200, "espera_conteudo": ".access_token nao-vazio, .role presente; Set-Cookie access_token=", "auth": "none", "severidade_se_cair": "CRITICAL", "timeout_s": 8},
+    {"id": "syn-recurso-a-list", "descricao": "Lista de sinais/area-c", "metodo": "GET", "caminho": "/api/recurso-a", "espera_status": 200, "espera_conteudo": "corpo e array; se nao-vazio, [0].asset_ticker string e [0].score_total numero e [0].trilha presente (NAO checar entry_price — plan gating mascara)", "auth": "sessao", "severidade_se_cair": "CRITICAL", "timeout_s": 8},
+    {"id": "syn-recurso-b", "descricao": "Top oportunidades do Home", "metodo": "GET", "caminho": "/api/recurso-b", "espera_status": 200, "espera_conteudo": "array de sinais (asset_ticker/score_total presentes)", "auth": "sessao", "severidade_se_cair": "WARNING", "timeout_s": 8},
+    {"id": "syn-recurso-d-chat", "descricao": "Assistente Assistente responde", "metodo": "POST", "caminho": "/api/recurso-d/message", "espera_status": 200, "espera_conteudo": ".reply string nao-vazia e .session_id ecoado (503 = LLM caiu, prova entrega real)", "auth": "sessao", "severidade_se_cair": "CRITICAL", "timeout_s": 30, "obs": "corpo exige session_id uuidv4 + message 1-2000 chars; quota diaria por plano (429) — espacar"},
+    {"id": "syn-recurso-h", "descricao": "Regime de mercado", "metodo": "GET", "caminho": "/api/recurso-h", "espera_status": 200, "espera_conteudo": ".regime string, .confidence numero, .sentimento em {favoravel,cauteloso,alerta}", "auth": "sessao", "severidade_se_cair": "WARNING", "timeout_s": 8},
+    {"id": "syn-planos-catalogo", "descricao": "Catalogo de planos (billing visivel)", "metodo": "GET", "caminho": "/api/recurso-e", "espera_status": 200, "espera_conteudo": "array nao-vazio; [0].name string e [0].price_brl numero", "auth": "none", "severidade_se_cair": "WARNING", "timeout_s": 8},
+    {"id": "syn-recurso-e-me", "descricao": "Assinatura do usuario", "metodo": "GET", "caminho": "/api/recurso-e/me", "espera_status": 200, "espera_conteudo": "objeto (.status,.plan_id) ou null", "auth": "sessao", "severidade_se_cair": "INFO", "timeout_s": 8},
+    {"id": "syn-recurso-c-exposicao", "descricao": "Carteira declarada (Prime)", "metodo": "GET", "caminho": "/api/recurso-c", "espera_status": 200, "espera_conteudo": "com Prime: .valor_total, .por_setor array, .disclaimer; aceitar 403 (nao-Prime) e 503 (sem chave) como NAO-outage", "auth": "sessao-prime", "severidade_se_cair": "INFO", "timeout_s": 8},
+    {"id": "syn-recurso-f", "descricao": "Newsletter do dia", "metodo": "GET", "caminho": "/api/recurso-f", "espera_status": 200, "espera_conteudo": "conteudo da newsletter", "auth": "sessao", "severidade_se_cair": "INFO", "timeout_s": 8},
+    {"id": "syn-recurso-g", "descricao": "Calendario economico", "metodo": "GET", "caminho": "/api/recurso-g", "espera_status": 200, "espera_conteudo": "array de eventos", "auth": "none", "severidade_se_cair": "INFO", "timeout_s": 8}
+  ],
+  "drift_check": {
+    "fonte_rotas": "api.main:app.routes (rodar em staging/local — /openapi.json e /docs DESLIGADOS em prod). Alternativa: grep dos decoradores @router.* + prefixos = 206 endpoints em 43 routers",
+    "regra_removida": "check que da 404/410 consistente por N ciclos => MANIFEST_DRIFT (nao outage)",
+    "regra_nova": "rota de usuario presente no app e ausente do manifesto => MANIFEST_DRIFT",
+    "rotas_borda_bloqueadas_ignorar": ["^/api/admin/(pipeline|scheduler|export|newsletter|motor-config|walkforward|metricas|deploy)", "^/api/metrics/"]
+  }
+}
