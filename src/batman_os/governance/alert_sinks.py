@@ -117,7 +117,7 @@ class _TransporteUrllib:
 # alerta e o que ele E (feature/status/porta), nao quanto tempo levou.
 _EVIDENCIA_VOLATIL = re.compile(
     r"^\s*(lat[êe]ncia|latency|dura[çc][ãa]o|tempo|rtt|p50|p95|uptime|"
-    r"observed_at|timestamp|\bts\b|corpo\[|ciclo|batimento)",
+    r"observed_at|timestamp|\bts\b|corpo\[|ciclo|batimento|idade|contagem)",
     re.I,
 )
 
@@ -143,6 +143,10 @@ def _assinatura(alert: GovernanceAlert) -> str:
 CANAL_POR_FONTE: dict[FonteAlerta, str] = {
     FonteAlerta.INFRA_SATURATION: "infra",
     FonteAlerta.SERVICE_DOWN: "infra",
+    FonteAlerta.DATA_PIPELINE_ERROR: "infra",
+    FonteAlerta.DATA_SOURCE_STALE: "infra",
+    FonteAlerta.DATA_SOURCE_MISSING: "infra",
+    FonteAlerta.DATA_ROW_COUNT_DROP: "infra",
     FonteAlerta.ENDPOINT_DOWN: "performance",
     FonteAlerta.ENDPOINT_LATENCY: "performance",
     FonteAlerta.ENDPOINT_ERROR_RATE: "performance",

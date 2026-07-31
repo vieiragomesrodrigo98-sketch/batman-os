@@ -20,6 +20,12 @@ from batman_os.foundation.types import TenantId
 from batman_os.governance.alert_sinks import DiscordAlertSink
 from batman_os.governance.governance_engine import GovernanceAlert, GovernanceEngine
 from batman_os.governance.inbox import AchadoInboxEntrada, mapear_severidade_alerta
+from batman_os.observe.data_manifest import (
+    DataSentinelManifest,
+    caminho_manifesto_dados,
+    carregar_manifesto_dados,
+)
+from batman_os.observe.data_sentinela import DataSentinelMonitor
 from batman_os.observe.feature_manifest import (
     FeatureManifest,
     caminho_manifesto,
@@ -74,6 +80,38 @@ def sink_do_ambiente(tenant_id: TenantId) -> DiscordAlertSink | None:
         caminho_estado=caminho_estado,
         janela_repeticao_s=janela,
     )
+
+
+def resolver_manifest_dados_path(tenant_id: str, manifest_arg: str | None) -> Path:
+    """Mesmo espírito de `resolver_manifest_path` para o manifesto de
+    dados (capability `dados-sentinela`): `--dados-manifest` explícito
+    vence; senão usa `manifests/<tenant>_dados.json`."""
+    if manifest_arg is not None:
+        return Path(manifest_arg)
+    return caminho_manifesto_dados(tenant_id)
+
+
+def executar_dados_sentinela(
+    manifest_path: str | Path,
+    *,
+    root_dir_override: str | None = None,
+    governance: GovernanceEngine | None = None,
+) -> tuple[DataSentinelManifest, list[GovernanceAlert]]:
+    """Carrega o manifesto de dados e roda um ciclo (`DataSentinelMonitor.
+    run_once`). `root_dir_override` sobrescreve `DataSentinelManifest.
+    root_dir` sem precisar editar o manifesto (útil em teste e para apontar
+    o mesmo manifesto para staging/prod via `--dados-root`). Sem
+    `governance`, monta um `GovernanceEngine` com o sink do ambiente
+    (Discord por tenant/canal, mesmo `sink_do_ambiente` do `batman monitor`
+    HTTP — reusa o MESMO roteamento/dedupe, nenhum mecanismo paralelo)."""
+    manifest = carregar_manifesto_dados(manifest_path)
+    if root_dir_override is not None:
+        manifest = manifest.model_copy(update={"root_dir": root_dir_override})
+    if governance is None:
+        governance = GovernanceEngine(sink=sink_do_ambiente(manifest.tenant_id))
+    monitor = DataSentinelMonitor(governance)
+    alertas = monitor.run_once(manifest)
+    return manifest, alertas
 
 
 def alertas_para_inbox(alertas: list[GovernanceAlert]) -> list[AchadoInboxEntrada]:

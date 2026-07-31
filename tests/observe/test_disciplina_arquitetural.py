@@ -13,6 +13,8 @@ from types import ModuleType
 import batman_os.observe as observe_pkg
 from batman_os.observe import (
     collectors,
+    data_manifest,
+    data_sentinela,
     feature_manifest,
     functional_monitor,
     snapshot,
@@ -41,6 +43,8 @@ class TestObserveNaoImportaKernel:
             watcher,
             feature_manifest,
             functional_monitor,
+            data_manifest,
+            data_sentinela,
             observe_pkg,
         )
         for modulo in modulos:
@@ -57,4 +61,6 @@ class TestObserveNaoImportaKernel:
             "watcher",
             "feature_manifest",
             "functional_monitor",
+            "data_manifest",
+            "data_sentinela",
         }

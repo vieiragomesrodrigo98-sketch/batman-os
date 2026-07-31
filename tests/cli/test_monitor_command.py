@@ -11,7 +11,9 @@ from urllib.parse import urlparse
 from batman_os.cli.batman import main
 from batman_os.cli.monitor_command import (
     alertas_para_inbox,
+    executar_dados_sentinela,
     executar_monitor,
+    resolver_manifest_dados_path,
     resolver_manifest_path,
 )
 from batman_os.foundation.types import Criticidade, Evidence, TenantId
@@ -22,6 +24,7 @@ from batman_os.governance.governance_engine import (
     SeveridadeAlerta,
 )
 from batman_os.governance.inbox import InboxStore, OrigemAchado
+from batman_os.observe.data_manifest import caminho_manifesto_dados
 from batman_os.observe.feature_manifest import caminho_manifesto
 from batman_os.observe.functional_monitor import RespostaSonda
 
@@ -83,6 +86,71 @@ class TestExecutarMonitor:
         assert resolver_manifest_path("acme", "/tmp/x.json") == Path("/tmp/x.json")
 
 
+def _escrever_manifesto_dados(tmp_path: Path, **overrides: object) -> Path:
+    dados: dict[str, object] = {
+        "tenant_id": "acme",
+        "root_dir": str(tmp_path),
+        "revisado_em": "2026-07-30",
+        "fontes_jsonl": [],
+        "fontes_idade": [],
+    }
+    dados.update(overrides)
+    arq = tmp_path / "acme_dados.json"
+    arq.write_text(json.dumps(dados), encoding="utf-8")
+    return arq
+
+
+class TestExecutarDadosSentinela:
+    """`executar_dados_sentinela` — orquestrador da capability
+    `dados-sentinela` (Onda 1, Plano Cobertura Total, S162), mesmo padrão
+    de `executar_monitor` para o par HTTP."""
+
+    def test_roda_um_ciclo_e_devolve_manifest_e_alertas(self, tmp_path: Path) -> None:
+        (tmp_path / "data").mkdir()
+        (tmp_path / "data" / "update_log.jsonl").write_text(
+            json.dumps({"run_at": "2026-07-30T10:00:00+00:00", "status": "error"}) + "\n",
+            encoding="utf-8",
+        )
+        arq = _escrever_manifesto_dados(
+            tmp_path,
+            fontes_jsonl=[
+                {"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}
+            ],
+        )
+        manifest, alertas = executar_dados_sentinela(arq, governance=GovernanceEngine())
+        assert manifest.tenant_id == TenantId("acme")
+        assert len(alertas) == 1
+        assert alertas[0].source == FonteAlerta.DATA_PIPELINE_ERROR
+
+    def test_root_dir_override_sobrescreve_o_do_manifesto(self, tmp_path: Path) -> None:
+        outro_root = tmp_path / "outro"
+        (outro_root / "data").mkdir(parents=True)
+        (outro_root / "data" / "update_log.jsonl").write_text(
+            json.dumps({"run_at": "2026-07-30T10:00:00+00:00", "status": "error"}) + "\n",
+            encoding="utf-8",
+        )
+        # manifesto aponta para um root_dir que nao existe -- so funciona
+        # por causa do override
+        arq = _escrever_manifesto_dados(
+            tmp_path,
+            root_dir=str(tmp_path / "nao-existe"),
+            fontes_jsonl=[
+                {"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}
+            ],
+        )
+        manifest, alertas = executar_dados_sentinela(
+            arq, root_dir_override=str(outro_root), governance=GovernanceEngine()
+        )
+        assert manifest.root_dir == str(outro_root)
+        assert len(alertas) == 1
+
+    def test_resolver_manifest_dados_path_default_e_explicito(self) -> None:
+        assert resolver_manifest_dados_path("exemplo", None) == caminho_manifesto_dados(
+            "exemplo"
+        )
+        assert resolver_manifest_dados_path("acme", "/tmp/x.json") == Path("/tmp/x.json")
+
+
 class TestWiringCli:
     def test_main_monitor_roda_ciclo_sem_rede(self, tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
         # todas as features desabilitadas => run_once nao sonda nada (zero rede)
@@ -112,6 +180,72 @@ class TestWiringCli:
             assert exc.code != 0
         else:
             raise AssertionError("esperava SystemExit sem --tenant")
+
+    def test_sem_dados_manifest_dados_sentinela_nao_roda(self, tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
+        """Rollout pendente de autorização do DEV (deploy/batman-os-monitor.
+        service não passa --dados-manifest) — sem a flag, comportamento
+        idêntico ao `batman monitor` de antes desta capacidade."""
+        arq = _escrever_manifesto(
+            tmp_path,
+            [
+                {
+                    "id": "syn-off",
+                    "descricao": "desligado",
+                    "caminho": "/api/off",
+                    "severidade_se_cair": "critical",
+                    "timeout_s": 5,
+                    "habilitado": False,
+                }
+            ],
+        )
+        codigo = main(["monitor", "--tenant", "acme", "--manifest", str(arq)])
+        assert codigo == 0
+        saida = capsys.readouterr().out
+        assert "dados-sentinela" not in saida
+
+    def test_com_dados_manifest_dados_sentinela_roda_e_alerta(
+        self, tmp_path: Path, capsys  # type: ignore[no-untyped-def]
+    ) -> None:
+        arq_http = _escrever_manifesto(
+            tmp_path,
+            [
+                {
+                    "id": "syn-off",
+                    "descricao": "desligado",
+                    "caminho": "/api/off",
+                    "severidade_se_cair": "critical",
+                    "timeout_s": 5,
+                    "habilitado": False,
+                }
+            ],
+        )
+        (tmp_path / "data").mkdir()
+        (tmp_path / "data" / "update_log.jsonl").write_text(
+            json.dumps({"run_at": "2026-07-30T21:32:00+00:00", "status": "error"}) + "\n",
+            encoding="utf-8",
+        )
+        arq_dados = _escrever_manifesto_dados(
+            tmp_path,
+            fontes_jsonl=[
+                {"id": "pipeline", "descricao": "d", "arquivo": "data/update_log.jsonl"}
+            ],
+        )
+        codigo = main(
+            [
+                "monitor",
+                "--tenant",
+                "acme",
+                "--manifest",
+                str(arq_http),
+                "--dados-manifest",
+                str(arq_dados),
+            ]
+        )
+        assert codigo == 0
+        saida = capsys.readouterr().out
+        assert "dados-sentinela tenant=acme" in saida
+        assert "data-pipeline-error" in saida
+        assert "1 alerta(s)" in saida
 
 
 class TestAlertasParaInbox:

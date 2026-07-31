@@ -21,7 +21,9 @@ from batman_os.cli.inbox_command import (
 )
 from batman_os.cli.monitor_command import (
     alertas_para_inbox,
+    executar_dados_sentinela,
     executar_monitor,
+    resolver_manifest_dados_path,
     resolver_manifest_path,
 )
 from batman_os.cli.observe_command import observar_para_sempre
@@ -158,11 +160,26 @@ def _comando_monitor(args: argparse.Namespace) -> int:
     manifest_path = resolver_manifest_path(args.tenant, args.manifest)
     manifest, alertas = executar_monitor(manifest_path)
 
+    # dados-sentinela (Onda 1, Plano Cobertura Total, S162) -- OPT-IN via
+    # --dados-manifest: sem a flag, comportamento 100% identico ao anterior
+    # a esta capacidade (rollout na VPS fica pendente de autorizacao do
+    # DEV -- deploy/batman-os-monitor.service hoje nao passa essa flag).
+    if args.dados_manifest is not None:
+        dados_manifest_path = resolver_manifest_dados_path(args.tenant, args.dados_manifest)
+        dados_manifest, dados_alertas = executar_dados_sentinela(
+            dados_manifest_path, root_dir_override=args.dados_root
+        )
+        alertas = [*alertas, *dados_alertas]
+        tenant_dados = dados_manifest.tenant_id
+    else:
+        tenant_dados = None
+
     for alerta in alertas:
         origem = alerta.evidence[0].origem if alerta.evidence else "?"
         print(f"[{alerta.severity.value.upper()}] {alerta.source.value} {origem}")
 
-    print(f"\n{len(alertas)} alerta(s) — tenant={manifest.tenant_id}")
+    sufixo_dados = f" (+ dados-sentinela tenant={tenant_dados})" if tenant_dados else ""
+    print(f"\n{len(alertas)} alerta(s) — tenant={manifest.tenant_id}{sufixo_dados}")
 
     _ingerir_no_inbox_se_persistente(
         args.db,
@@ -286,6 +303,27 @@ def _montar_parser() -> argparse.ArgumentParser:
             "Caminho do SQLite do inbox (capacidade 'Inbox', fila persistente de "
             "achados); ausente (default) = nao grava no inbox, comportamento identico "
             "ao anterior a esta capacidade"
+        ),
+    )
+    monitor_parser.add_argument(
+        "--dados-manifest",
+        default=None,
+        help=(
+            "Ativa a capacidade 'dados-sentinela' (Onda 1, Plano Cobertura Total, "
+            "S162) neste ciclo: le o manifesto de fontes de dados (default: "
+            "manifests/<tenant>_dados.json ao lado de observe/data_manifest.py) e "
+            "roda DataSentinelMonitor.run_once junto com o monitor HTTP. Ausente "
+            "(default) = dados-sentinela NAO roda, comportamento identico ao anterior "
+            "a esta capacidade (rollout no cron da VPS pendente de autorizacao do DEV)"
+        ),
+    )
+    monitor_parser.add_argument(
+        "--dados-root",
+        default=None,
+        help=(
+            "Sobrescreve o 'root_dir' do manifesto de dados (onde os arquivos "
+            "declarados sao resolvidos) sem precisar editar o manifesto; ignorado "
+            "sem --dados-manifest"
         ),
     )
     monitor_parser.set_defaults(func=_comando_monitor)

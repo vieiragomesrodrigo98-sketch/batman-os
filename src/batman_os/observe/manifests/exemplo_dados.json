@@ -1,0 +1,36 @@
+{
+  "_nota": "Manifesto de dados do exemplo.test (capability dados-sentinela, Onda 1 do Plano Cobertura Total, S162). root_dir aponta para o deploy de PRODUCAO do radar-preditivo na VPS (/opt/exemplo/prod) -- SEM efeito nenhum ate o operador passar --dados-manifest para 'batman monitor' (rollout pendente de autorizacao do DEV; ver deploy/batman-os-monitor.service, que hoje NAO passa essa flag). Cadencias derivadas de infra/crontab.prod do radar-preditivo (comentarios abaixo citam a linha exata) -- nada inventado.",
+  "tenant_id": "exemplo",
+  "root_dir": "/opt/exemplo/prod",
+  "revisado_em": "2026-07-30",
+  "fontes_jsonl": [
+    {
+      "id": "pipeline-diario",
+      "descricao": "Pipeline diário completo (scripts/run_pipeline.py) -- a linha final de cada execução tem 'status' + 'steps' (dict passo->ok/skip/error). Incidente-prova (PIPE_FSIM_MTM01): 2026-07-29 21:32 UTC terminou status=error no passo fsim_mark_to_market e o monitor antigo (só HTTP) deu 0 alertas.",
+      "arquivo": "data/update_log.jsonl",
+      "campo_status": "status",
+      "valor_ok": "ok",
+      "campo_timestamp": "run_at",
+      "linhas_recentes_para_status": 100,
+      "queda_percentual_max": 20.0,
+      "minimo_linhas_para_checar_queda": 5,
+      "severidade_erro": "critical",
+      "severidade_queda": "warning",
+      "habilitado": true,
+      "dias_uteis_apenas_para_queda": true,
+      "_cadencia": "infra/crontab.prod: '30 21 * * 1-5 ... run_pipeline.py' -- 1x/dia útil, 21h30 UTC. Passos intraday (run_intraday_events.py, */5 13-20 * * 1-5) também escrevem linhas no mesmo arquivo ao longo do pregão."
+    }
+  ],
+  "fontes_idade": [
+    {
+      "id": "prices-20y",
+      "descricao": "Histórico de preços B3 (prices_20y.parquet) -- todo o motor de scoring/similaridade depende deste arquivo estar fresco.",
+      "arquivo": "data/prices_20y.parquet",
+      "cadencia_max_minutos": 4320,
+      "severidade": "critical",
+      "habilitado": true,
+      "dias_uteis_apenas": true,
+      "_cadencia": "infra/crontab.prod: '30 21 * * 1-5 ... run_pipeline.py' grava prices_20y.parquet fresco 1x/dia útil (21h30 UTC) -- ≤1 pregão declarado no Plano Cobertura Total. Teto de 4320min (3 dias) cobre o pior caso Sexta 21h30 -> Segunda 21h30 sem falso-positivo de fim de semana (dias_uteis_apenas=true já pula sáb/dom; o teto largo é a margem para o próprio dia útil de segunda ainda não ter rodado quando o monitor checa de manhã)."
+    }
+  ]
+}
