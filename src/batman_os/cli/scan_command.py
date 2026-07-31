@@ -32,6 +32,11 @@ from batman_os.capabilities.capability_contract import (
     ResultadoEsperado,
     certificar,
 )
+from batman_os.capabilities.isencoes import (
+    IsencaoPreRegistrada,
+    carregar_isencoes,
+    filtrar_achados_isentos,
+)
 from batman_os.capabilities.operator import (
     ExecutionContext,
     FilesystemAccess,
@@ -467,6 +472,7 @@ def executar_scan(
     usar_excludes_padrao: bool = True,
     arquivos_alterados: frozenset[str] | None = None,
     quiet: bool = False,
+    isencoes: list[IsencaoPreRegistrada] | None = None,
 ) -> ResultadoScan:
     """Vol.IX Cap.34 -- roda as Capabilities migradas contra `root`. Sem
     `especificacoes`, usa os specs de todas as Capabilities registradas
@@ -520,7 +526,14 @@ def executar_scan(
     flag para tambem desligar a impressao do `resumo_de_performance()` ao
     final. Default `False` preserva o comportamento anterior (o log de
     progresso e novo nesta mudanca -- sem flag nenhuma antes, o unico
-    comportamento possivel era "logar")."""
+    comportamento possivel era "logar").
+
+    `isencoes` (Onda 1 do Plano Cobertura Total, recalibracao de regras,
+    S162) -- filtra do resultado achados cujo (codigo, arquivo) tenha uma
+    isencao pre-registrada valida (`capabilities/isencoes.py`). `None`
+    (default) carrega `isencoes_pre_registradas.json` automaticamente --
+    e o comportamento em producao; testes que queiram ver o achado "cru"
+    passam `isencoes=[]` explicitamente."""
     excludes_finais = (DEFAULT_EXCLUDED_DIRS if usar_excludes_padrao else frozenset[str]()) | (
         excluir_dirs or frozenset[str]()
     )
@@ -612,6 +625,8 @@ def executar_scan(
                     ).append(resultado_missao.duracao_ms)
         finally:
             execution_engine.fechar()
+        isencoes_aplicadas = isencoes if isencoes is not None else carregar_isencoes()
+        resultado.achados = filtrar_achados_isentos(resultado.achados, isencoes_aplicadas)
         return resultado
 
 

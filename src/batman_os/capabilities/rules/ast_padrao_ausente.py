@@ -134,6 +134,18 @@ class RegraAstSpec(BaseModel):
     janela_linhas: int = 10
     precondicao_arquivo: str | None = None
     ignore_case: bool = False
+    # Recalibração S162 (Onda 1, Plano Cobertura Total) — COMP-001: kwargs
+    # `<nome>=<literal-de-string>` (ex.: `name="uq_x"` dentro de
+    # `UniqueConstraint(...)`/`Index(...)`/`ForeignKey(...)`/
+    # `__table_args__`) são removidos do corpo ANTES de avaliar
+    # `corpo_escopo`/`corpo_padrao` — distingue um kwarg de NOME de
+    # constraint/índice de uma COLUNA de dado pessoal de verdade (que nunca
+    # é atribuída a um literal de string puro: `name = Column(String)`,
+    # `name: Mapped[str]`). Achado real: COMP-001 flagrava CautoPositionTable/
+    # CautoSnapshotTable (zero PII) só por causa do `name=` de
+    # `UniqueConstraint` em `__table_args__`. Vazio (default) preserva 100%
+    # do comportamento anterior.
+    ignorar_kwarg_literal: list[str] = Field(default_factory=list)
 
 
 class EntradaAst(BaseModel):
@@ -186,6 +198,19 @@ def _computar_fingerprint(
     return hashlib.sha1(bruto.encode("utf-8")).hexdigest()
 
 
+def _remover_kwargs_literais(corpo: str, nomes: list[str]) -> str:
+    """Remove kwargs `<nome>=<literal-de-string>` de `corpo` — ver docstring
+    de `RegraAstSpec.ignorar_kwarg_literal`. Heurística: uma COLUNA de dado
+    pessoal nunca é atribuída a um literal de string puro (é sempre
+    `Column(...)`/`mapped_column(...)`/uma anotação de tipo); só um kwarg de
+    nome de constraint/índice é."""
+    if not nomes:
+        return corpo
+    alternancia = "|".join(re.escape(nome) for nome in nomes)
+    padrao = re.compile(rf"\b(?:{alternancia})\s*=\s*(?:\"[^\"]*\"|'[^']*')")
+    return padrao.sub("", corpo)
+
+
 def _dispara_por_corpo(corpo: str, regra: RegraAstSpec) -> bool:
     """`campo_estrutural` (modo exato via `ast.AnnAssign`, caso EH-006) é
     verificado por `_tem_campo_estrutural` antes de chegar aqui — esta
@@ -195,6 +220,8 @@ def _dispara_por_corpo(corpo: str, regra: RegraAstSpec) -> bool:
     chega a avaliar `corpo_padrao` (replica COMP-001/COMP-002 — só avalia
     ausência de soft-delete/mascaramento em classes que JÁ têm o dado
     sensível)."""
+    if regra.ignorar_kwarg_literal:
+        corpo = _remover_kwargs_literais(corpo, regra.ignorar_kwarg_literal)
     flags = re.IGNORECASE if regra.ignore_case else 0
     if regra.corpo_escopo and not re.search(regra.corpo_escopo, corpo, flags):
         return False

@@ -11,7 +11,7 @@
     "seletor_include": "test_",
     "seletor_nome_funcao": "^test_",
     "seletor_so_decorator": false,
-    "corpo_padrao": "assert\\b|\\.assert_(?:called|any_call|has_calls|not_called)\\w*\\(|pytest\\.raises"
+    "corpo_padrao": "assert\\b|pytest\\.raises|\\w*[Aa]ssert\\w*\\s*\\("
   },
   "descoberta": {
     "tipo": "arvore",

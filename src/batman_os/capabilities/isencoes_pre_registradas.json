@@ -1,0 +1,17 @@
+{
+  "_nota": "Isenções pré-registradas (allowlist com motivo+validade) — Onda 1 do Plano Cobertura Total (docs/PLANO_COBERTURA_TOTAL.md, recalibração de regras, S162). Cada entrada é uma decisão auditável revisada em code review, nunca automática de um agente sozinho — ver capabilities/isencoes.py. NÃO usar para achados novos/não revisados: para isso o mecanismo é batman inbox defer (pós-detecção, com --db).",
+  "isencoes": [
+    {
+      "codigo": "RISK-005",
+      "caminho": "src/radar/lab/momentum_backtest.py",
+      "motivo": "Núcleo PURO de pesquisa (backtest de momentum 12-1 na B3, Sessão 160 do radar-preditivo) — não é motor de execução nem estratégia em produção. Especificação CONGELADA em docs/estudos/PRE_REGISTRO_MOMENTUM_12_1_B3_R1.md, citada na própria docstring do módulo. RISK-005 (estratégia sem max_drawdown como condição de parada) mira estratégias que OPERAM; este módulo só mede um efeito histórico, não decide ordem nem posição.",
+      "validade": "2027-01-31"
+    },
+    {
+      "codigo": "FIN-005",
+      "caminho": "src/radar/lab/momentum_backtest.py",
+      "motivo": "Mesmo módulo do RISK-005 acima. O split out-of-sample/walk-forward é parte do desenho do pré-registro (docs/estudos/PRE_REGISTRO_MOMENTUM_12_1_B3_R1.md) e é medido por scripts/medir_momentum_12_1.py, fora deste núcleo puro. FIN-005 mira backtests de produção sem separação in/out-of-sample documentada.",
+      "validade": "2027-01-31"
+    }
+  ]
+}

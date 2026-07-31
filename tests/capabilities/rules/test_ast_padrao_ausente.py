@@ -208,6 +208,141 @@ class TestCorpoEscopo:
         assert saida["achados"] == []
 
 
+class TestCorpoEscopoLimiteDePalavra:
+    """Recalibração COMP-001 (S162, Onda 1 do Plano Cobertura Total) —
+    achado real: `\\b(...)│\\b` não casa `email_address`/`user_name` porque
+    `_` conta como caractere de palavra em regex — colunas PII reais
+    (`UserNotificationConfigTable.email_address`) passavam batido. O novo
+    `corpo_escopo` usa fronteira "não-letra" — casa através de `_`, mas
+    continua SEM casar substring dentro de uma palavra maior
+    (`username` não vira `name`)."""
+
+    _ESCOPO_NOVO = r"(?<![A-Za-z])(cpf|email|nome|name|telefone|phone|endereco|address)(?![A-Za-z])"
+
+    def test_email_address_com_underscore_agora_casa(self) -> None:
+        entrada = {
+            "caminho": "api/database/tables.py",
+            "conteudo": (
+                "class UserNotificationConfigTable(Base):\n"
+                "    email_address: Mapped[str | None] = mapped_column(String(200))\n"
+            ),
+            "regra": _regra(
+                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1  # sem deleted_at -> achado real
+
+    def test_user_name_com_underscore_agora_casa(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class FooTable(Base):\n    user_name: Mapped[str]\n",
+            "regra": _regra(
+                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_username_concatenado_sem_underscore_nao_casa(self) -> None:
+        """`username` NÃO é `name` — a fronteira "não-letra" não permite
+        casar substring dentro de uma sequência contínua de letras (evita
+        gerar FP novo ao consertar o gap do underscore)."""
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": "class FooTable(Base):\n    username: Mapped[str]\n",
+            "regra": _regra(
+                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_protegido_com_deleted_at_nao_dispara(self) -> None:
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": (
+                "class FooTable(Base):\n"
+                "    email_address: Mapped[str]\n"
+                "    deleted_at: Mapped[datetime | None]\n"
+            ),
+            "regra": _regra(
+                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+
+class TestIgnorarKwargLiteral:
+    """Recalibração COMP-001 (S162, Onda 1 do Plano Cobertura Total) —
+    achado real: `CautoPositionTable`/`CautoSnapshotTable` (zero PII) eram
+    flagradas só por causa do kwarg `name="uq_..."` de `UniqueConstraint`
+    dentro de `__table_args__`. `ignorar_kwarg_literal=["name"]` remove esse
+    kwarg (sempre um LITERAL de string) antes de avaliar `corpo_escopo`,
+    sem afetar uma coluna `name = Column(...)` de verdade (nunca um
+    literal de string puro)."""
+
+    _ESCOPO = r"(?<![A-Za-z])(cpf|email|nome|name|telefone|phone|endereco|address)(?![A-Za-z])"
+
+    _TABELA_CAUTO_REAL = (
+        "class CautoPositionTable(Base, TimestampMixin):\n"
+        '    __tablename__ = "pb_cauto_positions"\n\n'
+        "    id: Mapped[int] = mapped_column(primary_key=True)\n"
+        "    account_id: Mapped[int] = mapped_column(ForeignKey(\"pb_cauto_accounts.id\"))\n"
+        "    signal_id: Mapped[int] = mapped_column(Integer)\n\n"
+        "    __table_args__ = (\n"
+        '        UniqueConstraint("account_id", "signal_id", '
+        'name="uq_pb_cauto_positions_account_signal"),\n'
+        "    )\n"
+    )
+
+    def test_tabela_sem_pii_com_kwarg_name_nao_dispara_com_a_flag(self) -> None:
+        entrada = {
+            "caminho": "api/database/tables.py",
+            "conteudo": self._TABELA_CAUTO_REAL,
+            "regra": _regra(
+                seletor_include=r"Table$",
+                corpo_escopo=self._ESCOPO,
+                corpo_padrao=r"deleted_at",
+                ignorar_kwarg_literal=["name"],
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_mesma_tabela_dispara_sem_a_flag_documentando_o_fp_antigo(self) -> None:
+        entrada = {
+            "caminho": "api/database/tables.py",
+            "conteudo": self._TABELA_CAUTO_REAL,
+            "regra": _regra(
+                seletor_include=r"Table$", corpo_escopo=self._ESCOPO, corpo_padrao=r"deleted_at"
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_coluna_name_real_continua_disparando_com_a_flag_ligada(self) -> None:
+        """A flag não pode virar um jeito de nunca mais achar PII em
+        `name` — uma coluna DE VERDADE (`name = Column(...)`, nunca um
+        literal de string puro) continua disparando."""
+        entrada = {
+            "caminho": "a.py",
+            "conteudo": (
+                "class ApiTokenTable(Base):\n"
+                "    name: Mapped[str] = mapped_column(String(100))\n"
+            ),
+            "regra": _regra(
+                seletor_include=r"Table$",
+                corpo_escopo=self._ESCOPO,
+                corpo_padrao=r"deleted_at",
+                ignorar_kwarg_literal=["name"],
+            ),
+        }
+        saida = avaliar_regra_ast(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+
 class TestInverteDisparo:
     """Replica BT-003: disparo quando o padrao ESTA presente (campo
     controlado pelo servidor exposto num schema de request), nao ausente."""

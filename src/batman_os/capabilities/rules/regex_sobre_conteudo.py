@@ -90,6 +90,16 @@ class RegraSpec(BaseModel):
     pattern_nome_arquivo_incluir: str | None = None
     pattern_caminho_incluir: str | None = None
     ignore_case: bool = False
+    # Recalibração S162 (Onda 1, Plano Cobertura Total) — EH-002: opt-in por
+    # spec (default False preserva 100% do comportamento anterior). Quando
+    # True, comentários `#...` (heurística por linha, não entende `#` dentro
+    # de string — risco aceito e documentado em `_remover_comentarios_
+    # python`) são removidos do conteúdo ANTES de qualquer avaliação de
+    # `pattern`/`pattern_mitigacao` — impede que um COMENTÁRIO descrevendo o
+    # próprio fix (ex.: "# nunca ecoar str(exc)") seja lido como se fosse o
+    # código violador. Achado real: EH-002 flagrava
+    # api/routers/checkout.py:43,96 do radar (comentários defensivos).
+    ignorar_comentarios: bool = False
 
 
 class EntradaRegexArquivo(BaseModel):
@@ -141,6 +151,17 @@ def _computar_fingerprint(
     normalizado = caminho.replace("\\", "/")
     bruto = f"{agente}|{categoria}|{normalizado}|{codigo}|{chave}"
     return hashlib.sha1(bruto.encode("utf-8")).hexdigest()
+
+
+_COMENTARIO_PYTHON = re.compile(r"#.*")
+
+
+def _remover_comentarios_python(conteudo: str) -> str:
+    """Remove comentários `#...` de cada linha — heurística simples (não
+    entende `#` dentro de uma string literal; risco aceito na direção
+    segura, já que só pode REDUZIR achados, nunca inventar um novo). Usado
+    só quando `regra.ignorar_comentarios=True` (opt-in por spec)."""
+    return "\n".join(_COMENTARIO_PYTHON.sub("", linha) for linha in conteudo.splitlines())
 
 
 _PREFIXO_LOOKAHEAD_DOTALL = "(?=[\\s\\S]*?"
@@ -254,6 +275,15 @@ def avaliar_regra_regex(entrada: Any, contexto: ExecutionContext) -> Any:
     regra = dados.regra
     ic = regra.ignore_case
     flags = re.IGNORECASE if ic else 0
+    # `ignorar_comentarios` (opt-in, ver docstring de RegraSpec/EH-002): so
+    # transforma o conteudo usado na AVALIACAO do pattern -- `dados.caminho`
+    # continua intocado, e `conteudo is None` (arquivo ausente) permanece
+    # `None` (sem transformar nada).
+    conteudo = (
+        _remover_comentarios_python(dados.conteudo)
+        if regra.ignorar_comentarios and dados.conteudo is not None
+        else dados.conteudo
+    )
 
     if regra.pattern_nome_arquivo_incluir or regra.pattern_caminho_incluir:
         nome_arquivo = dados.caminho.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
@@ -267,28 +297,28 @@ def avaliar_regra_regex(entrada: Any, contexto: ExecutionContext) -> Any:
             return SaidaRegexArquivo(achados=[]).model_dump()
 
     if regra.modo == ModoAvaliacao.PRESENCA_SEM_MITIGACAO:
-        if dados.conteudo is None or not regra.pattern:
+        if conteudo is None or not regra.pattern:
             disparado = False
         else:
-            tem_padrao = _busca_presenca(regra.pattern, dados.conteudo, flags)
+            tem_padrao = _busca_presenca(regra.pattern, conteudo, flags)
             tem_mitigacao = bool(
                 regra.pattern_mitigacao
-                and _busca_presenca(regra.pattern_mitigacao, dados.conteudo, flags)
+                and _busca_presenca(regra.pattern_mitigacao, conteudo, flags)
             )
             disparado = tem_padrao and not tem_mitigacao
     elif regra.modo == ModoAvaliacao.AUSENCIA and regra.pattern_escopo:
         # gating: so avalia a ausencia se o padrao de escopo estiver
         # presente (ex.: NS-002 - so exige HSTS em blocos que ja tem
         # ssl_certificate).
-        if dados.conteudo is None:
+        if conteudo is None:
             disparado = False
         else:
-            em_escopo = _busca_presenca(regra.pattern_escopo, dados.conteudo, flags)
+            em_escopo = _busca_presenca(regra.pattern_escopo, conteudo, flags)
             disparado = em_escopo and _condicao_simples_satisfeita(
-                dados.conteudo, ModoAvaliacao.AUSENCIA, regra.pattern, ic
+                conteudo, ModoAvaliacao.AUSENCIA, regra.pattern, ic
             )
     else:
-        disparado = _condicao_simples_satisfeita(dados.conteudo, regra.modo, regra.pattern, ic)
+        disparado = _condicao_simples_satisfeita(conteudo, regra.modo, regra.pattern, ic)
 
     if disparado:
         for condicao in dados.condicoes_adicionais:

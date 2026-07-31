@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from batman_os.capabilities.isencoes import IsencaoPreRegistrada
 from batman_os.capabilities.rules.lote_01 import carregar_lote_01
 from batman_os.cli import scan_command
 from batman_os.cli.scan_command import (
@@ -91,6 +92,93 @@ class TestExecutarScanComGatilhosReais:
 
         contagem = resultado.contagem_por_severidade()
         assert contagem == {"high": 1, "medium": 1}
+
+
+class TestIsencoesPreRegistradas:
+    """Onda 1 do Plano Cobertura Total (S162) — isenções pré-registradas
+    (`capabilities/isencoes.py`) filtram achados por (código, arquivo)
+    antes de `executar_scan` retornar."""
+
+    def _spec_secret_key(self) -> list[dict[str, object]]:
+        from batman_os.capabilities.rules.regex_sobre_conteudo import RegraSpec
+
+        regra = RegraSpec.model_validate(
+            {
+                "codigo": "TEST-ISENTO",
+                "agente": "teste",
+                "severidade": "high",
+                "categoria": "cat",
+                "titulo": "t",
+                "causa": "c",
+                "remediacao": "r",
+                "modo": "presenca",
+                "pattern": "SECRET_KEY",
+            }
+        )
+        descoberta = {"tipo": "arvore", "scope_dirs": ["api"], "extensoes": [".py"]}
+        return [{"regra": regra, "descoberta": descoberta}]
+
+    def _repo_com_secret(self, tmp_path: Path) -> None:
+        (tmp_path / "api").mkdir()
+        (tmp_path / "api" / "config.py").write_text("SECRET_KEY = 'x'\n", encoding="utf-8")
+
+    def test_isencao_valida_suprime_o_achado(self, tmp_path: Path) -> None:
+        self._repo_com_secret(tmp_path)
+        isencao = IsencaoPreRegistrada.model_validate(
+            {
+                "codigo": "TEST-ISENTO",
+                "caminho": "api/config.py",
+                "motivo": "teste",
+                "validade": "2099-01-01",
+            }
+        )
+        resultado = executar_scan(
+            tmp_path, especificacoes=self._spec_secret_key(), isencoes=[isencao]
+        )
+        assert resultado.achados == []
+
+    def test_sem_isencoes_o_achado_aparece_normalmente(self, tmp_path: Path) -> None:
+        self._repo_com_secret(tmp_path)
+        resultado = executar_scan(tmp_path, especificacoes=self._spec_secret_key(), isencoes=[])
+        assert len(resultado.achados) == 1
+
+    def test_isencao_de_outro_arquivo_nao_suprime(self, tmp_path: Path) -> None:
+        self._repo_com_secret(tmp_path)
+        isencao = IsencaoPreRegistrada.model_validate(
+            {
+                "codigo": "TEST-ISENTO",
+                "caminho": "api/outro.py",
+                "motivo": "teste",
+                "validade": "2099-01-01",
+            }
+        )
+        resultado = executar_scan(
+            tmp_path, especificacoes=self._spec_secret_key(), isencoes=[isencao]
+        )
+        assert len(resultado.achados) == 1
+
+    def test_isencao_expirada_nao_suprime(self, tmp_path: Path) -> None:
+        self._repo_com_secret(tmp_path)
+        isencao = IsencaoPreRegistrada.model_validate(
+            {
+                "codigo": "TEST-ISENTO",
+                "caminho": "api/config.py",
+                "motivo": "teste",
+                "validade": "2020-01-01",
+            }
+        )
+        resultado = executar_scan(
+            tmp_path, especificacoes=self._spec_secret_key(), isencoes=[isencao]
+        )
+        assert len(resultado.achados) == 1
+
+    def test_default_sem_argumento_carrega_arquivo_real_do_pacote(self) -> None:
+        """Sem `isencoes=`, `executar_scan` carrega o arquivo REAL
+        (`isencoes_pre_registradas.json`) — sanity check de que a wiring
+        default está ligada."""
+        from batman_os.capabilities.isencoes import carregar_isencoes
+
+        assert len(carregar_isencoes()) >= 2  # RISK-005 + FIN-005 (momentum_backtest.py, S162)
 
 
 class TestResumoDePerformance:

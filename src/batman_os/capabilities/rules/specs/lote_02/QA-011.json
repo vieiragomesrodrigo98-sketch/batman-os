@@ -8,7 +8,7 @@
     "causa": "Dados reais em fixtures violam LGPD/GDPR, podem vazar em logs e são dados pessoais sem consentimento.",
     "remediacao": "Usar dados sintéticos (faker). DoD: sem CPF, e-mail com domínio real ou PAN em fixtures.",
     "modo": "presenca",
-    "pattern": "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\w+@(?:gmail|hotmail|yahoo|outlook)\\.(?:com|br)|\\d{4}[\\s\\-]\\d{4}[\\s\\-]\\d{4}[\\s\\-]\\d{4}"
+    "pattern": "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\w+@(?:gmail|hotmail|yahoo|outlook)\\.(?:com|br)|(?<!\\d)\\d{4}[\\s\\-]\\d{4}[\\s\\-]\\d{4}[\\s\\-]\\d{4}(?!\\d)"
   },
   "descoberta": {
     "tipo": "arvore",

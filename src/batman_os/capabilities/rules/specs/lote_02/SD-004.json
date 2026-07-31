@@ -14,7 +14,7 @@
   },
   "descoberta": {
     "tipo": "arvore",
-    "scope_dirs": ["frontend/src"],
+    "scope_dirs": ["frontend/src/pages"],
     "extensoes": [".ts", ".tsx"]
   }
 }

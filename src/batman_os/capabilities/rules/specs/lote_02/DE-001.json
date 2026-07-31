@@ -8,7 +8,7 @@
     "causa": "float tem erros de arredondamento binário que acumulam em cálculos financeiros — R$0.1 + R$0.2 != R$0.3 em float. Para preços, P&L e stops use sempre Decimal.",
     "remediacao": "Substituir float por Decimal nos campos de preço, stop, alvo e P&L. No SQLAlchemy usar Numeric(18,8). DoD: grep por 'Float' em tabelas financeiras retorna vazio.",
     "modo": "presenca",
-    "pattern": "(preco|price|stop|alvo|target|pnl|retorno|return|valor|value|custo|cost)(?![^=\\n(]*_pct\\b)[^=\\n(]*[:=]\\s*(float|Float)\\b",
+    "pattern": "(preco|price|stop|alvo|target|pnl|retorno|return|valor|value|custo|cost)(?!_type\\s*=)(?![^=\\n(]*_pct\\b)[^=\\n(]*(?::\\s*(?:float|Float)\\b(?!\\s*\\()|=\\s*(?:float|Float)\\b)",
     "ignore_case": true
   },
   "descoberta": {

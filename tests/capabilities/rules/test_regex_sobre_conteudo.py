@@ -45,6 +45,75 @@ def _regra(**overrides: object) -> dict[str, object]:
     return base
 
 
+class TestIgnorarComentarios:
+    """Recalibração EH-002 (S162, Onda 1 do Plano Cobertura Total): achado
+    real do 1º scan completo do radar-preditivo — `api/routers/checkout.py:
+    43,96` são comentários DEFENSIVOS documentando o próprio fix ("nunca
+    ecoar str(exc)"), não código violador. `ignorar_comentarios=True`
+    (opt-in por spec, default False preserva 100% do comportamento
+    anterior) remove `#...` antes de avaliar o pattern."""
+
+    _TRECHO_REAL_CHECKOUT = (
+        "def _provider_ou_503():\n"
+        "    try:\n"
+        "        return get_payment_provider()\n"
+        "    except PaymentProviderIndisponivelError as exc:\n"
+        "        # Mensagem FIXA — nunca ecoar str(exc) na resposta (exposição de internals).\n"
+        "        raise HTTPException(\n"
+        "            status_code=503,\n"
+        '            detail="Pagamento ainda não configurado — tente novamente mais tarde.",\n'
+        "        ) from exc\n"
+    )
+
+    def test_comentario_descrevendo_o_fix_nao_dispara_com_flag_ligada(self) -> None:
+        entrada = {
+            "caminho": "api/routers/checkout.py",
+            "conteudo": self._TRECHO_REAL_CHECKOUT,
+            "regra": _regra(
+                modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert saida["achados"] == []
+
+    def test_mesmo_trecho_dispara_sem_a_flag_documentando_o_bug_antigo(self) -> None:
+        """Prova de que a flag é o mecanismo real do fix — sem ela (default
+        False), o mesmo comentário ainda dispara (comportamento antigo
+        preservado para specs que não optarem por `ignorar_comentarios`)."""
+        entrada = {
+            "caminho": "api/routers/checkout.py",
+            "conteudo": self._TRECHO_REAL_CHECKOUT,
+            "regra": _regra(modo="presenca", pattern=r"str\(exc\)"),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_codigo_real_fora_de_comentario_continua_disparando(self) -> None:
+        """A flag não pode virar uma forma de nunca mais detectar EH-002 —
+        `str(exc)` em código de VERDADE (fora de comentário) continua
+        disparando mesmo com `ignorar_comentarios=True`."""
+        entrada = {
+            "caminho": "api/routers/algo.py",
+            "conteudo": "raise HTTPException(status_code=500, detail=str(exc))",
+            "regra": _regra(
+                modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+
+    def test_arquivo_ausente_com_flag_ligada_nao_quebra(self) -> None:
+        entrada = {
+            "caminho": "api/routers/nao_existe.py",
+            "conteudo": None,
+            "regra": _regra(
+                modo="presenca", pattern=r"str\(exc\)", ignorar_comentarios=True
+            ),
+        }
+        saida = avaliar_regra_regex(entrada, _contexto())
+        assert saida["achados"] == []
+
+
 class TestModoPresenca:
     def test_dispara_quando_pattern_presente(self) -> None:
         entrada = {

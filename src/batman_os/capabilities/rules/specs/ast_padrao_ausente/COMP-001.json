@@ -9,9 +9,10 @@
     "remediacao": "Adicionar deleted_at (datetime nullable) a toda tabela que guarda dados pessoais. DoD: toda Table com cpf/email/nome tem coluna deleted_at.",
     "seletor_tipo": "classdef",
     "seletor_include": "Table|Model|Base",
-    "corpo_escopo": "\\b(cpf|email|nome|name|telefone|phone|endereco|address)\\b",
+    "corpo_escopo": "(?<![A-Za-z])(cpf|email|nome|name|telefone|phone|endereco|address)(?![A-Za-z])",
     "corpo_padrao": "deleted_at|soft.delete|is_deleted",
-    "ignore_case": true
+    "ignore_case": true,
+    "ignorar_kwarg_literal": ["name"]
   },
   "descoberta": {
     "tipo": "arvore",
