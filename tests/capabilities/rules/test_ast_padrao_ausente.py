@@ -227,7 +227,9 @@ class TestCorpoEscopoLimiteDePalavra:
                 "    email_address: Mapped[str | None] = mapped_column(String(200))\n"
             ),
             "regra": _regra(
-                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+                seletor_include=r"Table$",
+                corpo_escopo=self._ESCOPO_NOVO,
+                corpo_padrao=r"deleted_at",
             ),
         }
         saida = avaliar_regra_ast(entrada, _contexto())
@@ -238,7 +240,9 @@ class TestCorpoEscopoLimiteDePalavra:
             "caminho": "a.py",
             "conteudo": "class FooTable(Base):\n    user_name: Mapped[str]\n",
             "regra": _regra(
-                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+                seletor_include=r"Table$",
+                corpo_escopo=self._ESCOPO_NOVO,
+                corpo_padrao=r"deleted_at",
             ),
         }
         saida = avaliar_regra_ast(entrada, _contexto())
@@ -252,7 +256,9 @@ class TestCorpoEscopoLimiteDePalavra:
             "caminho": "a.py",
             "conteudo": "class FooTable(Base):\n    username: Mapped[str]\n",
             "regra": _regra(
-                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+                seletor_include=r"Table$",
+                corpo_escopo=self._ESCOPO_NOVO,
+                corpo_padrao=r"deleted_at",
             ),
         }
         saida = avaliar_regra_ast(entrada, _contexto())
@@ -267,7 +273,9 @@ class TestCorpoEscopoLimiteDePalavra:
                 "    deleted_at: Mapped[datetime | None]\n"
             ),
             "regra": _regra(
-                seletor_include=r"Table$", corpo_escopo=self._ESCOPO_NOVO, corpo_padrao=r"deleted_at"
+                seletor_include=r"Table$",
+                corpo_escopo=self._ESCOPO_NOVO,
+                corpo_padrao=r"deleted_at",
             ),
         }
         saida = avaliar_regra_ast(entrada, _contexto())
