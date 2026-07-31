@@ -1,0 +1,20 @@
+{
+  "regra": {
+    "codigo": "QAVIS-001",
+    "agente": "qa-automation",
+    "severidade": "high",
+    "categoria": "qa-visual",
+    "titulo": "Spec Playwright falhou contra staging (jornada não renderiza/quebra)",
+    "causa": "O scanner estático (código-fonte) nunca abre o navegador — um menu cortado, um botão fora da viewport ou uma jornada quebrada em runtime passam por toda a análise estática sem serem detectados. Só um teste E2E real, executado contra o site rodando, prova que a tela renderiza.",
+    "remediacao": "Rode 'npx playwright test' localmente contra staging para reproduzir, corrija a tela/componente, confirme com o mesmo comando antes de subir de novo."
+  },
+  "descoberta": {
+    "tipo": "playwright",
+    "frontend_dir": "frontend",
+    "args": ["playwright", "test", "--reporter=json"],
+    "base_url_env": "BATMAN_QAVIS_BASE_URL",
+    "timeout": 300,
+    "dominios_proibidos": ["exemplo.test"],
+    "caminho_relatorio": "frontend/e2e/"
+  }
+}

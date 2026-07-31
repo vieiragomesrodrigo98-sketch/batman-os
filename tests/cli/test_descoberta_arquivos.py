@@ -431,3 +431,349 @@ class TestEstatisticasDeDescoberta:
 
         assert estatisticas.arquivos_enumerados == 0
         assert estatisticas.diretorios_podados == 0
+
+
+class _ProcessoFake:
+    """Dublê de `subprocess.Popen` — `communicate()` pode ser programado
+    para levantar `TimeoutExpired` N vezes antes de "resolver", simulando
+    o cenário da bomba latente do Windows (ver `_matar_processo_e_arvore`)."""
+
+    def __init__(self, respostas: list[object], pid: int = 4242) -> None:
+        self._respostas = list(respostas)
+        self.pid = pid
+        self.returncode = 0
+        self.kill_chamado = False
+
+    def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+        resposta = self._respostas.pop(0)
+        if isinstance(resposta, Exception):
+            raise resposta
+        assert isinstance(resposta, tuple)
+        return resposta
+
+    def kill(self) -> None:
+        self.kill_chamado = True
+
+
+class TestRodarSubprocessCacheadoTimeoutWindows:
+    """Recalibração 'Windows: communicate() pós-kill' (diagnóstico
+    2026-07-30, Onda 1 do Plano Cobertura Total): `subprocess.run(timeout=)`
+    do CPython, no Windows, mata só o processo IMEDIATO (`TerminateProcess`)
+    e então chama `communicate()` de novo para coletar o output — se um
+    filho órfão (worker do pytest-xdist, processo de navegador do
+    Playwright) continua vivo segurando os handles herdados, esse segundo
+    `communicate()` trava para sempre. `_rodar_subprocess_cacheado` gerencia
+    o `Popen` manualmente e mata a ÁRVORE via `taskkill /F /T /PID` no
+    Windows antes de tentar coletar o output remanescente — com um teto
+    próprio (nunca ilimitado)."""
+
+    def _importar_com_cache_limpo(self) -> object:
+        import batman_os.cli.descoberta_arquivos as mod
+
+        mod._cache_subprocess.clear()
+        return mod
+
+    def test_timeout_no_windows_mata_arvore_via_taskkill(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mod = self._importar_com_cache_limpo()
+        monkeypatch.setattr(mod.sys, "platform", "win32")
+
+        processo = _ProcessoFake(
+            [
+                mod.subprocess.TimeoutExpired(cmd="x", timeout=1),
+                ("saida remanescente", ""),
+            ]
+        )
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: processo)
+
+        chamadas_taskkill: list[list[str]] = []
+
+        def _run_fake(args: list[str], **kwargs: object) -> object:
+            chamadas_taskkill.append(args)
+
+            class _R:
+                returncode = 0
+
+            return _R()
+
+        monkeypatch.setattr(mod.subprocess, "run", _run_fake)
+
+        rc, stdout, stderr = mod._rodar_subprocess_cacheado(("comando-teste-1",), tmp_path, 1)
+
+        assert rc == -2
+        assert stdout == "saida remanescente"
+        assert "timeout" in stderr
+        assert len(chamadas_taskkill) == 1
+        assert chamadas_taskkill[0][:3] == ["taskkill", "/F", "/T"]
+        assert chamadas_taskkill[0][-1] == str(processo.pid)
+        # taskkill "resolveu" -- nunca cai no kill() simples de fallback
+        assert processo.kill_chamado is False
+
+    def test_timeout_fora_do_windows_usa_kill_direto_sem_taskkill(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mod = self._importar_com_cache_limpo()
+        monkeypatch.setattr(mod.sys, "platform", "linux")
+
+        processo = _ProcessoFake(
+            [
+                mod.subprocess.TimeoutExpired(cmd="x", timeout=1),
+                ("", ""),
+            ]
+        )
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: processo)
+
+        chamado_run: list[object] = []
+        monkeypatch.setattr(
+            mod.subprocess, "run", lambda *a, **k: chamado_run.append((a, k)) or object()
+        )
+
+        rc, _stdout, _stderr = mod._rodar_subprocess_cacheado(("comando-teste-2",), tmp_path, 1)
+
+        assert rc == -2
+        assert processo.kill_chamado is True
+        assert chamado_run == []  # taskkill (subprocess.run) NUNCA chamado fora do Windows
+
+    def test_taskkill_falhando_cai_para_kill_simples_sem_propagar(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """PID já morreu sozinho / taskkill indisponível: o fallback
+        `kill()` garante que a árvore ainda tenta ser encerrada, e a
+        exceção do `taskkill` NUNCA propaga para o chamador do scan."""
+        mod = self._importar_com_cache_limpo()
+        monkeypatch.setattr(mod.sys, "platform", "win32")
+
+        processo = _ProcessoFake(
+            [
+                mod.subprocess.TimeoutExpired(cmd="x", timeout=1),
+                ("", ""),
+            ]
+        )
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: processo)
+
+        def _run_explode(*a: object, **k: object) -> object:
+            raise OSError("taskkill nao encontrado")
+
+        monkeypatch.setattr(mod.subprocess, "run", _run_explode)
+
+        rc, _stdout, _stderr = mod._rodar_subprocess_cacheado(("comando-teste-3",), tmp_path, 1)
+
+        assert rc == -2
+        assert processo.kill_chamado is True
+
+    def test_segunda_communicate_tambem_estoura_nao_trava_o_scan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Resíduo teórico pior caso: mesmo depois de matar a árvore, o
+        `communicate()` de coleta AINDA estoura (teto próprio de 10s) —
+        a função desiste com output vazio em vez de travar o scan
+        inteiro (bounded: nunca espera para sempre)."""
+        mod = self._importar_com_cache_limpo()
+        monkeypatch.setattr(mod.sys, "platform", "win32")
+
+        processo = _ProcessoFake(
+            [
+                mod.subprocess.TimeoutExpired(cmd="x", timeout=1),
+                mod.subprocess.TimeoutExpired(cmd="x", timeout=10),
+            ]
+        )
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: processo)
+        monkeypatch.setattr(
+            mod.subprocess, "run", lambda *a, **k: type("R", (), {"returncode": 0})()
+        )
+
+        rc, stdout, stderr = mod._rodar_subprocess_cacheado(("comando-teste-4",), tmp_path, 1)
+
+        assert rc == -2
+        assert stdout == ""
+        assert "timeout" in stderr
+
+    def test_sucesso_sem_timeout_nao_aciona_taskkill(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mod = self._importar_com_cache_limpo()
+        processo = _ProcessoFake([("ok", "")])
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: processo)
+        chamado_run: list[object] = []
+        monkeypatch.setattr(
+            mod.subprocess, "run", lambda *a, **k: chamado_run.append((a, k)) or object()
+        )
+
+        rc, stdout, stderr = mod._rodar_subprocess_cacheado(("comando-teste-5",), tmp_path, 5)
+
+        assert (rc, stdout, stderr) == (0, "ok", "")
+        assert chamado_run == []
+        assert processo.kill_chamado is False
+
+    def test_comando_nao_encontrado_retorna_sentinela(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mod = self._importar_com_cache_limpo()
+
+        def _popen_ausente(*a: object, **k: object) -> object:
+            raise FileNotFoundError("nao encontrado")
+
+        monkeypatch.setattr(mod.subprocess, "Popen", _popen_ausente)
+
+        rc, stdout, stderr = mod._rodar_subprocess_cacheado(("comando-inexistente",), tmp_path, 5)
+
+        assert rc == -1
+        assert stdout == ""
+        assert "não encontrado" in stderr
+
+    def test_cwd_e_env_extra_sao_repassados_ao_popen(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """qa-visual precisa rodar em `frontend/` (nao na raiz do repo) com
+        BASE_URL no ambiente — `cwd`/`env_extra` sao os parametros que
+        tornam isso possivel sem duplicar o runner inteiro."""
+        mod = self._importar_com_cache_limpo()
+        subdir = tmp_path / "frontend"
+        subdir.mkdir()
+
+        capturado: dict[str, object] = {}
+
+        def _popen_fake(comando: object, **kwargs: object) -> object:
+            capturado.update(kwargs)
+            return _ProcessoFake([("ok", "")])
+
+        monkeypatch.setattr(mod.subprocess, "Popen", _popen_fake)
+
+        mod._rodar_subprocess_cacheado(
+            ("npx", "playwright", "test"),
+            tmp_path,
+            5,
+            cwd=subdir,
+            env_extra={"BASE_URL": "https://staging.exemplo.test"},
+        )
+
+        assert capturado["cwd"] == subdir
+        env = capturado["env"]
+        assert isinstance(env, dict)
+        assert env["BASE_URL"] == "https://staging.exemplo.test"
+
+    def test_sem_env_extra_no_env_e_passado_ao_popen_herda_o_do_processo(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sem `env_extra` (comportamento anterior, todos os outros
+        chamadores), `env=None` é passado ao `Popen` — que herda o
+        ambiente do processo atual (comportamento idêntico a antes desta
+        mudança, que nem passava `env=` explicitamente)."""
+        mod = self._importar_com_cache_limpo()
+        capturado: dict[str, object] = {}
+
+        def _popen_fake(comando: object, **kwargs: object) -> object:
+            capturado.update(kwargs)
+            return _ProcessoFake([("ok", "")])
+
+        monkeypatch.setattr(mod.subprocess, "Popen", _popen_fake)
+        mod._rodar_subprocess_cacheado(("comando-teste-6",), tmp_path, 5)
+
+        assert capturado["env"] is None
+
+
+class TestResultadoPlaywright:
+    """Descoberta `tipo="playwright"` (capability qa-visual, QAVIS-001,
+    Onda 1 do Plano Cobertura Total, S162) — `_resultado_playwright`."""
+
+    def _descoberta(self, **overrides: object) -> dict[str, object]:
+        base: dict[str, object] = {
+            "tipo": "playwright",
+            "frontend_dir": "frontend",
+            "args": ["playwright", "test", "--reporter=json"],
+            "base_url_env": "BATMAN_QAVIS_BASE_URL_TESTE",
+            "timeout": 30,
+            "dominios_proibidos": ["exemplo.test"],
+        }
+        base.update(overrides)
+        return base
+
+    def test_sem_base_url_nao_roda_nada_e_nao_bloqueia(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("BATMAN_QAVIS_BASE_URL_TESTE", raising=False)
+        chamou_popen = []
+        monkeypatch.setattr(
+            "batman_os.cli.descoberta_arquivos.subprocess.Popen",
+            lambda *a, **k: chamou_popen.append(1) or _ProcessoFake([("", "")]),
+        )
+        resultado = arquivos_para_regra(tmp_path, self._descoberta())
+        payload = json.loads(resultado[0][1])
+        assert payload["bloqueado_prd"] is False
+        assert payload["returncode"] is None
+        assert chamou_popen == []
+
+    def test_base_url_de_producao_bloqueia_sem_rodar_subprocess(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BATMAN_QAVIS_BASE_URL_TESTE", "https://exemplo.test")
+        chamou_popen = []
+        monkeypatch.setattr(
+            "batman_os.cli.descoberta_arquivos.subprocess.Popen",
+            lambda *a, **k: chamou_popen.append(1) or _ProcessoFake([("", "")]),
+        )
+        resultado = arquivos_para_regra(tmp_path, self._descoberta())
+        payload = json.loads(resultado[0][1])
+        assert payload["bloqueado_prd"] is True
+        assert chamou_popen == []  # NUNCA invoca o subprocess contra PRD
+
+    def test_base_url_de_staging_nao_bloqueia(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BATMAN_QAVIS_BASE_URL_TESTE", "https://staging.exemplo.test")
+        (tmp_path / "frontend").mkdir()
+        monkeypatch.setattr(
+            "batman_os.cli.descoberta_arquivos.subprocess.Popen",
+            lambda *a, **k: _ProcessoFake([("{}", "")]),
+        )
+        resultado = arquivos_para_regra(tmp_path, self._descoberta())
+        payload = json.loads(resultado[0][1])
+        assert payload["bloqueado_prd"] is False
+        assert payload["frontend_dir_existe"] is True
+
+    def test_frontend_dir_ausente_nao_roda_subprocess(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BATMAN_QAVIS_BASE_URL_TESTE", "https://staging.exemplo.test")
+        chamou_popen = []
+        monkeypatch.setattr(
+            "batman_os.cli.descoberta_arquivos.subprocess.Popen",
+            lambda *a, **k: chamou_popen.append(1) or _ProcessoFake([("", "")]),
+        )
+        resultado = arquivos_para_regra(tmp_path, self._descoberta())
+        payload = json.loads(resultado[0][1])
+        assert payload["frontend_dir_existe"] is False
+        assert chamou_popen == []
+
+    def test_roda_com_base_url_no_ambiente_e_cwd_no_frontend(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("BATMAN_QAVIS_BASE_URL_TESTE", "https://staging.exemplo.test")
+        (tmp_path / "frontend").mkdir()
+
+        capturado: dict[str, object] = {}
+
+        def _popen_fake(comando: object, **kwargs: object) -> object:
+            capturado["comando"] = comando
+            capturado.update(kwargs)
+            return _ProcessoFake([(json.dumps({"suites": []}), "")])
+
+        monkeypatch.setattr(
+            "batman_os.cli.descoberta_arquivos.subprocess.Popen", _popen_fake
+        )
+        resultado = arquivos_para_regra(tmp_path, self._descoberta())
+        payload = json.loads(resultado[0][1])
+
+        assert payload["returncode"] == 0
+        assert json.loads(payload["stdout"]) == {"suites": []}
+        assert capturado["cwd"] == tmp_path / "frontend"
+        env = capturado["env"]
+        assert env["BASE_URL"] == "https://staging.exemplo.test"
+
+    def test_caminho_relatorio_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("BATMAN_QAVIS_BASE_URL_TESTE", raising=False)
+        resultado = arquivos_para_regra(tmp_path, self._descoberta())
+        assert resultado[0][0] == "frontend/e2e/"

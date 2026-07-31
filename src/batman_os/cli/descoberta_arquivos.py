@@ -275,6 +275,14 @@ from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
 from batman_os.capabilities.rules.qaauto003_smoke_specs_ausentes import (
     construir_implementacao as construir_implementacao_qaauto003,
 )
+from batman_os.capabilities.rules.qavis001_loader import carregar_especificacoes_qavis001
+from batman_os.capabilities.rules.qavis001_playwright_falhou import (
+    EntradaQaVis001,
+    RegraQaVis001Spec,
+)
+from batman_os.capabilities.rules.qavis001_playwright_falhou import (
+    construir_implementacao as construir_implementacao_qavis001,
+)
 from batman_os.capabilities.rules.regex_agregado_multi_arquivo import (
     EntradaAgregada,
     RegraAgregadaSpec,
@@ -639,6 +647,17 @@ def entradas_sweep001_para_regra(
     `"arquivo_fixo"`."""
     return [
         EntradaSweep001(caminho=caminho, conteudo=conteudo, regra=regra)
+        for caminho, conteudo in arquivos_para_regra(root, descoberta)
+    ]
+
+
+def entradas_qavis001_para_regra(
+    root: Path, regra: RegraQaVis001Spec, descoberta: dict[str, Any]
+) -> list[EntradaQaVis001]:
+    """Mesmo espírito de `entradas_sweep001_para_regra`, para a Capability
+    bespoke QAVIS-001 — reaproveita a descoberta bespoke `"playwright"`."""
+    return [
+        EntradaQaVis001(caminho=caminho, conteudo=conteudo, regra=regra)
         for caminho, conteudo in arquivos_para_regra(root, descoberta)
     ]
 
@@ -1097,6 +1116,8 @@ def arquivos_para_regra(root: Path, descoberta: dict[str, Any]) -> list[tuple[st
         return _resultado_de_comando_git(root, descoberta)
     if tipo == "subprocess":
         return _resultado_de_subprocess(root, descoberta)
+    if tipo == "playwright":
+        return _resultado_playwright(root, descoberta)
     if tipo == "toml_dependencias":
         return _resultado_de_dependencias(root, descoberta)
     if tipo == "de003":
@@ -1617,27 +1638,94 @@ def _python_do_venv(root: Path) -> str:
     return sys.executable
 
 
+def _matar_processo_e_arvore(processo: subprocess.Popen[str]) -> None:
+    """Mata `processo` e TODA a árvore de descendentes — nunca só
+    `Popen.kill()` puro no Windows (bomba latente diagnosticada em
+    2026-07-30 investigando hangs do scanner: `subprocess.run()` do CPython,
+    ao estourar `timeout`, chama `process.kill()` e ENTÃO chama
+    `process.communicate()` de novo para coletar o output remanescente —
+    `Lib/subprocess.py`, ramo `_mswindows`. `TerminateProcess` (o que
+    `Popen.kill()` faz no Windows) só mata o processo IMEDIATO: um filho
+    órfão vivo (ex.: worker do pytest-xdist, processo de navegador do
+    Playwright/qa-visual) continua segurando os handles de stdout/stderr
+    HERDADOS abertos. Esse segundo `communicate()` bloqueia até os handles
+    fecharem — o que nunca acontece com um filho órfão vivo — e um timeout
+    de 60s vira uma trava PERMANENTE do scan. `taskkill /F /T /PID` mata a
+    árvore inteira (Windows rastreia PPID na criação; `/T` = "tree"),
+    garantindo que os handles fecham de verdade."""
+    if sys.platform.startswith("win"):
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(processo.pid)],
+                capture_output=True,
+                timeout=10,
+            )
+            return
+        except Exception:
+            pass  # taskkill falhou (ex.: PID já morreu sozinho) -- cai no kill() simples
+    processo.kill()
+
+
 def _rodar_subprocess_cacheado(
-    comando: tuple[str, ...], root: Path, timeout: int
+    comando: tuple[str, ...],
+    root: Path,
+    timeout: int,
+    *,
+    cwd: Path | None = None,
+    env_extra: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
-    """Cache por (comando, root) durante o processo — corrige a ausência de
-    cache em `robin.py` (pytest rodava 1x por regra QA-RUN-*; aqui roda 1x
-    para as 3) e replica o cache já existente em `oracle.py` (`_ruff_cache`,
-    ORA-001/002/003). Nunca propaga timeout/ausência do comando como
-    exceção — devolve um returncode sentinela (-2 timeout, -1 não
-    encontrado), mesmo espírito de `RuffUnavailable`/`PytestUnavailable`."""
-    chave = (str(root), *comando)
+    """Cache por (comando, cwd, env_extra) durante o processo — corrige a
+    ausência de cache em `robin.py` (pytest rodava 1x por regra QA-RUN-*;
+    aqui roda 1x para as 3) e replica o cache já existente em `oracle.py`
+    (`_ruff_cache`, ORA-001/002/003). Nunca propaga timeout/ausência do
+    comando como exceção — devolve um returncode sentinela (-2 timeout, -1
+    não encontrado), mesmo espírito de `RuffUnavailable`/`PytestUnavailable`.
+
+    `cwd`/`env_extra` (achado da capability `qa-visual`, Onda 1 do Plano
+    Cobertura Total): `npx playwright test` precisa rodar dentro de
+    `frontend/` (não na raiz do repo) e com `BASE_URL` no ambiente — os
+    demais chamadores (pytest/ruff, `python -m modulo`) continuam usando
+    `cwd=root` e o ambiente herdado sem mudar nada (`cwd=None` -> `root`;
+    `env_extra=None` -> ambiente herdado, mesmo comportamento de sempre).
+
+    Gerencia o `Popen` manualmente (em vez de `subprocess.run(timeout=...)`)
+    para poder matar a ÁRVORE inteira no timeout (`_matar_processo_e_arvore`)
+    — ver docstring dela para a bomba latente do Windows que isso corrige.
+    Após matar a árvore, um segundo `communicate()` com timeout PRÓPRIO
+    (nunca ilimitado) tenta coletar o output remanescente; se ainda assim
+    não retornar (resíduo teórico — taskkill falhou silenciosamente), desiste
+    com output vazio em vez de travar o scan inteiro."""
+    cwd_efetivo = cwd if cwd is not None else root
+    chave_env = json.dumps(env_extra, sort_keys=True) if env_extra else ""
+    chave = (str(cwd_efetivo), chave_env, *comando)
     if chave in _cache_subprocess:
         return _cache_subprocess[chave]
+    ambiente = None
+    if env_extra:
+        ambiente = {**os.environ, **env_extra}
     try:
-        resultado = subprocess.run(
-            list(comando), cwd=root, capture_output=True, text=True, timeout=timeout
+        processo = subprocess.Popen(
+            list(comando),
+            cwd=cwd_efetivo,
+            env=ambiente,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
-        valor = (resultado.returncode, resultado.stdout, resultado.stderr)
-    except subprocess.TimeoutExpired:
-        valor = (-2, "", f"comando excedeu timeout de {timeout}s")
     except FileNotFoundError:
         valor = (-1, "", "comando não encontrado")
+        _cache_subprocess[chave] = valor
+        return valor
+    try:
+        stdout, stderr = processo.communicate(timeout=timeout)
+        valor = (processo.returncode or 0, stdout, stderr)
+    except subprocess.TimeoutExpired:
+        _matar_processo_e_arvore(processo)
+        try:
+            stdout, stderr = processo.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            stdout, stderr = "", ""
+        valor = (-2, stdout, f"comando excedeu timeout de {timeout}s")
     _cache_subprocess[chave] = valor
     return valor
 
@@ -1715,6 +1803,91 @@ def _resultado_de_subprocess(
         "stderr": stderr,
         "dir_requerido_existe": dir_requerido_existe,
         "arquivos_teste_encontrados": arquivos_teste_encontrados,
+    }
+    return [(caminho_relatorio, json.dumps(payload))]
+
+
+_NPX_BIN = "npx.cmd" if sys.platform.startswith("win") else "npx"
+
+
+def _host_de_url(url: str) -> str:
+    from urllib.parse import urlparse
+
+    return (urlparse(url).hostname or "").lower()
+
+
+def _resultado_playwright(root: Path, descoberta: dict[str, Any]) -> list[tuple[str, str | None]]:
+    """Descoberta da capability `qa-visual` (QAVIS-001, Onda 1 do Plano
+    Cobertura Total): roda `npx playwright test --reporter=json` dentro de
+    `frontend_dir` (não na raiz do repo) com `BASE_URL` no ambiente —
+    reaproveita `_rodar_subprocess_cacheado` (inclusive o fix de árvore/
+    timeout do Windows) via os parâmetros `cwd`/`env_extra`.
+
+    **NUNCA roda contra PRODUÇÃO**: se `base_url` resolver para um domínio
+    em `dominios_proibidos` (default: `exemplo.test`, o domínio nu de
+    produção), a checagem é recusada ANTES de invocar qualquer subprocess
+    — o handler (`qavis001_playwright_falhou.py`) só recebe
+    `bloqueado_prd=True` e emite um achado de configuração."""
+    caminho_relatorio = descoberta.get("caminho_relatorio", "frontend/e2e/")
+    frontend_dir = descoberta.get("frontend_dir", "frontend")
+    base_url = descoberta.get("base_url") or os.environ.get(
+        descoberta.get("base_url_env", "BATMAN_QAVIS_BASE_URL"), ""
+    )
+    dominios_proibidos = descoberta.get("dominios_proibidos", ["exemplo.test"])
+
+    if not base_url:
+        # sem base_url configurado -- config ausente, nao achado (mesmo
+        # espirito de "checagem pulada" do FunctionalMonitor sem credencial).
+        payload_sem_url: dict[str, Any] = {
+            "returncode": None,
+            "stdout": "",
+            "stderr": "",
+            "frontend_dir_existe": None,
+            "bloqueado_prd": False,
+            "base_url": None,
+        }
+        return [(caminho_relatorio, json.dumps(payload_sem_url))]
+
+    if _host_de_url(base_url) in {d.lower() for d in dominios_proibidos}:
+        payload_bloqueado: dict[str, Any] = {
+            "returncode": None,
+            "stdout": "",
+            "stderr": "",
+            "frontend_dir_existe": None,
+            "bloqueado_prd": True,
+            "base_url": base_url,
+        }
+        return [(caminho_relatorio, json.dumps(payload_bloqueado))]
+
+    frontend_path = root / frontend_dir
+    if not frontend_path.exists():
+        payload_sem_dir: dict[str, Any] = {
+            "returncode": None,
+            "stdout": "",
+            "stderr": "",
+            "frontend_dir_existe": False,
+            "bloqueado_prd": False,
+            "base_url": base_url,
+        }
+        return [(caminho_relatorio, json.dumps(payload_sem_dir))]
+
+    args = list(descoberta.get("args", ["playwright", "test", "--reporter=json"]))
+    comando = (_NPX_BIN, *args)
+    rc, stdout, stderr = _rodar_subprocess_cacheado(
+        comando,
+        root,
+        descoberta.get("timeout", 300),
+        cwd=frontend_path,
+        env_extra={"BASE_URL": base_url},
+    )
+
+    payload: dict[str, Any] = {
+        "returncode": rc,
+        "stdout": stdout,
+        "stderr": stderr,
+        "frontend_dir_existe": True,
+        "bloqueado_prd": False,
+        "base_url": base_url,
     }
     return [(caminho_relatorio, json.dumps(payload))]
 
@@ -2172,6 +2345,13 @@ def registrar_capabilities_conhecidas() -> None:
         construir_implementacao=construir_implementacao_qaauto003,
         carregar_especificacoes=carregar_especificacoes_qaauto003,
         entradas_para_regra=entradas_qaauto003_para_regra,
+    )
+    registrar(
+        tipo="qavis001",
+        regra_cls=RegraQaVis001Spec,
+        construir_implementacao=construir_implementacao_qavis001,
+        carregar_especificacoes=carregar_especificacoes_qavis001,
+        entradas_para_regra=entradas_qavis001_para_regra,
     )
     registrar(
         tipo="rev005",
