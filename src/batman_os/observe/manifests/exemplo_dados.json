@@ -25,7 +25,7 @@
     {
       "id": "prices-20y",
       "descricao": "Histórico de preços B3 (prices_20y.parquet) -- todo o motor de scoring/similaridade depende deste arquivo estar fresco.",
-      "arquivo": "data/prices_20y.parquet",
+      "arquivo": "data/historical/phase0/prices_20y.parquet",
       "cadencia_max_minutos": 4320,
       "severidade": "critical",
       "habilitado": true,
