@@ -95,6 +95,48 @@ class TestPytestFalhou:
         saida = avaliar_regra_execucao_comando(entrada, _contexto())
         assert saida["achados"] == []
 
+    def test_timeout_do_scanner_vira_achado_low_nunca_high(self) -> None:
+        """Recalibração QA-RUN-001 (lição da triagem dos 44 HIGH do
+        radar-preditivo, 2026-07-30): timeout do pytest DENTRO do teto do
+        scanner (`-2`, sentinela de `_rodar_subprocess_cacheado`) não é
+        "suite quebrada" — é o scanner que não esperou o bastante. A suite
+        real do radar leva ~25min e passa com milhares de testes verdes;
+        o spec de QA-RUN-001 declara severidade "high", mas o achado de
+        timeout tem que SEMPRE sair "low", nunca herdar a severidade do
+        spec (prova de fogo da recalibração)."""
+        entrada = _entrada(
+            _regra("pytest_falhou", severidade="high"),
+            {
+                "returncode": -2,
+                "stdout": "",
+                "stderr": "comando excedeu timeout de 120s",
+                "dir_requerido_existe": True,
+            },
+        )
+        saida = avaliar_regra_execucao_comando(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+        achado = saida["achados"][0]
+        assert achado["severidade"] == "low"
+        assert achado["chave"] == "timeout-do-scanner"
+        assert "quebrada" not in achado["descricao"]
+
+    def test_timeout_nao_e_confundido_com_falha_real(self) -> None:
+        """FP oposto: um rc real de falha (não -2) continua HIGH — a
+        recalibração só reclassifica o SENTINELA de timeout, não afrouxa
+        a detecção de falha real."""
+        entrada = _entrada(
+            _regra("pytest_falhou", severidade="high"),
+            {
+                "returncode": 1,
+                "stdout": "FAILED tests/test_a.py::test_x\n1 failed, 2 passed",
+                "stderr": "",
+                "dir_requerido_existe": True,
+            },
+        )
+        saida = avaliar_regra_execucao_comando(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+        assert saida["achados"][0]["severidade"] == "high"
+
 
 class TestPytestSemTestes:
     def test_dispara_quando_dir_ausente(self) -> None:
@@ -230,6 +272,20 @@ class TestRuffIndisponivel:
         )
         saida = avaliar_regra_execucao_comando(entrada, _contexto())
         assert saida["achados"] == []
+
+    def test_timeout_do_scanner_vira_achado_low_nao_ruff_falhou(self) -> None:
+        """Mesmo bug do QA-RUN-001, achado durante a recalibração: timeout
+        do ruff (-2) caía no mesmo ramo de 'ruff falhou' (rc != 0) — agora
+        vira o mesmo achado próprio de timeout, sempre low."""
+        entrada = _entrada(
+            _regra("ruff_indisponivel", severidade="high"),
+            {"returncode": -2, "stdout": "", "stderr": "comando excedeu timeout de 60s"},
+        )
+        saida = avaliar_regra_execucao_comando(entrada, _contexto())
+        assert len(saida["achados"]) == 1
+        assert saida["achados"][0]["severidade"] == "low"
+        assert saida["achados"][0]["chave"] == "timeout-do-scanner"
+        assert "ruff-error" != saida["achados"][0]["chave"]
 
 
 class TestConteudoAusenteOuMalformado:

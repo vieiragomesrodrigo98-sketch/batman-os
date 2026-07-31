@@ -109,13 +109,18 @@ def _computar_fingerprint(
 
 
 def _achado(
-    regra: RegraExecucaoComandoSpec, caminho: str, descricao: str, chave: str = ""
+    regra: RegraExecucaoComandoSpec,
+    caminho: str,
+    descricao: str,
+    chave: str = "",
+    *,
+    severidade: str | None = None,
 ) -> AchadoExecucaoComando:
     fingerprint = _computar_fingerprint(regra.agente, regra.categoria, caminho, regra.codigo, chave)
     return AchadoExecucaoComando(
         codigo=regra.codigo,
         agente=regra.agente,
-        severidade=regra.severidade,
+        severidade=severidade or regra.severidade,
         categoria=regra.categoria,
         titulo=regra.titulo,
         descricao=descricao,
@@ -125,6 +130,9 @@ def _achado(
         chave=chave,
         fingerprint=fingerprint,
     )
+
+
+_CHAVE_TIMEOUT_SCANNER = "timeout-do-scanner"
 
 
 def _parse_resumo_pytest(stdout: str) -> tuple[int, int, int]:
@@ -152,11 +160,37 @@ def _extrair_nomes_falhos(stdout: str, limite: int = 5) -> list[str]:
     return nomes
 
 
+def _achado_timeout_scanner(
+    regra: RegraExecucaoComandoSpec, caminho: str, r: _Resultado, *, comando: str
+) -> AchadoExecucaoComando:
+    """Achado PRÓPRIO para o sentinela de timeout (-2) de
+    `descoberta_arquivos.py::_rodar_subprocess_cacheado` — SEMPRE severidade
+    `low` e SEMPRE uma `chave`/descrição distintas de "suite quebrada" ou
+    "comando indisponível", nunca reaproveita `regra.severidade` (achado
+    real: QA-RUN-001 flagrava HIGH — "suite de testes quebrada" — numa
+    suite que passa 100% rodada direto, só mais lenta que o timeout interno
+    do scanner; o mesmo bug existia em ORA-003/`ruff falhou` para timeout do
+    ruff). Timeout do SCANNER (que tem um teto interno para não travar o
+    scan inteiro) não é evidência de o comando ter falhado de verdade —
+    é evidência de o comando ser lento demais para ESTE scanner."""
+    return _achado(
+        regra,
+        caminho,
+        f"{comando} excedeu o timeout do scanner ({r.stderr}) — comando lento demais para "
+        f"o scanner, NAO necessariamente quebrado/indisponível (rode '{comando}' localmente "
+        "sem o teto de tempo do scanner para confirmar o resultado real)",
+        _CHAVE_TIMEOUT_SCANNER,
+        severidade="low",
+    )
+
+
 def _interpretar_pytest_falhou(
     regra: RegraExecucaoComandoSpec, caminho: str, r: _Resultado
 ) -> list[AchadoExecucaoComando]:
     if r.dir_requerido_existe is False:
         return []
+    if r.returncode == -2:
+        return [_achado_timeout_scanner(regra, caminho, r, comando="pytest")]
     if r.returncode in (None, -1, 0, 5):
         return []
     falhas, passou, erros = _parse_resumo_pytest(r.stdout)
@@ -256,6 +290,8 @@ def _interpretar_ruff_import_nao_usado(
 def _interpretar_ruff_indisponivel(
     regra: RegraExecucaoComandoSpec, caminho: str, r: _Resultado
 ) -> list[AchadoExecucaoComando]:
+    if r.returncode == -2:
+        return [_achado_timeout_scanner(regra, caminho, r, comando="ruff")]
     if r.returncode != 0:
         descricao = f"ruff falhou (rc={r.returncode}): {r.stderr}"
         return [_achado(regra, caminho, descricao, "ruff-error")]

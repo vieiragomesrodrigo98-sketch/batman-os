@@ -63,6 +63,15 @@ class FonteAlerta(StrEnum):
     FEATURE_DOWN = "feature-down"
     FEATURE_RECOVERED = "feature-recovered"
     MANIFEST_DRIFT = "manifest-drift"
+    # dados-sentinela (Onda 1, Plano Cobertura Total, S162) -- observe/
+    # data_sentinela.py: saude de DADOS em producao (frescor/integridade),
+    # cegueira nº2 do plano ("pipeline error sem alerta" -- PIPE_FSIM_MTM01
+    # do radar-preditivo). Extensao do StrEnum: nunca reinterpreta valores
+    # existentes.
+    DATA_PIPELINE_ERROR = "data-pipeline-error"
+    DATA_SOURCE_STALE = "data-source-stale"
+    DATA_SOURCE_MISSING = "data-source-missing"
+    DATA_ROW_COUNT_DROP = "data-row-count-drop"
 
 
 class SeveridadeAlerta(StrEnum):
