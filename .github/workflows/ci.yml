@@ -1,10 +1,14 @@
 name: CI
 
+# A branch deste repositorio e `master`, mas o gatilho so escutava `main` — o
+# workflow nunca rodou uma unica vez desde que foi escrito. Escutar as duas
+# (mesmo padrao do ci.yml do radar-preditivo) evita depender de qual nome a
+# branch tem em cada copia, incluindo a que vive na VPS.
 on:
   push:
-    branches: [main]
+    branches: [master, main]
   pull_request:
-    branches: [main]
+    branches: [master, main]
 
 jobs:
   test:
