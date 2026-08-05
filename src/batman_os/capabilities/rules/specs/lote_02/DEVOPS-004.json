@@ -9,11 +9,15 @@
     "remediacao": "Garantir que jobs de deploy dependem de jobs de test (needs: [test]). DoD: todo job de deploy tem needs: apontando para job de test.",
     "modo": "ausencia",
     "pattern": "needs\\s*:",
-    "pattern_escopo": "deploy",
-    "ignore_case": true
+    "pattern_escopo": "(?m)^[ \t]{2}[\\w-]*deploy[\\w-]*[ \t]*:",
+    "ignore_case": true,
+    "_motivo_recalibracao": "2026-08-05, residuo de GOV_BATMANOS_TRIAGEM_19_HIGH01: o escopo era a palavra 'deploy' em QUALQUER lugar do arquivo. No radar-preditivo ela aparece uma unica vez, dentro de um COMENTARIO citando o caminho 'deploy/setup_vps.sh' — e como o workflow nao tem `needs:` (nao precisa: os 3 jobs sao independentes e nenhum e de deploy), a regra acusava HIGH. O fenomeno visado e 'existe um JOB de deploy que nao depende do job de teste', entao o escopo passa a ser a declaracao do job (indentacao de 2 espacos, nome contendo 'deploy'), nunca a mencao da palavra."
   },
   "descoberta": {
     "tipo": "glob",
-    "padroes": [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+    "padroes": [
+      ".github/workflows/*.yml",
+      ".github/workflows/*.yaml"
+    ]
   }
 }

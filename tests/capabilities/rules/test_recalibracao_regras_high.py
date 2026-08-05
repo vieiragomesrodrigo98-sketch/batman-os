@@ -20,11 +20,12 @@ from pathlib import Path
 from typing import Any
 
 from batman_os.capabilities.operator import ExecutionContext
+from batman_os.capabilities.rules.ast_padrao_ausente import avaliar_regra_ast
 from batman_os.capabilities.rules.regex_sobre_conteudo import RegraSpec, avaliar_regra_regex
 from batman_os.cli.descoberta_arquivos import entradas_para_regra
 from batman_os.foundation.types import MissionId, StepId, TenantId, agora
 
-_SPECS = Path(__file__).resolve().parents[3] / "src/batman_os/capabilities/rules/specs/lote_02"
+_SPECS = Path(__file__).resolve().parents[3] / "src/batman_os/capabilities/rules/specs"
 
 
 def _contexto() -> ExecutionContext:
@@ -37,7 +38,10 @@ def _contexto() -> ExecutionContext:
 
 
 def _spec(codigo: str) -> dict[str, Any]:
-    dados: dict[str, Any] = json.loads((_SPECS / f"{codigo}.json").read_text(encoding="utf-8"))
+    """Lê o spec VERSIONADO (nunca uma cópia no teste) — se o arquivo mudar, o
+    teste muda junto, que é o ponto de um teste de regressão de regra."""
+    [arquivo] = list(_SPECS.rglob(f"{codigo}.json"))
+    dados: dict[str, Any] = json.loads(arquivo.read_text(encoding="utf-8"))
     return dados
 
 
@@ -210,3 +214,81 @@ class TestSd010OlhaOStatusNaoAPalavra:
         )
 
         assert _rodar("SD-010", tmp_path) == []
+
+
+class TestDevops004OlhaOJobNaoAPalavra:
+    """A regra visa "existe um JOB de deploy que não depende do job de teste".
+    O escopo era a palavra `deploy` em qualquer lugar do arquivo — no radar ela
+    aparecia uma única vez, dentro de um comentário citando o caminho
+    `deploy/setup_vps.sh`, e como nenhum dos 3 jobs precisa de `needs:`, a
+    regra acusava HIGH num workflow que não faz deploy nenhum.
+    """
+
+    def _workflow(self, root: Path, conteudo: str) -> None:
+        arq = root / ".github/workflows/ci.yml"
+        arq.parent.mkdir(parents=True, exist_ok=True)
+        arq.write_text(conteudo, encoding="utf-8")
+
+    def test_dispara_em_job_de_deploy_sem_needs(self, tmp_path: Path) -> None:
+        self._workflow(
+            tmp_path,
+            "jobs:\n  test:\n    steps: []\n  deploy-prd:\n    steps:\n      - run: ./deploy.sh\n",
+        )
+
+        assert _rodar("DEVOPS-004", tmp_path) == [".github/workflows/ci.yml"]
+
+    def test_silencia_quando_o_deploy_depende_do_teste(self, tmp_path: Path) -> None:
+        self._workflow(
+            tmp_path,
+            "jobs:\n  test:\n    steps: []\n  deploy-prd:\n    needs: [test]\n    steps: []\n",
+        )
+
+        assert _rodar("DEVOPS-004", tmp_path) == []
+
+    def test_silencia_quando_deploy_so_aparece_em_comentario(self, tmp_path: Path) -> None:
+        """O caso real do radar: 3 jobs, nenhum de deploy, e a palavra só num
+        comentário sobre um caminho de script."""
+        self._workflow(
+            tmp_path,
+            "jobs:\n  test:\n    steps: []\n  frontend:\n"
+            "    # a VPS instala nodejs sem pin (deploy/setup_vps.sh:31)\n"
+            "    steps: []\n  deps:\n    steps: []\n",
+        )
+
+        assert _rodar("DEVOPS-004", tmp_path) == []
+
+
+class TestEh004ReconheceGuardaMaisForte:
+    """O único achado no radar era `api/main.py::db_table_stats`, que tem
+    `Depends(require_super_admin)` na linha seguinte à rota. O `corpo_padrao`
+    procurava `require_admin` e não casa com `require_super_admin`: a regra
+    reprovava a rota justamente por usar uma guarda MAIS FORTE que a esperada.
+    """
+
+    def _avaliar(self, conteudo: str) -> Any:
+        spec = _spec("EH-004")
+        return avaliar_regra_ast(
+            {"caminho": "api/main.py", "conteudo": conteudo, "regra": spec["regra"]},
+            _contexto(),
+        )
+
+    def test_silencia_com_require_super_admin(self, tmp_path: Path) -> None:
+        saida = self._avaliar(
+            '@app.get("/admin/db/stats", tags=["admin"])\n'
+            "def db_table_stats(_=Depends(require_super_admin)):\n"
+            '    return {"ok": True}\n'
+        )
+
+        assert saida["achados"] == []
+
+    def test_continua_silenciando_com_require_admin(self, tmp_path: Path) -> None:
+        saida = self._avaliar(
+            '@app.get("/admin/users")\ndef listar(_=Depends(require_admin)):\n    return []\n'
+        )
+
+        assert saida["achados"] == []
+
+    def test_dispara_em_rota_admin_sem_guarda_nenhuma(self, tmp_path: Path) -> None:
+        saida = self._avaliar('@app.get("/admin/segredos")\ndef listar():\n    return db.all()\n')
+
+        assert len(saida["achados"]) == 1

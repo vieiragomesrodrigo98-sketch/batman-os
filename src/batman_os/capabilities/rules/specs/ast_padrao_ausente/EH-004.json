@@ -9,14 +9,25 @@
     "remediacao": "Adicionar dependência de verificação de role (ex.: Depends(require_admin)) a toda rota /admin. DoD: toda rota /admin tem check de role explícito.",
     "seletor_tipo": "call",
     "seletor_include": "/admin",
-    "metodos_call": ["get", "post", "put", "patch", "delete"],
+    "metodos_call": [
+      "get",
+      "post",
+      "put",
+      "patch",
+      "delete"
+    ],
     "janela_linhas": 10,
-    "corpo_padrao": "(require_admin|is_admin|role|permission|admin_only)",
-    "ignore_case": true
+    "corpo_padrao": "(require_\\w*admin|is_admin|super_admin|role|permission|admin_only)",
+    "ignore_case": true,
+    "_motivo_recalibracao": "2026-08-05, residuo de GOV_BATMANOS_TRIAGEM_19_HIGH01: o unico achado no radar-preditivo era api/main.py::db_table_stats, que tem `Depends(require_super_admin)` na linha imediatamente seguinte a rota. O corpo_padrao procurava `require_admin` e nao casa com `require_super_admin` — a regra reprovava a rota por usar uma guarda MAIS FORTE que a esperada. Generalizado para `require_\\w*admin` (cobre require_admin, require_super_admin e variantes futuras) e incluido `super_admin` explicitamente."
   },
   "descoberta": {
     "tipo": "arvore",
-    "scope_dirs": ["api"],
-    "extensoes": [".py"]
+    "scope_dirs": [
+      "api"
+    ],
+    "extensoes": [
+      ".py"
+    ]
   }
 }
