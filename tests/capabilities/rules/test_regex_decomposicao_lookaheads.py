@@ -37,9 +37,7 @@ class TestDecomposicao:
 
     def test_sufixo_extra_nao_decompoe(self):
         # lookaheads seguidos de corpo "de verdade" NÃO são pura conjunção
-        assert (
-            _decompor_lookaheads_conjuntivos("(?=[\\s\\S]*?a)(?=[\\s\\S]*?b)c") is None
-        )
+        assert _decompor_lookaheads_conjuntivos("(?=[\\s\\S]*?a)(?=[\\s\\S]*?b)c") is None
 
     def test_parenteses_dentro_de_classe_nao_confundem(self):
         pattern = "(?=[\\s\\S]*?[()x])(?=[\\s\\S]*?y)"

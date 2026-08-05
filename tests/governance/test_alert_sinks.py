@@ -175,7 +175,8 @@ class TestThrottleDiarioEPersistencia:
         t = _TransporteFake()
         # janela 0 para a severidade WARNING (o _alerta default) => sempre reenvia
         sink = DiscordAlertSink(
-            webhook_global=WEBHOOK, transporte=t,
+            webhook_global=WEBHOOK,
+            transporte=t,
             janelas_por_severidade={SeveridadeAlerta.WARNING: 0.0},
         )
         sink.enviar(_alerta(evidencias=["x"]))
@@ -233,12 +234,18 @@ class TestThrottleDiarioEPersistencia:
         t = _TransporteFake()
         sink = DiscordAlertSink(webhook_global=WEBHOOK, transporte=t, caminho_estado=caminho)
         base = ["feature=syn-recurso-d-chat", "status esperado=200 obtido=503"]
-        sink.enviar(_alerta(
-            source=FonteAlerta.FEATURE_DOWN, evidencias=[*base, "latencia=91.7ms"],
-        ))
-        sink.enviar(_alerta(
-            source=FonteAlerta.FEATURE_DOWN, evidencias=[*base, "latencia=88.2ms"],
-        ))
+        sink.enviar(
+            _alerta(
+                source=FonteAlerta.FEATURE_DOWN,
+                evidencias=[*base, "latencia=91.7ms"],
+            )
+        )
+        sink.enviar(
+            _alerta(
+                source=FonteAlerta.FEATURE_DOWN,
+                evidencias=[*base, "latencia=88.2ms"],
+            )
+        )
         assert len(t.chamadas) == 1  # latencia volatil nao quebra o throttle
 
     def test_dedup_heartbeat_ignora_ciclo_e_timestamp(self, tmp_path: Any) -> None:
@@ -248,14 +255,18 @@ class TestThrottleDiarioEPersistencia:
         t = _TransporteFake()
         sink = DiscordAlertSink(webhook_global=WEBHOOK, transporte=t, caminho_estado=caminho)
         base = ["status=limpo", "watcher=vivo"]
-        sink.enviar(_alerta(
-            source=FonteAlerta.OBSERVE_HEARTBEAT,
-            evidencias=[*base, "ciclo=60", "batimento_em=2026-07-24T03:00:00"],
-        ))
-        sink.enviar(_alerta(
-            source=FonteAlerta.OBSERVE_HEARTBEAT,
-            evidencias=[*base, "ciclo=120", "batimento_em=2026-07-24T04:00:00"],
-        ))
+        sink.enviar(
+            _alerta(
+                source=FonteAlerta.OBSERVE_HEARTBEAT,
+                evidencias=[*base, "ciclo=60", "batimento_em=2026-07-24T03:00:00"],
+            )
+        )
+        sink.enviar(
+            _alerta(
+                source=FonteAlerta.OBSERVE_HEARTBEAT,
+                evidencias=[*base, "ciclo=120", "batimento_em=2026-07-24T04:00:00"],
+            )
+        )
         assert len(t.chamadas) == 1  # 2o batimento (ciclo/ts distintos) suprimido → 1x/dia
 
     def test_janela_por_severidade(self, tmp_path: Any) -> None:
@@ -267,8 +278,11 @@ class TestThrottleDiarioEPersistencia:
         # CRITICAL com 2h de idade -> RE-ALERTA (janela 1h)
         tc = _TransporteFake()
         sc = DiscordAlertSink(webhook_global=WEBHOOK, transporte=tc, caminho_estado=tmp_path / "c")
-        crit = {"source": FonteAlerta.FEATURE_DOWN, "severity": SeveridadeAlerta.CRITICAL,
-                "evidencias": ["assistente down"]}
+        crit = {
+            "source": FonteAlerta.FEATURE_DOWN,
+            "severity": SeveridadeAlerta.CRITICAL,
+            "evidencias": ["assistente down"],
+        }
         sc.enviar(_alerta(**crit))
         _envelhecer(sc, 7200)
         sc.enviar(_alerta(**crit))
@@ -277,8 +291,11 @@ class TestThrottleDiarioEPersistencia:
         # INFO com 2h de idade -> SUPRIME (janela 24h)
         ti = _TransporteFake()
         si = DiscordAlertSink(webhook_global=WEBHOOK, transporte=ti, caminho_estado=tmp_path / "i")
-        info = {"source": FonteAlerta.OBSERVE_HEARTBEAT, "severity": SeveridadeAlerta.INFO,
-                "evidencias": ["watcher=vivo"]}
+        info = {
+            "source": FonteAlerta.OBSERVE_HEARTBEAT,
+            "severity": SeveridadeAlerta.INFO,
+            "evidencias": ["watcher=vivo"],
+        }
         si.enviar(_alerta(**info))
         _envelhecer(si, 7200)
         si.enviar(_alerta(**info))

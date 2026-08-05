@@ -124,9 +124,7 @@ class EventBus:
         # replay custava 224 ms, e como `_calcular_cognitive_debt_flag` chama
         # replay ao FINAL DE CADA MISSAO (~50k por scan), o scan do
         # radar-preditivo levava ~3 h so nessa query. Com o indice: ~0,1 ms.
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_mission_id ON events(mission_id)"
-        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_mission_id ON events(mission_id)")
         if db_path != ":memory:":
             self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.commit()
