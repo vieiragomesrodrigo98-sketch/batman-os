@@ -21,8 +21,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      # `api` e obrigatorio: tests/api/ importa fastapi/httpx direto, e sem o
+      # extra a coleta do pytest morre com ModuleNotFoundError (a maquina de
+      # desenvolvimento nao mostrava isso — o venv de la tem tudo instalado).
+      # `observe` e `local-llm` ficam de fora de proposito: psutil e llama_cpp
+      # sao importados sob try/except com fallback declarado, e llama-cpp-python
+      # compila do fonte — caro e fragil num runner.
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,api]"
 
       - name: Run tests
         run: pytest -q
