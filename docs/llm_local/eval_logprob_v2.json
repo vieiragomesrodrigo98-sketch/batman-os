@@ -1,0 +1,868 @@
+{
+  "gguf": "/home/dev/llm_local_batman/gguf_v2_gguf/Qwen2.5-3B-Instruct.Q6_K.gguf",
+  "total": 93,
+  "acuracia_geral": 0.9032,
+  "sweep_logprob": [
+    {
+      "corte": 0.05,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.1,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.15,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.2,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.25,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.3,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.35,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.4,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.45,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.5,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.55,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.6,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.65,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.7,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.75,
+      "cobertura": 1.0,
+      "acuracia_confiante": 0.9032,
+      "n_confiante": 93
+    },
+    {
+      "corte": 0.8,
+      "cobertura": 0.989,
+      "acuracia_confiante": 0.913,
+      "n_confiante": 92
+    },
+    {
+      "corte": 0.85,
+      "cobertura": 0.989,
+      "acuracia_confiante": 0.913,
+      "n_confiante": 92
+    },
+    {
+      "corte": 0.9,
+      "cobertura": 0.946,
+      "acuracia_confiante": 0.9318,
+      "n_confiante": 88
+    },
+    {
+      "corte": 0.95,
+      "cobertura": 0.871,
+      "acuracia_confiante": 0.9259,
+      "n_confiante": 81
+    }
+  ],
+  "primeiro_corte_>=95%": null,
+  "itens": [
+    {
+      "n": 1,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9704028433879452
+    },
+    {
+      "n": 2,
+      "gold": "adiar",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.7950320325470512
+    },
+    {
+      "n": 3,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 1.0,
+      "prob_lp": 0.9786208051516248
+    },
+    {
+      "n": 4,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.987572117535871
+    },
+    {
+      "n": 5,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9907132674187863
+    },
+    {
+      "n": 6,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9779832870202263
+    },
+    {
+      "n": 7,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9344837427686575
+    },
+    {
+      "n": 8,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9982350770610243
+    },
+    {
+      "n": 9,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9892489257775132
+    },
+    {
+      "n": 10,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9756292258323882
+    },
+    {
+      "n": 11,
+      "gold": "remediar",
+      "pred": "suprimir-fp",
+      "correto": false,
+      "conf_self": 0.8,
+      "prob_lp": 0.8757073092006902
+    },
+    {
+      "n": 12,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9888901336589699
+    },
+    {
+      "n": 13,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.98157471951609
+    },
+    {
+      "n": 14,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9985332613470554
+    },
+    {
+      "n": 15,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9791449881522986
+    },
+    {
+      "n": 16,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9982206714415784
+    },
+    {
+      "n": 17,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9849726767677617
+    },
+    {
+      "n": 18,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9983966808777106
+    },
+    {
+      "n": 19,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9947319755516868
+    },
+    {
+      "n": 20,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9989350774805597
+    },
+    {
+      "n": 21,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9894981386421773
+    },
+    {
+      "n": 22,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9868784057887967
+    },
+    {
+      "n": 23,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9875678219917488
+    },
+    {
+      "n": 24,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9799337329748145
+    },
+    {
+      "n": 25,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9886155485493899
+    },
+    {
+      "n": 26,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9794134673745158
+    },
+    {
+      "n": 27,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9922513660039003
+    },
+    {
+      "n": 28,
+      "gold": "suprimir-fp",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.974925234296286
+    },
+    {
+      "n": 29,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9774927324455757
+    },
+    {
+      "n": 30,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9882375187869634
+    },
+    {
+      "n": 31,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 1.0,
+      "prob_lp": 0.988957403330367
+    },
+    {
+      "n": 32,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9923387480966209
+    },
+    {
+      "n": 33,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9906051093096123
+    },
+    {
+      "n": 34,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9896575318449914
+    },
+    {
+      "n": 35,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.98963256451478
+    },
+    {
+      "n": 36,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9990111956268211
+    },
+    {
+      "n": 37,
+      "gold": "adiar",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.9804042274492004
+    },
+    {
+      "n": 38,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9589269604653116
+    },
+    {
+      "n": 39,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9841422242020572
+    },
+    {
+      "n": 40,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.934017109937753
+    },
+    {
+      "n": 41,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9876717766145777
+    },
+    {
+      "n": 42,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9847845714780137
+    },
+    {
+      "n": 43,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9892991062479092
+    },
+    {
+      "n": 44,
+      "gold": "escalar-humano",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.9883276379652068
+    },
+    {
+      "n": 45,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 1.0,
+      "prob_lp": 0.991894515774101
+    },
+    {
+      "n": 46,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9981646485856377
+    },
+    {
+      "n": 47,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.975557121525136
+    },
+    {
+      "n": 48,
+      "gold": "adiar",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.899964727681088
+    },
+    {
+      "n": 49,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.8975664579464214
+    },
+    {
+      "n": 50,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9441169697435702
+    },
+    {
+      "n": 51,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9895030368003769
+    },
+    {
+      "n": 52,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.885972201796991
+    },
+    {
+      "n": 53,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9837453515051656
+    },
+    {
+      "n": 54,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9898042482472071
+    },
+    {
+      "n": 55,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9403290169617047
+    },
+    {
+      "n": 56,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9828484936836533
+    },
+    {
+      "n": 57,
+      "gold": "escalar-humano",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.9892560696543307
+    },
+    {
+      "n": 58,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9615840315363762
+    },
+    {
+      "n": 59,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9797588960837817
+    },
+    {
+      "n": 60,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9912158359371129
+    },
+    {
+      "n": 61,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9884436105031632
+    },
+    {
+      "n": 62,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9988577264960401
+    },
+    {
+      "n": 63,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9501178003732036
+    },
+    {
+      "n": 64,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9978852176022782
+    },
+    {
+      "n": 65,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9888096555870604
+    },
+    {
+      "n": 66,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9869508264256144
+    },
+    {
+      "n": 67,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9847565888740849
+    },
+    {
+      "n": 68,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9867209123620202
+    },
+    {
+      "n": 69,
+      "gold": "escalar-humano",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.9763168138451825
+    },
+    {
+      "n": 70,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9912286904607792
+    },
+    {
+      "n": 71,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9442697892593538
+    },
+    {
+      "n": 72,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.98576076226597
+    },
+    {
+      "n": 73,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.986363997977168
+    },
+    {
+      "n": 74,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.986775429693703
+    },
+    {
+      "n": 75,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9741665905765312
+    },
+    {
+      "n": 76,
+      "gold": "adiar",
+      "pred": "remediar",
+      "correto": false,
+      "conf_self": 0.95,
+      "prob_lp": 0.9691881129632005
+    },
+    {
+      "n": 77,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9991329262153367
+    },
+    {
+      "n": 78,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9658994935370003
+    },
+    {
+      "n": 79,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9896527743620306
+    },
+    {
+      "n": 80,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9813261831945281
+    },
+    {
+      "n": 81,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9988919443231606
+    },
+    {
+      "n": 82,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9982933589412536
+    },
+    {
+      "n": 83,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9604663832929246
+    },
+    {
+      "n": 84,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9853927049966789
+    },
+    {
+      "n": 85,
+      "gold": "adiar",
+      "pred": "adiar",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9811943619808906
+    },
+    {
+      "n": 86,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9830611510363181
+    },
+    {
+      "n": 87,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9430721384164586
+    },
+    {
+      "n": 88,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "correto": true,
+      "conf_self": 0.9,
+      "prob_lp": 0.9550899285173786
+    },
+    {
+      "n": 89,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9749904789454285
+    },
+    {
+      "n": 90,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9891050153756493
+    },
+    {
+      "n": 91,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9867316205507217
+    },
+    {
+      "n": 92,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9327916892387258
+    },
+    {
+      "n": 93,
+      "gold": "remediar",
+      "pred": "remediar",
+      "correto": true,
+      "conf_self": 0.95,
+      "prob_lp": 0.9774633215531673
+    }
+  ]
+}

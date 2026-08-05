@@ -1,0 +1,897 @@
+{
+  "gguf": "/home/dev/llm_local_batman/gguf_v2_gguf/Qwen2.5-3B-Instruct.Q6_K.gguf",
+  "holdout": "/home/dev/llm_local_batman/data/holdout.jsonl",
+  "total": 93,
+  "acuracia": 0.9032,
+  "json_valido": 1.0,
+  "estrato_confiante": {
+    "min_confidence": 0.75,
+    "cobertura": 1.0,
+    "acuracia": 0.9032
+  },
+  "por_classe": {
+    "adiar": {
+      "total": 18,
+      "acuracia": 0.7778
+    },
+    "escalar-humano": {
+      "total": 3,
+      "acuracia": 0.0
+    },
+    "remediar": {
+      "total": 63,
+      "acuracia": 0.9841
+    },
+    "suprimir-fp": {
+      "total": 9,
+      "acuracia": 0.8889
+    }
+  },
+  "por_grupo": {
+    "batman-os/professor": {
+      "total": 33,
+      "acuracia": 0.7273
+    },
+    "radar-preditivo/legado-deferred": {
+      "total": 14,
+      "acuracia": 1.0
+    },
+    "radar-preditivo/legado-outcome": {
+      "total": 46,
+      "acuracia": 1.0
+    }
+  },
+  "confusao": {
+    "adiar->adiar": 14,
+    "adiar->remediar": 4,
+    "escalar-humano->remediar": 3,
+    "remediar->remediar": 62,
+    "remediar->suprimir-fp": 1,
+    "suprimir-fp->remediar": 1,
+    "suprimir-fp->suprimir-fp": 8
+  },
+  "latencia_s": {
+    "p50": 18.21,
+    "p95": 23.33,
+    "media": 18.31
+  },
+  "itens": [
+    {
+      "n": 1,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 23.27,
+      "codigo": "FE-002",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 2,
+      "gold": "adiar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 21.54,
+      "codigo": "CS-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 3,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 1.0,
+      "latency_s": 18.57,
+      "codigo": "BT-002",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 4,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 27.32,
+      "codigo": "COMP-007",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 5,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.95,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 6,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 14.99,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 7,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.41,
+      "codigo": "DOC-005",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 8,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 20.15,
+      "codigo": "REV-006",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 9,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.6,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 10,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 14.67,
+      "codigo": "RED-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 11,
+      "gold": "remediar",
+      "pred": "suprimir-fp",
+      "conf": 0.8,
+      "latency_s": 16.66,
+      "codigo": "SUP-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 12,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.24,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 13,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 13.61,
+      "codigo": "A11Y-002",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 14,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 18.69,
+      "codigo": "SD-008",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 15,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.29,
+      "codigo": "FUI-003",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 16,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 16.67,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 17,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 27.83,
+      "codigo": "ORA-005",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 18,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 16.81,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 19,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 16.28,
+      "codigo": "FUI-006",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 20,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 16.71,
+      "codigo": "BA-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 21,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.02,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 22,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 13.94,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 23,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 21.64,
+      "codigo": "ORA-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 24,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 23.34,
+      "codigo": "FE-002",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 25,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.12,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 26,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 16.08,
+      "codigo": "RED-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 27,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.15,
+      "codigo": "GOVDEBT-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 28,
+      "gold": "suprimir-fp",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 21.93,
+      "codigo": "DEP-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 29,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.3,
+      "codigo": "ORA-005",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 30,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 19.68,
+      "codigo": "FUI-007",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 31,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 1.0,
+      "latency_s": 12.08,
+      "codigo": "QA-010",
+      "repo": "batman-os"
+    },
+    {
+      "n": 32,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.37,
+      "codigo": "ORA-002",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 33,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 22.71,
+      "codigo": "ORA-005",
+      "repo": "batman-os"
+    },
+    {
+      "n": 34,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.05,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 35,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 21.59,
+      "codigo": "ORA-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 36,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 18.44,
+      "codigo": "PD-005",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 37,
+      "gold": "adiar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 23.26,
+      "codigo": "LEGAL-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 38,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.95,
+      "latency_s": 15.96,
+      "codigo": "RED-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 39,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 13.8,
+      "codigo": "QA-010",
+      "repo": "batman-os"
+    },
+    {
+      "n": 40,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 15.07,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 41,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 11.37,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 42,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 15.41,
+      "codigo": "FUI-008",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 43,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 16.38,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 44,
+      "gold": "escalar-humano",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 22.67,
+      "codigo": "ORA-005",
+      "repo": "batman-os"
+    },
+    {
+      "n": 45,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 1.0,
+      "latency_s": 13.28,
+      "codigo": "QA-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 46,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 16.44,
+      "codigo": "QA-AUTO-003",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 47,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.76,
+      "codigo": "FUI-003",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 48,
+      "gold": "adiar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 12.66,
+      "codigo": "DEP-003",
+      "repo": "batman-os"
+    },
+    {
+      "n": 49,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.33,
+      "codigo": "REV-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 50,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 15.1,
+      "codigo": "RED-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 51,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.21,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 52,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.9,
+      "codigo": "SUP-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 53,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.89,
+      "codigo": "BE-011",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 54,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.29,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 55,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 18.24,
+      "codigo": "VPS-009",
+      "repo": "batman-os"
+    },
+    {
+      "n": 56,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.59,
+      "codigo": "FUI-008",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 57,
+      "gold": "escalar-humano",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 23.33,
+      "codigo": "ORA-005",
+      "repo": "batman-os"
+    },
+    {
+      "n": 58,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 16.2,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 59,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.28,
+      "codigo": "GOVDEBT-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 60,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 15.42,
+      "codigo": "GOVDEBT-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 61,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.16,
+      "codigo": "FUI-004",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 62,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 19.64,
+      "codigo": "SD-004",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 63,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 19.74,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 64,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 18.7,
+      "codigo": "SD-007",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 65,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.27,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 66,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.38,
+      "codigo": "FUI-004",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 67,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 29.93,
+      "codigo": "FUI-003",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 68,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 22.64,
+      "codigo": "ORA-005",
+      "repo": "batman-os"
+    },
+    {
+      "n": 69,
+      "gold": "escalar-humano",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.31,
+      "codigo": "DE-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 70,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.36,
+      "codigo": "GOVDEBT-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 71,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 14.3,
+      "codigo": "RED-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 72,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 15.64,
+      "codigo": "QA-RUN-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 73,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 23.65,
+      "codigo": "BE-011",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 74,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.2,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 75,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.68,
+      "codigo": "REV-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 76,
+      "gold": "adiar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.35,
+      "codigo": "VPS-012",
+      "repo": "batman-os"
+    },
+    {
+      "n": 77,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 18.32,
+      "codigo": "PD-005",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 78,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.24,
+      "codigo": "QA-011",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 79,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 14.99,
+      "codigo": "QA-RUN-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 80,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 21.47,
+      "codigo": "FUI-003",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 81,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 17.21,
+      "codigo": "BA-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 82,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 14.43,
+      "codigo": "DOC-001",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 83,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.24,
+      "codigo": "REV-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 84,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.22,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 85,
+      "gold": "adiar",
+      "pred": "adiar",
+      "conf": 0.9,
+      "latency_s": 15.66,
+      "codigo": "SUP-002",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 86,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 21.33,
+      "codigo": "FUI-004",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 87,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 17.08,
+      "codigo": "SUP-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 88,
+      "gold": "suprimir-fp",
+      "pred": "suprimir-fp",
+      "conf": 0.9,
+      "latency_s": 13.94,
+      "codigo": "RED-004",
+      "repo": "batman-os"
+    },
+    {
+      "n": 89,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 17.1,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    },
+    {
+      "n": 90,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 16.47,
+      "codigo": "FUI-010",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 91,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 20.51,
+      "codigo": "FUI-007",
+      "repo": "radar-preditivo"
+    },
+    {
+      "n": 92,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 16.77,
+      "codigo": "REV-001",
+      "repo": "batman-os"
+    },
+    {
+      "n": 93,
+      "gold": "remediar",
+      "pred": "remediar",
+      "conf": 0.95,
+      "latency_s": 18.83,
+      "codigo": "REV-002",
+      "repo": "batman-os"
+    }
+  ]
+}
