@@ -33,10 +33,27 @@ persistência real e paralelismo (`EventBus`/`OperationalMemory` em SQLite,
 `runtime/dispatcher.py`), isolamento multi-tenant estrutural em leitura e
 mutação, Playbooks multi-step com decision points reais na autoria, Mission
 Graph (`learning/mission_reconciliation.py`), e uma API HTTP completa e
-autenticada (ver seção "API HTTP" abaixo). **1058 testes, `mypy`/`ruff`
-limpos.** Status detalhado, o que existe hoje e o backlog de trabalho futuro
-(com contexto e justificativa por item) em
+autenticada (ver seção "API HTTP" abaixo). Status detalhado, o que existe hoje e
+o backlog daquela fase (com contexto e justificativa por item) em
 [`docs/PLATFORM_ROADMAP_BACKLOG.md`](docs/PLATFORM_ROADMAP_BACKLOG.md).
+
+**Frente vigente: Cobertura Total** ([`docs/PLANO_COBERTURA_TOTAL.md`](docs/PLANO_COBERTURA_TOTAL.md),
+ordem do DEV de 2026-07-30) — 8 agentes para as dimensões em que o scanner é
+cego, em 3 ondas. **Onda 1 concluída** (`dados-sentinela`, `qa-visual` e os
+consertos de QA-RUN/SD/FUI); Ondas 2 (`sec-dinamica`, `infra-sentinela`,
+`dep-auditoria`) e 3 (`gov-verdade`, `ml-guarda`, integração ao CI) **abertas**.
+O roadmap de plataforma acima está encerrado e não é mais a direção do trabalho.
+
+**Hoje: 1.510 testes, 283 specs de regra, `mypy --strict`/`ruff` limpos.**
+
+**Portão local** (`scripts/git-hooks/pre-push`): `pytest` · `mypy src/ tests/` ·
+`ruff check` · `ruff format --check` · **`scripts/verificar_head_autocontido.sh`**.
+Este último existe porque os quatro anteriores rodam na *árvore de trabalho* e
+nenhum deles enxergava o que foi realmente commitado — defeito que já ocorreu
+duas vezes (arquivo importado pelo HEAD e nunca versionado; spec faltante que
+sumia em silêncio, porque os loaders usam `glob` e uma regra ausente não levanta
+erro). Ele materializa o HEAD num worktree efêmero e exige que `(tipos, specs)`
+bata com a árvore. Escape consciente: `BATMAN_SKIP_HEADCHECK=1`.
 
 ## Estrutura
 
