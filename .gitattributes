@@ -4,3 +4,12 @@
 # converteria estes arquivos para CRLF no proximo checkout.
 *.sh text eol=lf
 scripts/git-hooks/* text eol=lf
+
+# Artefatos consumidos pelo systemd e pelo cron da VPS. Mesma razao dos
+# scripts de shell: um CR no fim da linha entra no valor do campo (ExecStart,
+# comando do crontab) e o servico falha com erro obscuro de "arquivo nao
+# encontrado". Sem esta regra o EOL do blob depende do core.autocrlf de quem
+# commitou.
+deploy/*.service   text eol=lf
+deploy/*.timer     text eol=lf
+deploy/crontab.*   text eol=lf
