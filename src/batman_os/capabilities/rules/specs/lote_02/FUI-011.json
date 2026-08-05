@@ -6,7 +6,7 @@
     "categoria": "robustez",
     "titulo": "Chamada .toFixed()/.toLocaleString() sem null guard — TypeError em runtime",
     "causa": "Chamar .toFixed() ou .toLocaleString() em valor null/undefined lança TypeError e quebra o componente (tela branca). Valores vindos de API de mercado (preço, score, PnL) podem ser null antes do dado carregar ou quando o mercado está fechado.",
-    "remediacao": "Usar '(value ?? 0).toFixed(N)' ou '(Number(value) || 0).toFixed(N)'. DoD: todo .toFixed() e .toLocaleString() em dado de API tem fallback para 0 ou string vazia.",
+    "remediacao": "Usar '(value ?? 0).toFixed(N)' ou '(Number(value) || 0).toFixed(N)'. DoD: todo .toFixed() e .toLocaleString() em dado de API tem fallback para 0 ou string vazia. Alternativa mais forte, que dispensa esta regra: ligar 'strict' (ou 'strictNullChecks') no tsconfig — aí o compilador reprova o caso inteiro, não uma lista de identificadores.",
     "modo": "presenca",
     "pattern": "(?:(?!\\?\\?|\\|\\|\\s*0|\\|\\|\\s*\\d+|Number\\s*\\()[\\s\\S]){0,80}(?:entry_price|stop_price|target_price|pnl_pct|score_total|preco_atual|dist_stop_pct|dist_alvo_pct|selic_pct|usdbrl|vix|ibovespa)\\s*\\.\\s*(?:toFixed|toLocaleString)\\s*\\(",
     "ignore_case": true
@@ -14,6 +14,24 @@
   "descoberta": {
     "tipo": "arvore",
     "scope_dirs": ["frontend/src"],
-    "extensoes": [".ts", ".tsx"]
+    "extensoes": [".ts", ".tsx"],
+    "condicoes_adicionais": [
+      {
+        "_motivo": "Recalibração 2026-08-05 (residuo de GOV_BATMANOS_TRIAGEM_19_HIGH01, radar-preditivo): esta regra produziu 7 HIGH e os 7 eram FALSO POSITIVO. Prova objetiva: `npx tsc --noEmit` sai exit 0 com strict ligado, o que inclui strictNullChecks — o compilador REPROVARIA qualquer .toFixed() sobre valor possivelmente nulo. As guardas existiam em 4 formas que o regex nao reconhece: `!= null ?`, `!== null &&` dentro de JSX, `?? 0` fora da janela de 80 chars, e early return (`if (pct === null) return`). Perseguir essas formas com regex e corrida perdida — cada projeto inventa uma 5a. Onde o compilador ja garante o invariante, a regra se cala; onde nao ha strict, ela continua valendo integralmente.",
+        "tipo": "arquivo_fixo",
+        "caminho": "frontend/tsconfig.app.json",
+        "checar": "ausencia",
+        "pattern": "\"strict(?:NullChecks)?\"\\s*:\\s*true",
+        "vazio_se_ausente": true
+      },
+      {
+        "_motivo": "Segunda convencao de layout: projetos que nao usam o split app/node do Vite declaram o mesmo em frontend/tsconfig.json. As condicoes sao AND, entao basta UM dos dois arquivos ligar strict para a regra silenciar — que e a semantica desejada.",
+        "tipo": "arquivo_fixo",
+        "caminho": "frontend/tsconfig.json",
+        "checar": "ausencia",
+        "pattern": "\"strict(?:NullChecks)?\"\\s*:\\s*true",
+        "vazio_se_ausente": true
+      }
+    ]
   }
 }

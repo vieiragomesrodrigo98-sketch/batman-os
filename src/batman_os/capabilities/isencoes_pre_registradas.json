@@ -12,6 +12,12 @@
       "caminho": "src/radar/lab/momentum_backtest.py",
       "motivo": "Mesmo módulo do RISK-005 acima. O split out-of-sample/walk-forward é parte do desenho do pré-registro (docs/estudos/PRE_REGISTRO_MOMENTUM_12_1_B3_R1.md) e é medido por scripts/medir_momentum_12_1.py, fora deste núcleo puro. FIN-005 mira backtests de produção sem separação in/out-of-sample documentada.",
       "validade": "2027-01-31"
+    },
+    {
+      "codigo": "QA-011",
+      "caminho": "tests/unit/test_auth_endpoints.py",
+      "motivo": "Resíduo da triagem GOV_BATMANOS_TRIAGEM_19_HIGH01 (radar-preditivo, 2026-08-05). O arquivo tem DOIS CPFs e só um sobrevive à recalibração do pattern: '999.999.999-99' passou a ser reconhecido como sintético (dígitos todos iguais reprovam no dígito verificador), mas '529.982.247-25' é VÁLIDO por construção — e tem de ser. Ele vive em `test_cpf_valido_com_mascara_201`, cujo propósito é justamente provar que um CPF válido COM máscara é aceito no cadastro: não existe forma de escrever esse teste com um CPF inválido, então a regra, sem isenção, tornaria o caso de teste impossível. Não é PII: o cadastro que o acompanha usa nome 'Teste' e e-mail 'cpfmask@qa.com'. A isenção é por arquivo e tem validade — se alguém colar um CPF de pessoa real aqui, a revisão de validade é o ponto de captura. Nenhum outro arquivo de tests/ dispara QA-011 após a recalibração.",
+      "validade": "2027-01-31"
     }
   ]
 }
