@@ -18,6 +18,18 @@
       "caminho": "tests/unit/test_auth_endpoints.py",
       "motivo": "Resíduo da triagem GOV_BATMANOS_TRIAGEM_19_HIGH01 (radar-preditivo, 2026-08-05). O arquivo tem DOIS CPFs e só um sobrevive à recalibração do pattern: '999.999.999-99' passou a ser reconhecido como sintético (dígitos todos iguais reprovam no dígito verificador), mas '529.982.247-25' é VÁLIDO por construção — e tem de ser. Ele vive em `test_cpf_valido_com_mascara_201`, cujo propósito é justamente provar que um CPF válido COM máscara é aceito no cadastro: não existe forma de escrever esse teste com um CPF inválido, então a regra, sem isenção, tornaria o caso de teste impossível. Não é PII: o cadastro que o acompanha usa nome 'Teste' e e-mail 'cpfmask@qa.com'. A isenção é por arquivo e tem validade — se alguém colar um CPF de pessoa real aqui, a revisão de validade é o ponto de captura. Nenhum outro arquivo de tests/ dispara QA-011 após a recalibração.",
       "validade": "2027-01-31"
+    },
+    {
+      "codigo": "COMP-001",
+      "caminho": "api/database/tables.py",
+      "motivo": "Resíduo da triagem GOV_BATMANOS_TRIAGEM_19_HIGH01 (radar-preditivo, 2026-08-05). A regra exige a coluna `deleted_at` em tabela com PII (LGPD art. 16, soft-delete). O mecanismo real do radar é MAIS FORTE, não mais fraco: `purgar_pii_satelite` (api/services/lgpd_service.py:55) faz LIMPEZA NO LUGAR de email_address, telegram_chat_id e discord_webhook da pb_notification_config, e derruba os três `*_enabled` junto — 'sem endereço, um canal ligado só produziria falha silenciosa a cada disparo'. Roda na MESMA transação da anonimização, sem commit próprio: ou tudo, ou nada. Para PII, apagar vence marcar: soft-delete MANTÉM o dado. As tabelas CautoPosition/CautoSnapshot nem têm coluna de nome — são account_id mais números. Isenção por arquivo, com validade, porque reconhecer 'limpeza no lugar' exigiria análise cruzada entre a definição da tabela e o serviço que a expurga — fora do alcance de uma regra de arquivo único, e inventar essa análise só para este caso teria custo muito maior que o benefício.",
+      "validade": "2027-01-31"
+    },
+    {
+      "codigo": "RISK-003",
+      "caminho": "api/routers/csim.py",
+      "motivo": "Resíduo da triagem GOV_BATMANOS_TRIAGEM_19_HIGH01 (radar-preditivo, 2026-08-05). A regra procura fórmula automática de sizing por risco na geração de posição. Aqui ela não existe POR DESENHO, e está declarado na linha 5 do próprio docstring: 'o sizing é escolha manual do admin operador'. É conta PAPER, admin-only (require_admin em TODAS as rotas), e as guardas que fazem sentido no contexto existem: valor_usdt>0, qty>0, checagem de saldo e taxa de taker. Não é ausência de regra, é decisão documentada — e a regra, como está, não distingue 'não tem sizing' de 'o sizing é deliberadamente manual'. ATENÇÃO, achado vizinho REAL encontrado na mesma investigação e que esta isenção NÃO cobre: o guarda de saldo impede saque a descoberto mas não impede CONCENTRAÇÃO — nada limita uma posição a uma fração do patrimônio, a mesma falha que a S165 mediu na outra ponta ('1 posição consumiu a carteira inteira'). Isso é card próprio no backlog do radar, não isenção.",
+      "validade": "2027-01-31"
     }
   ]
 }
