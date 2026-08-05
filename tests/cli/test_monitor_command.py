@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
+import pytest
+
 from batman_os.cli.batman import main
 from batman_os.cli.monitor_command import (
     alertas_para_inbox,
@@ -202,7 +204,7 @@ class TestWiringCli:
     def test_com_dados_manifest_dados_sentinela_roda_e_alerta(
         self,
         tmp_path: Path,
-        capsys,  # type: ignore[no-untyped-def]
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         arq_http = _escrever_manifesto(
             tmp_path,

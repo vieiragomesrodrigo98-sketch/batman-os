@@ -4,7 +4,9 @@ toca disco de verdade (usa `tmp_path` para simular um repositório alvo)."""
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -18,6 +20,20 @@ from batman_os.cli.descoberta_arquivos import (
     escopo_de_exclusao_de_diretorios,
     exclusao_de_diretorios_atual,
 )
+
+
+def _fake_registrando(chamadas: list[object], retorno: object) -> Callable[..., object]:
+    """Fake que anota a chamada em `chamadas` e devolve `retorno`.
+
+    Substitui o idioma `chamadas.append(x) or retorno`, que le o valor de
+    `append` — sempre `None` — e o mypy strict rejeita (func-returns-value).
+    """
+
+    def _fake(*args: object, **kwargs: object) -> object:
+        chamadas.append((args, kwargs))
+        return retorno
+
+    return _fake
 
 
 def _regra(**overrides: object) -> RegraSpec:
@@ -467,7 +483,7 @@ class TestRodarSubprocessCacheadoTimeoutWindows:
     Windows antes de tentar coletar o output remanescente — com um teto
     próprio (nunca ilimitado)."""
 
-    def _importar_com_cache_limpo(self) -> object:
+    def _importar_com_cache_limpo(self) -> ModuleType:
         import batman_os.cli.descoberta_arquivos as mod
 
         mod._cache_subprocess.clear()
@@ -526,7 +542,9 @@ class TestRodarSubprocessCacheadoTimeoutWindows:
 
         chamado_run: list[object] = []
         monkeypatch.setattr(
-            mod.subprocess, "run", lambda *a, **k: chamado_run.append((a, k)) or object()
+            mod.subprocess,
+            "run",
+            _fake_registrando(chamado_run, object()),
         )
 
         rc, _stdout, _stderr = mod._rodar_subprocess_cacheado(("comando-teste-2",), tmp_path, 1)
@@ -597,7 +615,9 @@ class TestRodarSubprocessCacheadoTimeoutWindows:
         monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: processo)
         chamado_run: list[object] = []
         monkeypatch.setattr(
-            mod.subprocess, "run", lambda *a, **k: chamado_run.append((a, k)) or object()
+            mod.subprocess,
+            "run",
+            _fake_registrando(chamado_run, object()),
         )
 
         rc, stdout, stderr = mod._rodar_subprocess_cacheado(("comando-teste-5",), tmp_path, 5)
@@ -693,13 +713,13 @@ class TestResultadoPlaywright:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("BATMAN_QAVIS_BASE_URL_TESTE", raising=False)
-        chamou_popen = []
+        chamou_popen: list[object] = []
         monkeypatch.setattr(
             "batman_os.cli.descoberta_arquivos.subprocess.Popen",
-            lambda *a, **k: chamou_popen.append(1) or _ProcessoFake([("", "")]),
+            _fake_registrando(chamou_popen, _ProcessoFake([("", "")])),
         )
         resultado = arquivos_para_regra(tmp_path, self._descoberta())
-        payload = json.loads(resultado[0][1])
+        payload = json.loads(resultado[0][1] or "{}")
         assert payload["bloqueado_prd"] is False
         assert payload["returncode"] is None
         assert chamou_popen == []
@@ -708,13 +728,13 @@ class TestResultadoPlaywright:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("BATMAN_QAVIS_BASE_URL_TESTE", "https://exemplo.test")
-        chamou_popen = []
+        chamou_popen: list[object] = []
         monkeypatch.setattr(
             "batman_os.cli.descoberta_arquivos.subprocess.Popen",
-            lambda *a, **k: chamou_popen.append(1) or _ProcessoFake([("", "")]),
+            _fake_registrando(chamou_popen, _ProcessoFake([("", "")])),
         )
         resultado = arquivos_para_regra(tmp_path, self._descoberta())
-        payload = json.loads(resultado[0][1])
+        payload = json.loads(resultado[0][1] or "{}")
         assert payload["bloqueado_prd"] is True
         assert chamou_popen == []  # NUNCA invoca o subprocess contra PRD
 
@@ -728,7 +748,7 @@ class TestResultadoPlaywright:
             lambda *a, **k: _ProcessoFake([("{}", "")]),
         )
         resultado = arquivos_para_regra(tmp_path, self._descoberta())
-        payload = json.loads(resultado[0][1])
+        payload = json.loads(resultado[0][1] or "{}")
         assert payload["bloqueado_prd"] is False
         assert payload["frontend_dir_existe"] is True
 
@@ -736,13 +756,13 @@ class TestResultadoPlaywright:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("BATMAN_QAVIS_BASE_URL_TESTE", "https://staging.exemplo.test")
-        chamou_popen = []
+        chamou_popen: list[object] = []
         monkeypatch.setattr(
             "batman_os.cli.descoberta_arquivos.subprocess.Popen",
-            lambda *a, **k: chamou_popen.append(1) or _ProcessoFake([("", "")]),
+            _fake_registrando(chamou_popen, _ProcessoFake([("", "")])),
         )
         resultado = arquivos_para_regra(tmp_path, self._descoberta())
-        payload = json.loads(resultado[0][1])
+        payload = json.loads(resultado[0][1] or "{}")
         assert payload["frontend_dir_existe"] is False
         assert chamou_popen == []
 
@@ -761,12 +781,13 @@ class TestResultadoPlaywright:
 
         monkeypatch.setattr("batman_os.cli.descoberta_arquivos.subprocess.Popen", _popen_fake)
         resultado = arquivos_para_regra(tmp_path, self._descoberta())
-        payload = json.loads(resultado[0][1])
+        payload = json.loads(resultado[0][1] or "{}")
 
         assert payload["returncode"] == 0
         assert json.loads(payload["stdout"]) == {"suites": []}
         assert capturado["cwd"] == tmp_path / "frontend"
         env = capturado["env"]
+        assert isinstance(env, dict)
         assert env["BASE_URL"] == "https://staging.exemplo.test"
 
     def test_caminho_relatorio_default(

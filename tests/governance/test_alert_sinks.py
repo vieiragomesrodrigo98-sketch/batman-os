@@ -278,7 +278,7 @@ class TestThrottleDiarioEPersistencia:
         # CRITICAL com 2h de idade -> RE-ALERTA (janela 1h)
         tc = _TransporteFake()
         sc = DiscordAlertSink(webhook_global=WEBHOOK, transporte=tc, caminho_estado=tmp_path / "c")
-        crit = {
+        crit: dict[str, Any] = {
             "source": FonteAlerta.FEATURE_DOWN,
             "severity": SeveridadeAlerta.CRITICAL,
             "evidencias": ["assistente down"],
@@ -291,7 +291,7 @@ class TestThrottleDiarioEPersistencia:
         # INFO com 2h de idade -> SUPRIME (janela 24h)
         ti = _TransporteFake()
         si = DiscordAlertSink(webhook_global=WEBHOOK, transporte=ti, caminho_estado=tmp_path / "i")
-        info = {
+        info: dict[str, Any] = {
             "source": FonteAlerta.OBSERVE_HEARTBEAT,
             "severity": SeveridadeAlerta.INFO,
             "evidencias": ["watcher=vivo"],
@@ -380,7 +380,7 @@ class TestTransporteUrllib:
             capturado["ua"] = req.get_header("User-agent")
             return _Resp()
 
-        monkeypatch.setattr(alert_sinks.urllib.request, "urlopen", fake_urlopen)
+        monkeypatch.setattr("batman_os.governance.alert_sinks.urllib.request.urlopen", fake_urlopen)
         alert_sinks._TransporteUrllib().postar("https://discord.test/wh", {"content": "x"})
 
         assert capturado["ua"] and "BatmanOS" in capturado["ua"]

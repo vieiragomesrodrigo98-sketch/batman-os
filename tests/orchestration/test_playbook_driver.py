@@ -43,7 +43,7 @@ from batman_os.foundation.types import (
     StepId,
     TenantId,
 )
-from batman_os.kernel.decision_engine import DecisionEngine
+from batman_os.kernel.decision_engine import DecisionEngine, RespostaLlmCandidata
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import MissionIntent, MissionRuntime, MissionState
 from batman_os.kernel.planning_engine import (
@@ -58,7 +58,10 @@ from batman_os.orchestration.playbook_driver import (
     executar_missao_via_playbook,
     hidratar_decisao_pendente,
 )
-from batman_os.orchestration.playbook_step_specs import RelatorioConsolidadoSpec
+from batman_os.orchestration.playbook_step_specs import (
+    ConstrutorDeEntrada,
+    RelatorioConsolidadoSpec,
+)
 from batman_os.orchestration.schema_validators import (
     ValidadorContratoSempreAprova,
     ValidadorSchemaEstrutural,
@@ -234,7 +237,7 @@ class _SemConhecimento:
 
 
 class _LlmNuncaChamado:
-    def consultar(self, ponto: object) -> None:
+    def consultar(self, ponto: DecisionPoint) -> RespostaLlmCandidata:
         del ponto
         raise AssertionError("Playbook de teste nao deveria envolver LLM")
 
@@ -322,7 +325,7 @@ class TestExecutarMissaoViaPlaybook:
             {"codigo": "TEST-001", "severidade": "high"},
             {"codigo": "TEST-002", "severidade": "medium"},
         ]
-        especificacoes = {
+        especificacoes: dict[int, ConstrutorDeEntrada] = {
             0: _ConstrutorFixo({"achados_fixos": achados_esperados}),
             1: RelatorioConsolidadoSpec(titulo_missao="Auditoria de teste"),
         }
@@ -361,7 +364,7 @@ class TestExecutarMissaoViaPlaybook:
         playbook_registry = PlaybookRegistry()
         playbook_registry.register(_playbook_2_steps(CAP_CHECK_FALHA_ID))
 
-        especificacoes = {
+        especificacoes: dict[int, ConstrutorDeEntrada] = {
             0: _ConstrutorFixo({"forcar_falha": True}),
             1: RelatorioConsolidadoSpec(),
         }

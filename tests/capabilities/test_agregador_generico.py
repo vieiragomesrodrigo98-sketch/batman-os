@@ -25,7 +25,7 @@ def _contexto() -> ExecutionContext:
     )
 
 
-def _handler_soma_um(item: object, contexto: ExecutionContext) -> dict:
+def _handler_soma_um(item: object, contexto: ExecutionContext) -> dict[str, object]:
     del contexto
     if item == {"explode": True}:
         raise ValueError("item explodiu de proposito")

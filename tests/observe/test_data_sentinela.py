@@ -116,7 +116,7 @@ class TestIncidentePipeFsimMtm01:
 
 class TestProvaDeFogoStatusOkNaoAlerta:
     def test_todas_as_linhas_ok_nao_produz_achado_de_pipeline_error(self, tmp_path: Path) -> None:
-        linhas = [
+        linhas: list[dict[str, object]] = [
             {"run_at": "2026-07-30T21:32:00+00:00", "status": "ok", "steps": {"a": "ok"}},
             {"run_at": "2026-07-30T21:33:00+00:00", "status": "ok"},
         ]

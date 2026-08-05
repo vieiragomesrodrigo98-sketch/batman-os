@@ -27,7 +27,7 @@ from batman_os.governance.governance_engine import (
     GovernanceEngine,
 )
 from batman_os.governance.human_review import HumanReviewRequest, ReviewerRole, TipoRevisao
-from batman_os.kernel.decision_engine import DecisionEngine
+from batman_os.kernel.decision_engine import DecisionEngine, RespostaLlmCandidata
 from batman_os.kernel.event_bus import EventBus
 from batman_os.kernel.mission_runtime import (
     MissionEventType,
@@ -96,7 +96,7 @@ class _SemConhecimento:
 
 
 class _LlmNuncaChamado:
-    def consultar(self, ponto: DecisionPoint) -> None:
+    def consultar(self, ponto: DecisionPoint) -> RespostaLlmCandidata:
         del ponto
         raise AssertionError("cenario de retomada nao deveria envolver LLM")
 
@@ -283,7 +283,7 @@ class TestExecutarCicloWatchdog:
             evidencia=[Evidence(origem="humano", evidencias=["ok"])],
         )
         resposta_invalida = RespostaHumanaChegada(
-            mission_id=MissionId("missao-inexistente"),  # type: ignore[arg-type]
+            mission_id=MissionId("missao-inexistente"),
             tenant_id=TENANT,
             workflow_run_id=run_ok.id,
             ponto=ponto,
