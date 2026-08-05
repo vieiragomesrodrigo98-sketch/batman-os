@@ -1,0 +1,8 @@
+{
+  "regra": {},
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["api", "src", "dashboard", "pages", "scripts"],
+    "extensoes": [".py"]
+  }
+}

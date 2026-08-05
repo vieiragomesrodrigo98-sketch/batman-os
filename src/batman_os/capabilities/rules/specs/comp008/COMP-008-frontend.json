@@ -1,0 +1,9 @@
+{
+  "regra": {},
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["frontend/src"],
+    "extensoes": [".ts", ".tsx"],
+    "excluir_caminho_contem_lower": ["pages/admin/", "components/admin/", ".test.", "__tests__"]
+  }
+}

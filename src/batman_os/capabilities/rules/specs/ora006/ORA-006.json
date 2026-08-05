@@ -1,0 +1,10 @@
+{
+  "regra": {},
+  "descoberta": {
+    "tipo": "arvore",
+    "scope_dirs": ["src", "api"],
+    "extensoes": [".py"],
+    "excluir_caminho_contem": ["/test", "/conftest"],
+    "excluir_nome_prefixo": ["test", "conftest"]
+  }
+}
