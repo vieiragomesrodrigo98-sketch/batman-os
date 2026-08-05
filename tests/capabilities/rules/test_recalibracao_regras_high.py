@@ -1,11 +1,16 @@
-"""Regressão da recalibração de FUI-011 e QA-011 (resíduo da triagem
+"""Regressão da recalibração de FUI-011, QA-011 e SD-010 (resíduo da triagem
 `GOV_BATMANOS_TRIAGEM_19_HIGH01` do radar-preditivo, 2026-08-05).
 
-As duas regras produziam 9 dos 19 HIGH que mantinham o portão do radar
-vermelho, e os 9 eram falso positivo com prova. Cada teste aqui existe em par:
-um caso que a regra **ainda tem de pegar** e um que ela **precisa deixar
-passar** — recalibrar só com o caso negativo é como cegar a regra e chamar de
-conserto.
+As três regras produziam 11 dos 17 HIGH que mantinham o portão do radar
+vermelho, e a triagem provou achado a achado que eram falso positivo. Cada
+teste aqui existe em par: um caso que a regra **ainda tem de pegar** e um que
+ela **precisa deixar passar** — recalibrar só com o caso negativo é cegar a
+regra e chamar de conserto.
+
+O padrão comum às três: o regex mirava a **grafia** (a palavra 'watchlist', um
+identificador de preço, um domínio de e-mail) em vez do **fenômeno** (o status
+de um sinal, a ausência de guarda que o compilador não cubra, PII de pessoa
+real). Regra que persegue grafia encontra ruído com probabilidade 1.
 """
 
 from __future__ import annotations
@@ -151,3 +156,57 @@ class TestQa011DistingueSinteticoDeReal:
         self._fixture(tmp_path, 'CARD = "4111 1111 1111 1111"\n')
 
         assert _rodar("QA-011", tmp_path) == ["tests/test_x.py"]
+
+
+class TestSd010OlhaOStatusNaoAPalavra:
+    """A regra mira o STATUS `WATCHLIST` de um sinal renderizado sem badge. O
+    pattern era a palavra solta 'watchlist' com ignore_case, e os 3 HIGH que
+    produziu no radar eram todos ruído: um comentário, a página da watchlist do
+    usuário e a watchlist forward do admin — três conceitos que só dividem o
+    nome com o status. `ignore_case` fica DESLIGADO de propósito: é a caixa que
+    separa o enum da palavra comum.
+    """
+
+    def _pagina(self, root: Path, conteudo: str) -> None:
+        arq = root / "frontend/src/pages/Tela.tsx"
+        arq.parent.mkdir(parents=True, exist_ok=True)
+        arq.write_text(conteudo, encoding="utf-8")
+
+    def test_dispara_em_status_watchlist_sem_badge(self, tmp_path: Path) -> None:
+        self._pagina(tmp_path, "if (sinal.status === 'WATCHLIST') return <Card preco={p} />\n")
+
+        assert _rodar("SD-010", tmp_path) == ["frontend/src/pages/Tela.tsx"]
+
+    def test_silencia_quando_ha_badge_de_espera(self, tmp_path: Path) -> None:
+        """A mitigação continua valendo — não foi a parte quebrada da regra."""
+        self._pagina(
+            tmp_path,
+            "if (s.status === 'WATCHLIST') return <Badge>Aguarda abertura</Badge>\n",
+        )
+
+        assert _rodar("SD-010", tmp_path) == []
+
+    def test_silencia_na_pagina_da_feature_watchlist_do_usuario(self, tmp_path: Path) -> None:
+        """`Watchlist.tsx` do radar: a lista de ativos que o usuário acompanha
+        não tem relação com o status de um sinal."""
+        self._pagina(
+            tmp_path,
+            "import { watchlistApi, WatchlistItem } from '../api/watchlist'\n"
+            "export default function WatchlistPage() {\n"
+            "  const [items, setItems] = useState<WatchlistItem[]>([])\n"
+            "  return <div>{items.map(i => <Row key={i.id} />)}</div>\n"
+            "}\n",
+        )
+
+        assert _rodar("SD-010", tmp_path) == []
+
+    def test_silencia_em_comentario_que_so_cita_o_nome(self, tmp_path: Path) -> None:
+        """O caso de `MercadoB3.tsx:15` — uma lista de páginas consumidoras
+        dentro de um comentário disparava HIGH."""
+        self._pagina(
+            tmp_path,
+            "// nenhum consumidor existente (MercadoHoje, Watchlist, Home, Radar)\n"
+            "// precisou mudar.\nexport default function MercadoB3() { return null }\n",
+        )
+
+        assert _rodar("SD-010", tmp_path) == []

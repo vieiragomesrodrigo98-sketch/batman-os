@@ -8,9 +8,10 @@
     "causa": "Sinais gerados overnight ficam em WATCHLIST até a abertura da B3 (9h55 BRT). Exibi-los sem diferenciação visual cria confusão: o usuário vê um sinal com preço de entrada mas o mercado está fechado — não pode agir. Pior: o preço de entrada muda ao confirmar, invalidando a leitura anterior.",
     "remediacao": "Adicionar badge 'Aguarda abertura' em cards com status WATCHLIST. Exibir preço como estimativa ('≈ R$ X') e desabilitar CTA de simulação. DoD: status WATCHLIST tem representação visual distinta de PAPER_TRADING.",
     "modo": "presenca-sem-mitigacao",
-    "pattern": "watchlist",
+    "_motivo_recalibracao": "2026-08-05, resíduo de GOV_BATMANOS_TRIAGEM_19_HIGH01: o pattern era a palavra solta 'watchlist' com ignore_case, e os 3 HIGH que produziu no radar-preditivo eram TODOS ruído — um comentário listando páginas consumidoras (MercadoB3.tsx:15), a página da watchlist do usuário (WatchlistPage/watchlistApi/WatchlistItem) e a watchlist forward pré-registrada do admin cripto. Três conceitos distintos que só compartilham o nome com o STATUS de sinal. Medição que fecha o caso: não existe UMA ocorrência de 'WATCHLIST' como status no frontend inteiro — a regra disparava 100% em falso positivo, procurando um fenômeno que o código não tem. Agora exige o status entre aspas (enum em maiúsculas) ou comparação explícita com um campo `status`; `ignore_case` desligado de propósito, porque é justamente a caixa que separa o enum da palavra comum.",
+    "pattern": "[\"']WATCHLIST[\"']|status\\s*(?:===?|!==?|:)\\s*[\"']watchlist[\"']",
     "pattern_mitigacao": "Aguarda|aguardando|pendente|badge.*watchlist|watchlist.*badge|humanizeStatus|statusLabel",
-    "ignore_case": true
+    "ignore_case": false
   },
   "descoberta": {
     "tipo": "arvore",
