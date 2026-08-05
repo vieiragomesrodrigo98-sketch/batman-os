@@ -23,5 +23,10 @@ echo "[pre-push] ruff check..."
 echo "[pre-push] ruff format --check..."
 "$PY" -m ruff format --check src/ tests/
 
+# Os quatro verificadores acima rodam na ARVORE DE TRABALHO. Este roda no HEAD —
+# e a unica etapa que prova que o que esta sendo empurrado sobrevive a um clone.
+echo "[pre-push] HEAD auto-contido..."
+sh scripts/verificar_head_autocontido.sh
+
 echo "[pre-push] Gate aprovado."
 exit 0
