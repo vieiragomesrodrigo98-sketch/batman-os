@@ -42,6 +42,26 @@ batman = "batman_os.cli.batman:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# As regras carregam suas specs de `Path(__file__).parent / "specs"` com `glob("*.json")`.
+# Sem esta secao o setuptools NAO inclui arquivo nao-.py na wheel; o glob entao percorre um
+# diretorio inexistente, devolve lista vazia, NAO levanta erro, e o scan roda com ZERO regras
+# — saindo com exit 0 e "0 achado(s)". Verde por vacuidade.
+#
+# Achado em 2026-08-10 pelo CI do radar-preditivo (run 31352717091): o scan enumerou 1.382
+# arquivos e reportou 0 achados, enquanto o mesmo commit dava 770 em qualquer outro lugar.
+# O diagnostico no runner respondeu "specs instaladas: DIRETORIO AUSENTE".
+#
+# Por que nao apareceu antes: numa arvore de desenvolvimento existe
+# `src/batman_os.egg-info/SOURCES.txt` de builds anteriores, e o setuptools o reaproveita. A
+# wheel construida AQUI levava as 283 specs; a construida de um clone limpo, nenhuma. Testar
+# empacotamento na arvore suja mede o cache, nao a configuracao — foi o que quase me fez
+# descartar esta hipotese como errada.
+#
+# `scripts/verificar_head_autocontido.sh` nao pegava porque compara HEAD contra a arvore
+# rodando da ARVORE-FONTE; este defeito so existe no pacote INSTALADO.
+[tool.setuptools.package-data]
+"batman_os" = ["**/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
