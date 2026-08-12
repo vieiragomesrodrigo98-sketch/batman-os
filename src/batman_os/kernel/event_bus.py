@@ -10,6 +10,8 @@ Fonte da verdade: docs/spec/02-kernel/06-event-bus-scheduler.md
 
 from __future__ import annotations
 
+import logging
+import os
 import sqlite3
 import threading
 from collections.abc import Callable
@@ -26,6 +28,39 @@ from batman_os.foundation.types import (
     agora,
     novo_ulid_like,
 )
+
+logger = logging.getLogger(__name__)
+
+#: Teto de eventos retidos entre execuções, e a aritmética que o escolheu.
+#:
+#: Medido em 2026-08-12 (`GOV_BATMANOS_ESTADO_DB_16GB01`): **2.770 bytes por
+#: evento** (19.688.812.544 bytes / 7.108.502 eventos), e um scan do
+#: radar-preditivo produz ~748 mil eventos.
+#:
+#: Com teto de 100.000 o piso fica em ~264 MB, e o pico — durante um scan,
+#: quando os eventos novos se somam aos retidos — em ~2,3 GB, devolvido ao
+#: piso pela poda da execução seguinte. É o número, não o palpite, que o card
+#: pedia: de 18,3 GB SEM TETO para ~2,3 GB de pico limitado.
+#:
+#: `BATMAN_EVENTS_MAX=0` desliga a retenção (investigação com o log inteiro).
+_MAX_EVENTOS_PADRAO = 100_000
+
+
+def _teto_de_eventos(explicito: int | None) -> int:
+    """Argumento explícito vence o ambiente, que vence o default."""
+    if explicito is not None:
+        return explicito
+    bruto = os.environ.get("BATMAN_EVENTS_MAX")
+    if bruto is None or not bruto.strip():
+        return _MAX_EVENTOS_PADRAO
+    try:
+        return int(bruto)
+    except ValueError:
+        # Teto ilegível não pode virar "sem teto" nem derrubar o processo: cai
+        # no default e diz por quê. Ficar sem retenção em silêncio é como o
+        # arquivo chegou a 18,3 GB.
+        logger.warning("BATMAN_EVENTS_MAX inválido (%r) — usando %d", bruto, _MAX_EVENTOS_PADRAO)
+        return _MAX_EVENTOS_PADRAO
 
 
 class EmissorKernel(StrEnum):
@@ -109,9 +144,10 @@ class EventBus:
     um estado parcialmente escrito). `WAL` melhora concorrencia leitura/
     escrita em disco real — sem efeito (e sem custo) em `:memory:`."""
 
-    def __init__(self, db_path: str = ":memory:") -> None:
+    def __init__(self, db_path: str = ":memory:", max_eventos: int | None = None) -> None:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._lock = threading.Lock()
+        self._em_memoria = db_path == ":memory:"
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS events ("
             "seq INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -129,6 +165,70 @@ class EventBus:
             self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.commit()
         self._assinantes: list[tuple[EventFilter, EventHandler]] = []
+        if not self._em_memoria:
+            self._aplicar_retencao(_teto_de_eventos(max_eventos))
+
+    def _aplicar_retencao(self, teto: int) -> None:
+        """Poda o log ao teto e devolve o disco — `GOV_BATMANOS_ESTADO_DB_16GB01`.
+
+        Roda UMA vez, no `__init__`, e é isso que a torna segura: `replay()`
+        é sempre chamado com o `mission_id` da execução corrente, então
+        podar antes da primeira missão só alcança execuções anteriores.
+        Depois daqui o log volta a ser estritamente append-only — uma missão
+        em voo nunca perde história no meio do caminho.
+
+        O `VACUUM` não é detalhe: `DELETE` só marca páginas como livres e o
+        arquivo **não encolhe**. Podar sem VACUUM deixaria os 18,3 GB
+        intactos e o card resolvido só no papel.
+        """
+        if teto <= 0:  # 0 = retenção desligada, para investigação com log inteiro
+            return
+        with self._lock:
+            total = int(self._conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            if total <= teto:
+                return
+            linha = self._conn.execute(
+                "SELECT seq FROM events ORDER BY seq DESC LIMIT 1 OFFSET ?", (teto - 1,)
+            ).fetchone()
+            if linha is None:
+                return
+            # Avisa ANTES, não depois: a primeira poda de um log que cresceu
+            # sem teto reescreve o banco inteiro e segura o processo por
+            # minutos. Medido no arquivo de 18,3 GB — sem esta linha o scan
+            # parece pendurado no `__init__`, e "parece pendurado" é como se
+            # mata uma boa defesa por impaciência.
+            logger.info(
+                "podando log de eventos: %d -> %d (pode demorar; VACUUM reescreve o banco)",
+                total,
+                teto,
+            )
+            self._conn.execute("DELETE FROM events WHERE seq < ?", (linha[0],))
+            self._conn.commit()
+            # VACUUM não pode rodar dentro de transação — o commit acima fecha a
+            # aberta pelo DELETE.
+            self._conn.execute("VACUUM")
+            self._conn.commit()
+            # Em WAL o VACUUM reescreve o banco no LOG; o arquivo principal só
+            # encolhe no checkpoint. Sem esta linha o disco só voltaria quando o
+            # processo terminasse — medido: 1.044.480 bytes antes e depois da
+            # poda, idênticos, com a poda tendo funcionado.
+            self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        logger.info(
+            "log de eventos podado: %d -> %d eventos (teto=%d, BATMAN_EVENTS_MAX)",
+            total,
+            teto,
+            teto,
+        )
+
+    def total_de_eventos(self) -> int:
+        """Quantos eventos há no log — usado pela retenção e pelos testes."""
+        with self._lock:
+            return int(self._conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+
+    def fechar(self) -> None:
+        """Libera a conexão (e o arquivo). O log em disco sobrevive."""
+        with self._lock:
+            self._conn.close()
 
     def publish(self, event: KernelEvent) -> None:
         """Publica um evento. Ordenacao causal (Vol.II Cap.10, secao 10.2.1)

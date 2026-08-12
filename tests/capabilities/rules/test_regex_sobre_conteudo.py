@@ -461,3 +461,86 @@ class TestCertificacao:
             contexto_para_teste_idempotencia=contexto,
         )
         assert definicao_certificada.status == StatusCapability.ACTIVE
+
+
+class TestLegal005NaoPerseguirGrafia:
+    """LEGAL-005 acusava LGPD por uma variável chamada `endereco` que guardava
+    um IP (`GOV_LEGAL005_PERSEGUE_GRAFIA01`, achado do portão em 2026-08-12).
+
+    A regra é boa e o repositório a respeita: medido no radar-preditivo, 18
+    arquivos de `api/**.py` casam o escopo e **os 18** declaram `base_legal`
+    com artigo e justificativa. O defeito é estreito — o escopo casava o NOME
+    da variável e nada mais, e "endereço" tanto é dado pessoal quanto endereço
+    de IP.
+
+    É a **terceira** ocorrência da mesma classe neste repositório: LEGAL-006 já
+    disparou no mesmo arquivo por `requests.post(` e outra em `2bf87091` por um
+    identificador de laço. Por isso o conserto vai na REGRA, não no código que
+    compila limpo — renomear para `endereco_ip` (o contorno aplicado no radar)
+    não impede o próximo `endereco` de rede de disparar.
+
+    O teste carrega o **spec real** em vez de uma cópia: uma cópia diverge do
+    arquivo no dia em que alguém edita um dos dois.
+
+    O critério que separa os casos é o LADO DIREITO da atribuição, não o nome:
+    quando ele é uma construção de rede, não há dado pessoal ali. A exclusão
+    vale para todas as alternativas de propósito — `nome = socket.gethostname()`
+    também é hostname, não pessoa.
+    """
+
+    @staticmethod
+    def _spec_legal005() -> dict[str, object]:
+        from batman_os.capabilities.rules.lote_02 import carregar_lote_02
+
+        for spec in carregar_lote_02():
+            if spec["regra"].codigo == "LEGAL-005":
+                return spec["regra"].model_dump()
+        raise AssertionError("spec LEGAL-005 não encontrado no lote_02")
+
+    def _avaliar(self, conteudo: str) -> int:
+        entrada = {
+            "caminho": "api/utils/recaptcha.py",
+            "conteudo": conteudo,
+            "regra": self._spec_legal005(),
+        }
+        return len(avaliar_regra_regex(entrada, _contexto())["achados"])
+
+    # --- o falso positivo que originou o card -------------------------------
+    def test_endereco_de_ip_nao_e_dado_pessoal(self) -> None:
+        """A linha exata que reprovou o portão em 2026-08-12."""
+        assert self._avaliar("endereco = ipaddress.ip_address(ip)\n") == 0
+
+    def test_endereco_por_ip_address_importado_direto(self) -> None:
+        assert self._avaliar("from ipaddress import ip_address\nendereco = ip_address(ip)\n") == 0
+
+    def test_endereco_vindo_do_limiter(self) -> None:
+        assert self._avaliar("endereco = get_remote_address(request)\n") == 0
+
+    def test_nome_de_host_nao_e_nome_de_pessoa(self) -> None:
+        """A exclusão vale para toda alternativa, e aqui isso é acerto, não
+        efeito colateral: `socket.gethostname()` devolve máquina, não titular."""
+        assert self._avaliar("nome = socket.gethostname()\n") == 0
+
+    # --- o que NÃO pode deixar de disparar -----------------------------------
+    def test_cpf_sem_base_legal_continua_disparando(self) -> None:
+        assert self._avaliar("cpf = payload.cpf\n") == 1
+
+    def test_endereco_postal_continua_disparando(self) -> None:
+        """O par negativo que sustenta a exceção: `endereco` continua sendo
+        dado pessoal quando o lado direito NÃO é construção de rede. Sem este
+        teste, a correção do falso positivo vira falso negativo — que numa
+        regra de LGPD é o erro pior."""
+        assert self._avaliar("endereco = payload.endereco_residencial\n") == 1
+
+    def test_email_sem_base_legal_continua_disparando(self) -> None:
+        assert self._avaliar("email = usuario.email\n") == 1
+
+    def test_base_legal_declarada_silencia_como_antes(self) -> None:
+        conteudo = "# base_legal: contrato (LGPD art. 7 inc. V)\ncpf = payload.cpf\n"
+        assert self._avaliar(conteudo) == 0
+
+    def test_arquivo_com_ip_E_com_dado_pessoal_ainda_dispara(self) -> None:
+        """A exclusão é por OCORRÊNCIA, não por arquivo: um arquivo que trata
+        IP e também CPF continua no escopo pelo CPF."""
+        conteudo = "endereco = ipaddress.ip_address(ip)\ncpf = payload.cpf\n"
+        assert self._avaliar(conteudo) == 1

@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from collections import Counter
 
+import pytest
+
 from batman_os.foundation.types import TenantId
 from batman_os.governance.governance_engine import (
     FonteAlerta,
@@ -220,3 +222,67 @@ class TestRunForeverBestEffort:
         )
         # dorme entre ciclos, mas nao apos o ultimo
         assert sonos == [1.5]
+
+
+class TestRastroLocalDoObserve:
+    """`ALERTA_CPU_LATENCIA_SEM_CARIMBO01` — o daemon alertava e não deixava
+    rastro NENHUM na máquina.
+
+    Medido na VPS em 2026-08-12: o processo estava vivo (pid 1021816, 60 dias
+    de uptime), e `/var/log/radar/batman_os_observe.log` tinha **0 bytes desde
+    23/07**. A causa é esta classe: `run_forever` só logava em EXCEÇÃO, então
+    20 dias sem exceção produzem um arquivo vazio — e arquivo vazio é
+    indistinguível de "o daemon nunca subiu".
+
+    A consequência prática foi o card não poder ser respondido: chegaram
+    CRITICALs de `CPU>90%` e `latência p95>1000ms` ao Discord, e ao investigar
+    não havia **quando**. Sem carimbo não dá para separar as duas hipóteses —
+    pico real numa janela de cron pesado, ou limiar mal calibrado.
+
+    O volume é deliberadamente contido: `/var/log/radar` **não tem logrotate**
+    (medido: 548 MB, arquivos de até 174 MB), então logar 1.440 linhas/dia
+    trocaria um crescimento sem teto por outro. Loga-se o que é informativo —
+    o alerta, e o ciclo em que alguma métrica entra em banda.
+    """
+
+    def test_alerta_deixa_carimbo_no_log(self, caplog: pytest.LogCaptureFixture) -> None:
+        sink = _SinkFake()
+        watcher = ObserveWatcher(GovernanceEngine(sink=sink), tenant_id=TenantId("acme"))
+        snap = ObserveSnapshot(tenant_id=TenantId("acme"), infra=AmostraInfra(cpu_percent=95.0))
+
+        with caplog.at_level("INFO", logger="batman_os.observe.watcher"):
+            alertas = watcher.run_once(snap)
+
+        assert alertas, "o cenário precisa produzir alerta para o teste valer"
+        texto = caplog.text
+        assert "observe.cpu" in texto, "o log tem de nomear a métrica que disparou"
+        assert "95" in texto, "o log tem de trazer o VALOR medido, não só o nome"
+
+    def test_ciclo_com_metrica_em_banda_registra_a_leitura(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Banda de WARNING (80–90) não gera CRITICAL, mas é exatamente a
+        faixa que responde 'o limiar está mal calibrado?'."""
+        sink = _SinkFake()
+        watcher = ObserveWatcher(GovernanceEngine(sink=sink), tenant_id=TenantId("acme"))
+        snap = ObserveSnapshot(tenant_id=TenantId("acme"), infra=AmostraInfra(cpu_percent=85.0))
+
+        with caplog.at_level("INFO", logger="batman_os.observe.watcher"):
+            watcher.run_once(snap)
+
+        assert "observe.cpu" in caplog.text
+        assert "85" in caplog.text
+
+    def test_maquina_ociosa_nao_polui_o_log(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A trava contra trocar um crescimento sem teto por outro: com tudo
+        abaixo do limiar de WARNING, o ciclo não escreve linha de métrica.
+        Na VPS medida (load 0.01, CPU muito abaixo de 80) isso é o caso
+        esmagadoramente comum — 1.440 ciclos/dia."""
+        sink = _SinkFake()
+        watcher = ObserveWatcher(GovernanceEngine(sink=sink), tenant_id=TenantId("acme"))
+        snap = ObserveSnapshot(tenant_id=TenantId("acme"), infra=AmostraInfra(cpu_percent=3.0))
+
+        with caplog.at_level("INFO", logger="batman_os.observe.watcher"):
+            watcher.run_once(snap)
+
+        assert "observe.cpu" not in caplog.text

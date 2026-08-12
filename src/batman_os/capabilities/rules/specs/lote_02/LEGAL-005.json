@@ -9,7 +9,7 @@
     "remediacao": "Documentar base_legal como campo no model ou comentário no handler. DoD: todo endpoint que grava CPF/email/nome tem base_legal documentada.",
     "modo": "ausencia",
     "pattern": "base_legal",
-    "pattern_escopo": "(cpf|email|nome|phone|telefone|endereco)\\s*=",
+    "pattern_escopo": "(cpf|email|nome|phone|telefone|endereco)\\s*=\\s*(?![^\\n]*(?:ipaddress|ip_address|ip_network|ip_interface|socket\\.|gethostname|gethostbyname|get_remote_address|remote_addr|inet_aton|inet_ntoa))",
     "ignore_case": true
   },
   "descoberta": {

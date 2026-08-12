@@ -205,3 +205,91 @@ class TestFase2Estagio23ThreadSafety:
         leitor.join()
 
         assert erros == []
+
+
+class TestRetencaoDoLog:
+    """`GOV_BATMANOS_ESTADO_DB_16GB01` — o log crescia SEM TETO.
+
+    Medido em 2026-08-12 na máquina do DEV: `.batman-os/estado.db` com
+    **18,3 GB** e 7.108.502 linhas em `events`, contra 493 em
+    `inbox_achados`. Um único scan do radar-preditivo acrescentou ~748 mil
+    eventos e ~1,9 GB — o achado (o que se quer guardar) é minúsculo e o
+    rastro de execução (o que ninguém relê) é que ocupa o disco. Medido
+    também: **2.770 bytes por evento**, e é dessa constante que sai o teto.
+
+    Por que podar no `__init__` é seguro: `replay()` é sempre chamado com o
+    `mission_id` da execução CORRENTE (`mission_runtime`, `planning_engine`,
+    `workflow_engine`, `playbook_driver` — conferido por grep, não presumido),
+    então a poda no início do processo só alcança execuções anteriores, nunca
+    uma missão em voo. O único leitor entre execuções é a CLI de
+    observabilidade, que também recebe um `mission_id` — é forense, não
+    correção.
+
+    Duas travas de segurança: `:memory:` nunca poda (é o default e não ocupa
+    disco), e `BATMAN_EVENTS_MAX=0` desliga a retenção inteira, para quem
+    precisa do log completo numa investigação.
+    """
+
+    def test_poda_mantem_os_mais_recentes_e_descarta_os_antigos(self, tmp_path: Path) -> None:
+        caminho = str(tmp_path / "estado.db")
+        bus = EventBus(db_path=caminho, max_eventos=0)  # sem poda ao encher
+        for i in range(50):
+            bus.publish(_evento(f"m-{i}", "MissionCreated"))
+
+        # nova execução do processo, com teto de 10
+        bus2 = EventBus(db_path=caminho, max_eventos=10)
+        assert bus2.total_de_eventos() == 10
+        # os que sobraram são os ÚLTIMOS, não os primeiros
+        assert bus2.replay(MissionId("m-49")) != []
+        assert bus2.replay(MissionId("m-0")) == []
+
+    def test_nao_poda_quando_o_total_cabe_no_teto(self, tmp_path: Path) -> None:
+        caminho = str(tmp_path / "estado.db")
+        bus = EventBus(db_path=caminho, max_eventos=0)
+        for i in range(5):
+            bus.publish(_evento(f"m-{i}", "MissionCreated"))
+
+        bus2 = EventBus(db_path=caminho, max_eventos=100)
+        assert bus2.total_de_eventos() == 5
+        assert bus2.replay(MissionId("m-0")) != []
+
+    def test_teto_zero_desliga_a_retencao(self, tmp_path: Path) -> None:
+        caminho = str(tmp_path / "estado.db")
+        bus = EventBus(db_path=caminho, max_eventos=0)
+        for i in range(30):
+            bus.publish(_evento(f"m-{i}", "MissionCreated"))
+
+        bus2 = EventBus(db_path=caminho, max_eventos=0)
+        assert bus2.total_de_eventos() == 30
+
+    def test_a_missao_em_voo_nao_perde_historia(self, tmp_path: Path) -> None:
+        """A poda roda no `__init__`; depois dela o log volta a ser
+        append-only. Uma missão que publica 40 eventos com teto de 10 mantém
+        os 40 — senão `replay()` devolveria história truncada no meio da
+        execução, que é pior que disco cheio."""
+        caminho = str(tmp_path / "estado.db")
+        bus = EventBus(db_path=caminho, max_eventos=10)
+        for _ in range(40):
+            bus.publish(_evento("m-viva", "MissionExecuting"))
+
+        assert len(bus.replay(MissionId("m-viva"))) == 40
+
+    def test_memoria_nunca_poda(self) -> None:
+        bus = EventBus(max_eventos=1)
+        for i in range(20):
+            bus.publish(_evento(f"m-{i}", "MissionCreated"))
+        assert bus.total_de_eventos() == 20
+
+    def test_arquivo_encolhe_de_fato_apos_a_poda(self, tmp_path: Path) -> None:
+        """Sem VACUUM o SQLite só marca páginas como livres e o arquivo NÃO
+        encolhe — era metade do card: podar sem VACUUM não devolve disco
+        nenhum, e o sintoma (18 GB) continuaria idêntico."""
+        caminho = tmp_path / "estado.db"
+        bus = EventBus(db_path=str(caminho), max_eventos=0)
+        for i in range(4000):
+            bus.publish(_evento(f"m-{i}", "MissionCreated"))
+        bus.fechar()
+        tamanho_cheio = caminho.stat().st_size
+
+        EventBus(db_path=str(caminho), max_eventos=50)
+        assert caminho.stat().st_size < tamanho_cheio

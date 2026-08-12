@@ -114,7 +114,47 @@ class ObserveWatcher:
         for base, banda, valor in leituras:
             for serie in watch_rules.series_da_banda(base, banda, valor, agora_):
                 self._observ.registrar_serie(serie)
+        self._registrar_leituras_em_banda(leituras)
         return self._observ.avaliar_regras(agora_=agora_)
+
+    @staticmethod
+    def _registrar_leituras_em_banda(
+        leituras: list[tuple[str, watch_rules.LimiarBanda, float | None]],
+    ) -> None:
+        """Deixa rastro LOCAL da métrica que entrou em banda — o carimbo de
+        tempo que faltou no `ALERTA_CPU_LATENCIA_SEM_CARIMBO01`.
+
+        O daemon alertava no Discord e não escrevia nada na máquina: medido em
+        2026-08-12, `batman_os_observe.log` com **0 bytes desde 23/07**, com o
+        processo vivo há 60 dias. Só se logava exceção, e 20 dias sem exceção
+        produzem arquivo vazio — que se lê como "nunca subiu". Sem o carimbo,
+        um CRITICAL de `CPU>90%` não pôde ser separado de limiar mal
+        calibrado, porque não havia **quando**.
+
+        Só entra no log o que é informativo — leitura a partir da banda de
+        WARNING. A trava importa: `/var/log/radar` **não tem logrotate**
+        (medido: 548 MB, arquivos de até 174 MB), e o daemon roda 1.440 ciclos
+        por dia. Logar todo ciclo trocaria um crescimento sem teto por outro,
+        que é o defeito que este mesmo lote de trabalho está consertando no
+        `estado.db`. Numa máquina saudável esta função não escreve nada.
+        """
+        em_banda = [
+            (base, banda, valor)
+            for base, banda, valor in leituras
+            if valor is not None and valor >= banda.warning
+        ]
+        if not em_banda:
+            return
+        for base, banda, valor in em_banda:
+            nivel = logging.WARNING if valor >= banda.critical else logging.INFO
+            logger.log(
+                nivel,
+                "observe: %s=%.1f (warning=%.0f critical=%.0f)",
+                base,
+                valor,
+                banda.warning,
+                banda.critical,
+            )
 
     # -- heartbeat ----------------------------------------------------------
     def heartbeat(
