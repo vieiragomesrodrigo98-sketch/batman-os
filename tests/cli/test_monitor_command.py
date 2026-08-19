@@ -143,9 +143,7 @@ class TestExecutarDadosSentinela:
         assert len(alertas) == 1
 
     def test_resolver_manifest_dados_path_default_e_explicito(self) -> None:
-        assert resolver_manifest_dados_path("exemplo", None) == caminho_manifesto_dados(
-            "exemplo"
-        )
+        assert resolver_manifest_dados_path("exemplo", None) == caminho_manifesto_dados("exemplo")
         assert resolver_manifest_dados_path("acme", "/tmp/x.json") == Path("/tmp/x.json")
 
 
