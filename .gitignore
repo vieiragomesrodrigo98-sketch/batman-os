@@ -11,3 +11,6 @@ dist/
 .batman-os/
 data/llm_cost*.jsonl
 data/llm_local/
+.venv/
+install.log
+pytest.log

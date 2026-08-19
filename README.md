@@ -1,9 +1,65 @@
 # Batman OS
 
-**Construindo um Sistema Operacional Cognitivo Determinístico Autônomo**
+**Governança de engenharia como sistema operacional.** 283 regras determinísticas que
+auditam um repositório inteiro — segurança, infraestrutura, qualidade, dívida, dados —
+sem chamar um modelo de linguagem. O LLM entra por último, só quando a regra
+determinística não decide.
 
 > "Um sistema inteligente não é aquele que responde todas as perguntas. É aquele que
 > reduz continuamente a quantidade de perguntas que precisam ser feitas."
+
+| | |
+|---|---|
+| **165+ commits** · autor único | **1.500+ testes** de aceitação, um por capítulo da spec |
+| **283 specs** de regra | `mypy --strict` e `ruff` limpos, bloqueantes no CI |
+| **39 capítulos** de especificação escrita antes do código | roda em produção contra um produto real, a cada 5 minutos |
+
+## Por que isto não é um linter
+
+Um linter responde *"esta linha está errada?"*. O Batman OS responde *"este repositório
+está sendo desenvolvido de um jeito que vai falhar?"* — e trata a própria resposta como
+algo que pode estar mentindo.
+
+Dois defeitos reais que o projeto encontrou **em si mesmo**, e as defesas que nasceram deles:
+
+**1. O portão não enxergava o que foi commitado.** `pytest`, `mypy` e `ruff` rodam na
+*árvore de trabalho*. Um arquivo importado pelo código e nunca versionado passa nos
+quatro — e quebra no primeiro clone limpo. Aconteceu duas vezes. A defesa
+(`scripts/verificar_head_autocontido.sh`) materializa o HEAD num worktree efêmero e
+exige que `(tipos, specs)` bata com a árvore.
+
+**2. "Zero achados" e "tudo certo" são indistinguíveis.** Uma execução no CI enumerou
+1.382 arquivos, reportou `0 achado(s)` e saiu com código 0 — porque o pacote foi
+publicado sem as 283 specs, e `glob` num diretório inexistente não levanta erro. Um
+portão que só olha o código de saída teria dado verde. A defesa é um canário que
+**reprova placar zero**: silêncio deixou de ser aprovação.
+
+Essa é a tese do projeto inteiro — **falha silenciosa é o inimigo**. Um processo que
+trava é pior que um que descarta, porque descarte aparece no relatório e trava parece
+lentidão.
+
+## Arquitetura em uma passada
+
+```
+docs/spec/       especificação (39 capítulos, 10 volumes, 17 ADRs) — vence o código
+                 em caso de divergência, por regra explícita
+src/batman_os/
+  foundation/    tipos do glossário oficial (Mission, Capability, Operator, ...)
+  kernel/        Mission Runtime, Planning/Decision/Workflow Engine, Event Bus, Scheduler
+  runtime/       Capability/Execution Engine, Operational Memory (SQLite), concorrência
+  capabilities/  operadores, certificação, skills, tools — e as 283 regras migradas
+  workflow/      missões formais, playbooks multi-step, recuperação e fallback
+  learning/      Knowledge Graph, evolução de regra/workflow, aprendizado operacional
+  governance/    Governance Engine, Human Review, escalação para LLM, observabilidade
+  api/           API HTTP (FastAPI) — tenant derivado da chave, nunca do corpo
+tests/           1 arquivo por capítulo, nomeado pelos critérios de aceitação da spec
+```
+
+**Isolamento multi-tenant é estrutural**, em leitura e mutação — não um `WHERE tenant_id`
+espalhado pelas queries. O tenant aplicado a uma Missão vem 100% da chave de API usada;
+não existe endpoint que aceite o tenant como campo do payload.
+
+---
 
 Este repositório é a **implementação de referência** do Batman OS, cuja especificação
 de arquitetura completa vive em [`docs/spec/`](docs/spec/README.md). O Batman OS é a
