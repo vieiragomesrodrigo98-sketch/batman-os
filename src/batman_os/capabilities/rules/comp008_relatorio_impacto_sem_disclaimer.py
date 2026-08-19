@@ -60,7 +60,7 @@ class RegraComp008Spec(BaseModel):
     categoria: str = CATEGORIA
     titulo: str = "Relatório de impacto por usuário sem disclaimer CVM"
     causa: str = (
-        "ADR de política comercial do tenant / política comercial do tenant (relatório periódico de valor): "
+        "Política comercial do tenant, relatório periódico de valor: "
         "todo relatório de impacto por usuário (sinais recebidos/operados, "
         "disciplina, erros evitados, horas economizadas etc.) é histórico de "
         "uso, NUNCA promessa de rentabilidade (P5) — precisa do disclaimer "

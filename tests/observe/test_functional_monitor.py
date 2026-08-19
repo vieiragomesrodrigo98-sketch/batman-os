@@ -235,7 +235,9 @@ class TestAuthSintetica:
         )
         manifest = _manifest(
             [
-                _check("syn-recurso-a", "/api/recurso-a", auth="sessao", espera_conteudo=". is array"),
+                _check(
+                    "syn-recurso-a", "/api/recurso-a", auth="sessao", espera_conteudo=". is array"
+                ),
                 _check("syn-recurso-h", "/api/recurso-h", auth="sessao"),
             ]
         )
@@ -253,7 +255,9 @@ class TestAuthSintetica:
         sonda.responder("/api/recurso-a", RespostaSonda(status=200, corpo="[]"))
         gov = GovernanceEngine()
         monitor = FunctionalMonitor(gov, sondador=sonda, credenciais=_CredsFake({}))
-        alertas = monitor.run_once(_manifest([_check("syn-recurso-a", "/api/recurso-a", auth="sessao")]))
+        alertas = monitor.run_once(
+            _manifest([_check("syn-recurso-a", "/api/recurso-a", auth="sessao")])
+        )
         # nenhum FEATURE_DOWN — o check nao rodou (config, nao outage)
         assert alertas == []
         assert "syn-recurso-a" in monitor.ultimos_pulados

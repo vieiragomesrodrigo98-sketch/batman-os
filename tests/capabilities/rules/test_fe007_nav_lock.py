@@ -44,9 +44,7 @@ class TestNavLock:
     def test_dispara_quando_rota_canonica_removida(self) -> None:
         entrada = {
             "caminho": "frontend/src/components/Layout.tsx",
-            "conteudo": (
-                "const NAV_VIEWER = [\n  { to: '/area-a' },\n  { to: '/area-b' },\n];\n"
-            ),
+            "conteudo": ("const NAV_VIEWER = [\n  { to: '/area-a' },\n  { to: '/area-b' },\n];\n"),
             "regra": _regra(),
         }
         saida = avaliar_fe007(entrada, _contexto())
