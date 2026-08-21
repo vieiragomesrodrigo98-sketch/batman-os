@@ -1,6 +1,6 @@
 # Batman OS
 
-[![CI](https://github.com/vieiragomesrodrigo98-sketch/batman-os/actions/workflows/ci.yml/badge.svg)](https://github.com/vieiragomesrodrigo98-sketch/batman-os/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+[![CI](https://github.com/rodrigogvieira98/batman-os/actions/workflows/ci.yml/badge.svg)](https://github.com/rodrigogvieira98/batman-os/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 
 **Engineering governance as an operating system.** 283 deterministic rules that audit an
 entire repository — security, infrastructure, quality, technical debt, data — without
