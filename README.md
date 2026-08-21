@@ -7,6 +7,8 @@ auditam um repositório inteiro — segurança, infraestrutura, qualidade, dívi
 sem chamar um modelo de linguagem. O LLM entra por último, só quando a regra
 determinística não decide.
 
+🇧🇷 **Português** · 🇪🇸 [Español](README.es.md) · 🇺🇸 [English](README.en.md)
+
 > "Um sistema inteligente não é aquele que responde todas as perguntas. É aquele que
 > reduz continuamente a quantidade de perguntas que precisam ser feitas."
 
